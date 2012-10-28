@@ -1,0 +1,27 @@
+{namespace cms.greet}
+
+/**
+ * Present a form to tell who to greet.
+ */
+{template .form}
+    <form id="greeter" class="{css cms-nice_greeter}">
+        <input type="text" name="name" placeholder="
+    {msg desc="Ask the user for his/her name"}
+        What's your name?
+    {/msg}"/>
+        <input type="submit" value="
+    {msg desc="Submit the form"}
+        Submit
+    {/msg}"/>
+    </form>
+{/template}
+
+/**
+ * Greets the user.
+ * @param name The name of the person.
+ */
+{template .greetUser}
+    {msg desc="Greet the user"}
+        Hello {$name}!
+    {/msg}
+{/template}

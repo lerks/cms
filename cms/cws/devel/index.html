@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <script src="renaming_map.js"></script>
+        <script src="../closure-library/closure/goog/base.js"></script>
+        <script>
+// Requirements of soyutils_usegoog.js
+goog.require('goog.asserts');
+goog.require('goog.dom.DomHelper');
+goog.require('goog.format');
+goog.require('goog.i18n.BidiFormatter');
+goog.require('goog.i18n.bidi');
+goog.require('goog.soy');
+goog.require('goog.string');
+goog.require('goog.string.StringBuffer');
+        </script>
+        <script src="../soy/soyutils_usegoog.js"></script>
+        <script src="greet.js"></script>
+        <script src="../src/test.js"></script>
+        <link rel="stylesheet" href="style.css"/>
+        <title>Welcome!</title>
+    </head>
+    <body onload="cms.test.init()">
+        <script type="text/javascript">
+document.write(cms.greet.form());
+        </script>
+    </body>
+</html>

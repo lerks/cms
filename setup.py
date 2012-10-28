@@ -28,6 +28,9 @@ import os
 import shutil
 import re
 import pwd
+import tempfile
+
+from subprocess import call
 
 from glob import glob
 from setuptools import setup
@@ -152,74 +155,88 @@ class clean_mobox(cmd.Command):
         os.chdir("..")
 
 
-class build_trans(cmd.Command):
-    description = 'Compile translations'
+class build_cws(cmd.Command):
+    description = 'Compile CWS'
+
+    user_options = [
+        ('devel', 'd', 'Enable development mode (output files in the "devel" directory instead of "build"'),
+        ('locale=', 'l', 'Locale to use to translate the templates, chosen from the ones in the "xlf" firectory [default: en-US]'),
+        ]
 
     def initialize_options(self):
-        pass
+        self.devel = 0
+        self.locale = 'en-US'
 
     def finalize_options(self):
         pass
 
     def run(self):
-        print "compiling localization files:"
-        for locale in glob(os.path.join("cms", "server", "po", "*.po")):
-            country_code = re.search("/([^/]*)\.po", locale).groups()[0]
-            print "  %s" % country_code
-            path = os.path.join("cms", "server", "mo", country_code,
-                                "LC_MESSAGES")
-            makedir(path)
-            os.system("msgfmt %s -o %s" % (locale, os.path.join(path, "cms.mo")))
+        # Alternatively, we could chdir in the cws_dir and then chdir back.
 
+        cws_dir = os.path.join(os.getcwd(), "cms", "cws")
 
-class install_trans(cmd.Command):
-    description = 'Install translations'
+        # TODO check that the locale exists
 
-    def initialize_options(self):
-        pass
+        if self.devel:
+            call([
+                "java",
+                "-jar", os.path.join(cws_dir, "soy", "SoyToJsSrcCompiler.jar"),
+                "--shouldGenerateJsdoc",
+                "--shouldProvideRequireSoyNamespaces",
+                "--cssHandlingScheme", "GOOG",  # FIXME Or "goog"?
+                "--locales", self.locale,
+                "--messageFilePathFormat", os.path.join(cws_dir, "xlf", "{LOCALE}.xlf"),
+                "--outputPathFormat", os.path.join(cws_dir, "devel", "{INPUT_FILE_NAME_NO_EXT}.js"),
+            ] + glob(os.path.join(cws_dir, "soy", "*.soy")))
 
-    def finalize_options(self):
-        pass
+            call([
+                "java",
+                "-jar", os.path.join(cws_dir, "closure-stylesheets.jar"),
+                "--pretty-print",
+                "--rename", "DEBUG",
+                "--output-renaming-map-format", "CLOSURE_UNCOMPILED",
+                "--output-renaming-map", os.path.join(cws_dir, "devel", "renaming_map.js"),
+                "--output-file", os.path.join(cws_dir, "devel", "style.css"),
+            ] + glob(os.path.join(cws_dir, "gss", "*.gss")))
 
-    def run(self):
-        # We set permissions for each manually installed files, so we want
-        # max liberty to change them.
-        old_umask = os.umask(0000)
+        else:
+            tmp_dir = tempfile.mkdtemp()
 
-        root = pwd.getpwnam("root")
+            call([
+                "java",
+                "-jar", os.path.join(cws_dir, "soy", "SoyToJsSrcCompiler.jar"),
+                "--shouldGenerateJsdoc",
+                "--shouldProvideRequireSoyNamespaces",
+                "--cssHandlingScheme", "GOOG",  # FIXME Or "goog"?
+                "--locales", self.locale,
+                "--messageFilePathFormat", os.path.join(cws_dir, "xlf", "{LOCALE}.xlf"),
+                "--outputPathFormat", os.path.join(tmp_dir, "{INPUT_FILE_NAME_NO_EXT}.js"),
+            ] + glob(os.path.join(cws_dir, "soy", "*.soy")))
 
-        print "copying localization files:"
-        for locale in glob(os.path.join("cms", "server", "po", "*.po")):
-            country_code = re.search("/([^/]*)\.po", locale).groups()[0]
-            print "  %s" % country_code
-            path = os.path.join("cms", "server", "mo", country_code, "LC_MESSAGES")
-            dest_path = os.path.join("/", "usr", "local", "share", "locale",
-                                     country_code, "LC_MESSAGES")
-            makedir(dest_path, root, 0755)
-            copyfile(os.path.join(path, "cms.mo"),
-                     os.path.join(dest_path, "cms.mo"),
-                     root, 0644)
+            call([
+                "java",
+                "-jar", os.path.join(cws_dir, "closure-stylesheets.jar"),
+                "--rename", "CLOSURE",
+                "--output-renaming-map-format", "CLOSURE_COMPILED",
+                "--output-renaming-map", os.path.join(tmp_dir, "renaming_map.js"),
+                "--output-file", os.path.join(cws_dir, "build", "style.css"),
+            ] + glob(os.path.join(cws_dir, "gss", "*.gss")))
 
-        os.umask(old_umask)
+            call([
+                os.path.join(cws_dir, "closure-library", "closure", "bin", "build", "closurebuilder.py"),
+                "--output_mode", "compiled",
+                "--compiler_jar", os.path.join(cws_dir, "closure-compiler.jar"),
+                "--compiler_flags", "--compilation_level=ADVANCED_OPTIMIZATIONS",
+                # Need to include this explicitly because it isn't required by anything
+                "--compiler_flags", "--js=%s" % os.path.join(tmp_dir, "renaming_map.js"),
+                "--root", os.path.join(cws_dir, "closure-library"),
+                "--root", os.path.join(cws_dir, "src"),
+                "--root", os.path.join(tmp_dir),
+                os.path.join(cws_dir, "soy", "soyutils_usegoog.js"),
+                "--namespace", "cms.test",
+            ], stdout=open(os.path.join(cws_dir, "build", "script.js"), 'wb'))
 
-
-class clean_trans(cmd.Command):
-    description = 'Clean translations'
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        print "cleaning localization files..."
-        for locale in glob(os.path.join("cms", "server", "po", "*.po")):
-            country_code = re.search("/([^/]*)\.po", locale).groups()[0]
-            path = os.path.join("cms", "server", "mo", country_code,
-                                "LC_MESSAGES")
-            os.remove(os.path.join(path, "cms.mo"))
-            os.removedirs(path)
+            shutil.rmtree(tmp_dir)
 
 
 class build(_build):
@@ -342,9 +359,7 @@ setup(name="cms",
       cmdclass={"build_mobox": build_mobox,
                 "install_mobox": install_mobox,
                 "clean_mobox": clean_mobox,
-                "build_trans": build_trans,
-                "install_trans": install_trans,
-                "clean_trans": clean_trans,
+                "build_cws": build_cws,
                 "build": build,
                 "install": install,
                 "clean": clean},

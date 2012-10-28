@@ -1,0 +1,11 @@
+.cms-nice_greeter {
+    background-color: #DDDDDD;
+}
+
+@def GREETING_WIDTH 1000px;
+@def GREETING_BORDER 5px;
+
+.cms-greeting {
+    width: sub(GREETING_WIDTH, mult(GREETING_BORDER, 2));
+    border: solid GREETING_BORDER black;
+}

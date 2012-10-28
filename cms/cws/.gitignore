@@ -1,0 +1,11 @@
+closure-compiler.jar
+closure-library/
+closure-stylesheets.jar
+soy/SoyMsgExtractor.jar
+soy/SoyToJsSrcCompiler.jar
+soy/soyutils_usegoog.js
+
+build/*.css
+build/*.js
+devel/*.css
+devel/*.js
