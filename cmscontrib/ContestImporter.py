@@ -5,6 +5,7 @@
 # Copyright © 2010-2012 Giovanni Mascellani <mascellani@poisson.phc.unipi.it>
 # Copyright © 2010-2012 Stefano Maggiolo <s.maggiolo@gmail.com>
 # Copyright © 2010-2012 Matteo Boscariol <boscarim@hotmail.com>
+# Copyright © 2012 Luca Wehrstedt <luca.wehrstedt@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -35,11 +36,18 @@ import sqlalchemy.exc
 import tarfile
 import zipfile
 
+from datetime import timedelta
+
+from sqlalchemy.orm import ColumnProperty, RelationshipProperty
+from sqlalchemy.types import Boolean, Integer, Float, String, DateTime, Interval
+import cms.db.SQLAlchemyAll as class_hook
+
 from cms import logger
 from cms.db.FileCacher import FileCacher
 from cms.db.SQLAlchemyAll import SessionGen, Contest, metadata
 
 from cmscontrib import sha1sum
+from cmscommon.DateTime import make_datetime
 
 
 def find_root_of_archive(file_names):
@@ -146,10 +154,26 @@ class ContestImporter:
 
                 # Import the contest in JSON format.
                 logger.info("Importing the contest from JSON file.")
+
                 with open(os.path.join(self.import_dir,
                                        "contest.json")) as fin:
-                    contest = Contest.import_from_dict(json.load(fin))
-                    session.add(contest)
+                    # Throughout all the code we'll assume the input is
+                    # correct without actually doing any validations.
+                    # Thus, for example, we're not checking that the
+                    # decoded object is a dict...
+                    self.datas = json.load(fin)
+
+                self.objs = dict()
+                for _id, data in self.datas:
+                    obj = self.import_object(data)
+                    self.objs[_id] = obj
+                    session.add(obj)
+
+                for _id in self.datas:
+                    self.add_relationships(self.datas[_id], self.objs[_id])
+
+                # Mmh... kind of fragile interface
+                contest = self.objs["0"]
 
                 # Check that no files were missing (only if files were
                 # imported).
@@ -172,6 +196,57 @@ class ContestImporter:
             shutil.rmtree(self.import_dir)
 
         return True
+
+    def import_object(self, data):
+        """FIXME
+
+        """
+        cls = getattr(class_hook, data["_class"])
+
+        args = dict()
+
+        for prp in cls._col_props:
+            if prp.key not in data:
+                # FIXME Are we sure that we don't want to check
+                # better to see if the property is really optional?
+                # (and maybe raise an error if this is not the case)
+                continue
+
+            col = prp.columns[0]
+            col_type = type(col.type)
+
+            val = data[prp.key]
+            if col_type in [Boolean, Integer, Float, String]:
+                args[prp.key] = val
+            elif col_type is DateTime:
+                args[prp.key] = make_datetime(val) if val is not None else None
+            elif col_type is Interval:
+                args[prp.key] = timedelta(seconds=val) if val is not None else None
+            else:
+                raise RuntimeError("Unknown SQLAlchemy column type: %s" % col_type)
+
+        return cls(**args)
+
+    def add_relationships(self, data, obj):
+        """FIXME
+
+        """
+        cls = type(obj)
+
+        for prp in cls._rel_props:
+            if prp.key not in data:
+                # FIXME The same as above
+                continue
+
+            val = data[prp.key]
+            if type(val) == str:
+                setattr(obj, prp.key, self.objs[val])
+            elif type(val) == list:
+                setattr(obj, prp.key, list(self.objs[i] for i in val))
+            elif type(val) == dict:
+                setattr(obj, prp.key, dict((k, self.objs[v]) for k, v in val.iteritems()))
+            else:
+                raise RuntimeError("Unknown RelationshipProperty value: %s" % type(val))
 
     def safe_put_file(self, path, descr_path):
         """Put a file to FileCacher signaling every error (including

@@ -5,6 +5,7 @@
 # Copyright © 2010-2012 Giovanni Mascellani <mascellani@poisson.phc.unipi.it>
 # Copyright © 2010-2012 Stefano Maggiolo <s.maggiolo@gmail.com>
 # Copyright © 2010-2012 Matteo Boscariol <boscarim@hotmail.com>
+# Copyright © 2012 Luca Wehrstedt <luca.wehrstedt@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -34,12 +35,16 @@ import tempfile
 
 import tarfile
 
+from sqlalchemy.orm import ColumnProperty, RelationshipProperty
+from sqlalchemy.types import Boolean, Integer, Float, String, DateTime, Interval
+
 from cms import config, logger
 from cms.db import ask_for_contest
 from cms.db.FileCacher import FileCacher
 from cms.db.SQLAlchemyAll import SessionGen, Contest
 
 from cmscontrib import sha1sum
+from cmscommon.DateTime import make_timestamp
 
 
 def get_archive_info(file_name):
@@ -156,9 +161,19 @@ class ContestExporter:
 
             # Export the contest in JSON format.
             logger.info("Exporting the contest in JSON format.")
+
+            self.ids = {contest: "0"}
+            self.queue = [contest]
+
+            data = dict()
+            i = 0
+            while i < len(self.queue):
+                obj = self.queue[i]
+                data[self.ids[obj]] = self.export_object(obj)
+                i += 1
+
             with open(os.path.join(export_dir, "contest.json"), 'w') as fout:
-                json.dump(contest.export_to_dict(self.skip_submissions),
-                          fout, indent=4)
+                json.dump(data, fout, indent=4, sort_keys=True)
 
         if self.dump:
             if not self.dump_database(export_dir):
@@ -176,6 +191,51 @@ class ContestExporter:
         logger.operation = ""
 
         return True
+
+    def get_id(self, obj):
+        if obj not in self.ids:
+            # We use strings because they'll be the keys of a JSON object
+            self.ids[obj] = str(len(self.ids))
+            self.queue.append(obj)
+
+        return self.ids[obj]
+
+    def export_object(self, obj):
+        """FIXME
+
+        """
+        cls = type(obj)
+
+        data = {"_class": cls.__name__}
+
+        for prp in cls._obj_props:
+            col = prp.columns[0]
+            col_type = type(col.type)
+
+            val = getattr(obj, prp.key)
+            if col_type in [Boolean, Integer, Float, String]:
+                data[prp.key] = val
+            elif col_type is DateTime:
+                data[prp.key] = make_timestamp(val) if val is not None else None
+            elif col_type is Interval:
+                data[prp.key] = val.total_seconds() if val is not None else None
+            else:
+                raise RuntimeError("Unknown SQLAlchemy column type: %s" % col_type)
+
+        for prp in cls._rel_props:
+            other_cls = prp.mapper.class_
+
+            val = getattr(obj, prp.key)
+            if isinstance(val, other_cls):
+                data[prp.key] = self.get_id(val)
+            elif isinstance(val, list):
+                data[prp.key] = list(self.get_id(i) for i in val)
+            elif isinstance(val, dict):
+                data[prp.key] = dict((k, self.get_id(v)) for k, v in val.iteritems())
+            else:
+                raise RuntimeError("Unknown SQLAlchemy relationship type: %s" % type(val))
+
+        return data
 
     def dump_database(self, export_dir):
         """Dump the whole database. This is never used; however, this
