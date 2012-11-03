@@ -174,10 +174,10 @@ class YamlLoader:
         params["memory_limit"] = conf.get("memlimit", None)
         params["attachments"] = []  # FIXME - Use auxiliary
         params["statements"] = [
-            Statement(self.file_cacher.put_file(
-                path=os.path.join(path, "testo", "testo.pdf"),
-                description="Statement for task %s (lang: )" % name),
-                "").export_to_dict()]
+            Statement("",
+                      self.file_cacher.put_file(
+                      path=os.path.join(path, "testo", "testo.pdf"),
+                      description="Statement for task %s (lang: )" % name)).export_to_dict()]
         params["official_language"] = \
             conf.get("official_language", "en_official")
 
@@ -204,11 +204,11 @@ class YamlLoader:
                                                (lang))
                 if os.path.exists(grader_filename):
                     params["managers"].append(
-                        Manager(self.file_cacher.put_file(
+                        Manager("grader.%s" % (lang),
+                                self.file_cacher.put_file(
                                 path=grader_filename,
                                 description="Grader for task %s and "
-                                "language %s" % (name, lang)),
-                                "grader.%s" % (lang)).export_to_dict())
+                                "language %s" % (name, lang))).export_to_dict())
                 else:
                     logger.warning("Could not find grader for "
                                    "language %s" % (lang))
@@ -217,12 +217,12 @@ class YamlLoader:
                 if other_filename.endswith('.h') or \
                         other_filename.endswith('lib.pas'):
                     params["managers"].append(
-                        Manager(self.file_cacher.put_file(
+                        Manager(other_filename,
+                                self.file_cacher.put_file(
                                 path=os.path.join(path, "sol",
                                                   other_filename),
                                 description="Manager %s for task %s" %
-                                (other_filename, name)),
-                                other_filename).export_to_dict())
+                                (other_filename, name))).export_to_dict())
             compilation_param = "grader"
         else:
             compilation_param = "alone"
@@ -230,11 +230,11 @@ class YamlLoader:
         # If there is cor/correttore, then, presuming that the task
         # type is Batch or OutputOnly, we retrieve the comparator
         if os.path.exists(os.path.join(path, "cor", "correttore")):
-            params["managers"] += [
-                Manager(self.file_cacher.put_file(
-                    path=os.path.join(path, "cor", "correttore"),
-                    description="Manager for task %s" % (name)),
-                        "checker").export_to_dict()]
+            params["managers"].append(
+                Manager("checker",
+                        self.file_cacher.put_file(
+                        path=os.path.join(path, "cor", "correttore"),
+                        description="Manager for task %s" % (name))).export_to_dict())
             evaluation_parameter = "comparator"
         else:
             evaluation_parameter = "diff"
@@ -255,20 +255,20 @@ class YamlLoader:
         elif os.path.exists(os.path.join(path, "cor", "manager")):
             params["task_type"] = "Communication"
             params["task_type_parameters"] = '[]'
-            params["managers"] += [
-                Manager(self.file_cacher.put_file(
-                    path=os.path.join(path, "cor", "manager"),
-                    description="Manager for task %s" % (name)),
-                        "manager").export_to_dict()]
+            params["managers"].append(
+                Manager("manager",
+                        self.file_cacher.put_file(
+                        path=os.path.join(path, "cor", "manager"),
+                        description="Manager for task %s" % (name))).export_to_dict())
             for lang in Submission.LANGUAGES:
                 stub_name = os.path.join(path, "sol", "stub.%s" % lang)
                 if os.path.exists(stub_name):
                     params["managers"].append(
-                        Manager(self.file_cacher.put_file(
-                            path=stub_name,
-                            description="Stub for task %s and language %s" %
-                            (name, lang)),
-                                "stub.%s" % lang).export_to_dict())
+                        Manager("stub.%s" % lang,
+                                self.file_cacher.put_file(
+                                path=stub_name,
+                                description="Stub for task %s and language %s" %
+                                (name, lang))).export_to_dict())
                 else:
                     logger.warning("Stub for language %s not found." % lang)
 
@@ -358,20 +358,20 @@ class YamlLoader:
         elif os.path.exists(os.path.join(path, "cor", "manager")):
             params["task_type"] = "Communication"
             params["task_type_parameters"] = '[]'
-            params["managers"] += [
-                Manager(self.file_cacher.put_file(
-                    path=os.path.join(path, "cor", "manager"),
-                    description="Manager for task %s" % (name)),
-                        "manager").export_to_dict()]
+            params["managers"].append(
+                Manager("manager",
+                        self.file_cacher.put_file(
+                        path=os.path.join(path, "cor", "manager"),
+                        description="Manager for task %s" % (name))).export_to_dict())
             for lang in Submission.LANGUAGES:
                 stub_name = os.path.join(path, "sol", "stub.%s" % lang)
                 if os.path.exists(stub_name):
                     params["managers"].append(
-                        Manager(self.file_cacher.put_file(
-                            path=stub_name,
-                            description="Stub for task %s and language %s" %
-                            (name, lang)),
-                                "stub.%s" % lang).export_to_dict())
+                        Manager("stub.%s" % lang,
+                                self.file_cacher.put_file(
+                                path=stub_name,
+                                description="Stub for task %s and language %s" %
+                                (name, lang))).export_to_dict())
                 else:
                     logger.warning("Stub for language %s not found." % lang)
 
@@ -405,8 +405,8 @@ class YamlLoader:
                 public=(i in public_testcases)).export_to_dict())
             if params["task_type"] == "OutputOnly":
                 params["attachments"].append(Attachment(
-                        input_digest,
-                        "input_%03d.txt" % (i)).export_to_dict())
+                        "input_%03d.txt" % (i)).export_to_dict(),
+                        input_digest)
         params["token_initial"] = conf.get("token_initial", None)
         params["token_max"] = conf.get("token_max", None)
         params["token_total"] = conf.get("token_total", None)
