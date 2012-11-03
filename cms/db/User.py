@@ -37,6 +37,12 @@ from cmscommon.DateTime import make_datetime, make_timestamp
 from datetime import timedelta
 
 
+def generate_random_password():
+    import random
+    chars = "abcdefghijklmnopqrstuvwxyz"
+    return "".join([random.choice(chars) for unused_i in xrange(6)])
+
+
 class User(Base):
     """Class to store a 'user participating in a contest'. Not to be
     used directly (import it from SQLAlchemyAll).
@@ -59,16 +65,16 @@ class User(Base):
 
     # Username and password to log in the CWS.
     username = Column(String, nullable=False)
-    password = Column(String, nullable=False)
+    password = Column(String, nullable=False, default=generate_random_password)
 
     # Email for any communications in case of remote contest.
-    email = Column(String, nullable=False)
+    email = Column(String, nullable=False, default='')
 
     # User can log in CWS only from this ip.
-    ip = Column(String, nullable=True)
+    ip = Column(String, nullable=True, default='0.0.0.0')
 
     # A hidden user is used only for debugging purpose.
-    hidden = Column(Boolean, nullable=False)
+    hidden = Column(Boolean, nullable=False, default=False)
 
     # Contest (id and object) to which the user is participating.
     contest_id = Column(Integer,
@@ -85,7 +91,7 @@ class User(Base):
     # A JSON-encoded dictionary of lists of strings: statements["a"]
     # contains the language codes of the statments that will be
     # highlighted to this user for task "a".
-    primary_statements = Column(String, nullable=False)
+    primary_statements = Column(String, nullable=False, default="{}")
 
     # Timezone for the user. All timestamps in CWS will be shown using
     # the timezone associated to the logged-in user or (if it's None
@@ -101,7 +107,7 @@ class User(Base):
     starting_time = Column(DateTime, nullable=True)
 
     # An extra amount of time allocated for this user
-    extra_time = Column(Interval, nullable=False)
+    extra_time = Column(Interval, nullable=False, default=timedelta())
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
@@ -242,7 +248,7 @@ class Question(Base):
     reply_timestamp = Column(DateTime, nullable=True)
 
     # Has this message been ignored by the admins?
-    ignored = Column(Boolean, nullable=False)
+    ignored = Column(Boolean, nullable=False, default=False)
 
     # Short (as in 'chosen amongst some predetermined choices') and
     # long answer.

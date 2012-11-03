@@ -56,7 +56,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True)
 
     # Number of the task for sorting.
-    num = Column(Integer, nullable=False)
+    num = Column(Integer, nullable=False, default=0)
 
     # Contest (id and object) owning the task.
     contest_id = Column(Integer,
@@ -78,7 +78,7 @@ class Task(Base):
 
     # A JSON-encoded lists of strings: the language codes of the
     # statments that will be highlighted to all users for this task.
-    primary_statements = Column(String, nullable=False)
+    primary_statements = Column(String, nullable=False, default="[]")
 
     # Time and memory limits for every testcase.
     time_limit = Column(Float, nullable=True)
@@ -109,12 +109,12 @@ class Task(Base):
         Integer, CheckConstraint("token_total > 0"), nullable=True)
     token_min_interval = Column(
         Interval, CheckConstraint("token_min_interval >= '0 seconds'"),
-        nullable=False)
+        nullable=False, default=timedelta())
     token_gen_time = Column(
         Interval, CheckConstraint("token_gen_time >= '0 seconds'"),
-        nullable=False)
+        nullable=False, default=timedelta())
     token_gen_number = Column(
-        Integer, CheckConstraint("token_gen_number >= 0"), nullable=False)
+        Integer, CheckConstraint("token_gen_number >= 0"), nullable=False, default=0)
 
     # Maximum number of submissions or usertests allowed for each user
     # on this task during the whole contest or None to not enforce
@@ -286,7 +286,7 @@ class Testcase(Base):
 
     # If the testcase outcome is going to be showed to the user (even
     # without playing a token).
-    public = Column(Boolean, nullable=False)
+    public = Column(Boolean, nullable=False, default=False)
 
     # Digests of the input and output files.
     input = Column(String, nullable=False)

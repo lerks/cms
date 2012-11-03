@@ -88,7 +88,7 @@ class Submission(Base):
     compilation_text = Column(String, nullable=True)
 
     # Number of attempts of compilation.
-    compilation_tries = Column(Integer, nullable=False)
+    compilation_tries = Column(Integer, nullable=False, default=0)
 
     # Worker shard and sanbox where the compilation was performed
     compilation_shard = Column(Integer, nullable=True)
@@ -100,7 +100,7 @@ class Submission(Base):
     evaluation_outcome = Column(String, nullable=True)
 
     # Number of attempts of evaluation.
-    evaluation_tries = Column(Integer, nullable=False)
+    evaluation_tries = Column(Integer, nullable=False, default=0)
 
     # Score as computed by ScoreService. Null means not yet scored.
     score = Column(Float, nullable=True)
@@ -306,7 +306,7 @@ class Token(Base):
         single_parent=True)
 
     # Time the token was played.
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(DateTime, nullable=False, default=make_datetime)
 
     def __init__(self, timestamp=None, submission=None):
         if timestamp is None:
