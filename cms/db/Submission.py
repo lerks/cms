@@ -245,14 +245,6 @@ class Submission(Base):
         self.public_score = None
         self.public_score_details = None
 
-    def play_token(self, timestamp=None):
-        """Tell the submission that a token has been used.
-
-        timestamp (int): the time the token has been played.
-
-        """
-        self.token = Token(timestamp=timestamp)
-
 
 class Token(Base):
     """Class to store information about a token. Not to be used

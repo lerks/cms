@@ -162,21 +162,6 @@ class Contest(Base):
         raise KeyError("Task not found")
 
     # FIXME - Use SQL syntax
-    def get_task_index(self, task_name):
-        """Return the index of the first task in the contest with the
-        given name.
-
-        task_name (string): the name of the task we are interested in.
-        return (int): the index of the corresponding task, or
-                      KeyError.
-
-        """
-        for idx, task in enumerate(self.tasks):
-            if task.name == task_name:
-                return idx
-        raise KeyError("Task not found")
-
-    # FIXME - Use SQL syntax
     def get_user(self, username):
         """Return the first user in the contest with the given name.
 
