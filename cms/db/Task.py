@@ -144,49 +144,19 @@ class Task(Base):
     # building the scores of the submissions.
     scorer = None
 
-    def __init__(self, name, title, statements, attachments,
-                 time_limit, memory_limit, primary_statements,
-                 task_type, task_type_parameters, submission_format, managers,
-                 score_type, score_parameters, testcases,
-                 token_initial=None, token_max=None, token_total=None,
-                 token_min_interval=timedelta(),
-                 token_gen_time=timedelta(), token_gen_number=0,
-                 max_submission_number=None, max_usertest_number=None,
-                 min_submission_interval=None, min_usertest_interval=None,
-                 contest=None, num=0):
-        for filename, attachment in attachments.iteritems():
-            attachment.filename = filename
-        for filename, manager in managers.iteritems():
-            manager.filename = filename
-        for language, statement in statements.iteritems():
-            statement.language = language
+    def __init__(self, *args, **kwargs):
+        # FIXME Are we actually relying on the following behavior?
+        if "attachments" in kwargs:
+            for filename, attachment in kwargs["attachments"].iteritems():
+                attachment.filename = filename
+        if "managers" in kwargs:
+            for filename, manager in kwargs["managers"].iteritems():
+                manager.filename = filename
+        if "statements" in kwargs:
+            for language, statement in kwargs["statements"].iteritems():
+                statement.language = language
 
-        self.num = num
-        self.name = name
-        self.title = title
-        self.statements = statements
-        self.attachments = attachments
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
-        self.primary_statements = primary_statements if primary_statements is not None else "[]"
-        self.task_type = task_type
-        self.task_type_parameters = task_type_parameters
-        self.submission_format = submission_format
-        self.managers = managers
-        self.score_type = score_type
-        self.score_parameters = score_parameters
-        self.testcases = testcases
-        self.token_initial = token_initial
-        self.token_max = token_max
-        self.token_total = token_total
-        self.token_min_interval = token_min_interval
-        self.token_gen_time = token_gen_time
-        self.token_gen_number = token_gen_number
-        self.max_submission_number = max_submission_number
-        self.max_usertest_number = max_usertest_number
-        self.min_submission_interval = min_submission_interval
-        self.min_usertest_interval = min_usertest_interval
-        self.contest = contest
+        Base.__init__(self, *args, **kwargs)
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -305,13 +275,6 @@ class Testcase(Base):
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
-    def __init__(self, input, output, num=None, public=False, task=None):
-        self.input = input
-        self.output = output
-        self.num = num
-        self.public = public
-        self.task = task
-
     def export_to_dict(self):
         """Return object data as a dictionary.
 
@@ -351,11 +314,6 @@ class Attachment(Base):
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
-
-    def __init__(self, digest, filename=None, task=None):
-        self.filename = filename
-        self.digest = digest
-        self.task = task
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -397,11 +355,6 @@ class Manager(Base):
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
-    def __init__(self, digest, filename=None, task=None):
-        self.filename = filename
-        self.digest = digest
-        self.task = task
-
     def export_to_dict(self):
         """Return object data as a dictionary.
 
@@ -436,10 +389,6 @@ class SubmissionFormatElement(Base):
 
     # Format of the given submission file.
     filename = Column(String)
-
-    def __init__(self, filename, task=None):
-        self.filename = filename
-        self.task = task
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -484,11 +433,6 @@ class Statement(Base):
                         collection_class=column_mapped_collection(language),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
-
-    def __init__(self, digest, language, task=None):
-        self.language = language
-        self.digest = digest
-        self.task = task
 
     def export_to_dict(self):
         """Return object data as a dictionary.
