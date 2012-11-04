@@ -287,7 +287,7 @@ class Token(Base):
         single_parent=True)
 
     # Time the token was played.
-    timestamp = Column(DateTime, nullable=False, default=make_datetime)
+    timestamp = Column(DateTime, nullable=False, default=make_datetime)  # FIXME
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -414,12 +414,12 @@ class Evaluation(Base):
 
     # String containing output from the grader (usually "Correct",
     # "Time limit", ...).
-    text = Column(String, nullable=True)
+    text = Column(String, nullable=True)  # FIXME not null?
 
     # String containing the outcome of the evaluation (usually 1.0,
     # ...) not necessary the points awarded, that will be computed by
     # the score type.
-    outcome = Column(String, nullable=True)
+    outcome = Column(String, nullable=True)  # FIXME not null?
 
     # Memory used by the evaluation, in bytes.
     memory_used = Column(Integer, nullable=True)

@@ -400,8 +400,9 @@ class YamlLoader:
                 path=output,
                 description="Output %d for task %s" % (i, name))
             params["testcases"].append(Testcase(
-                input_digest,
-                output_digest,
+                num=i,
+                input=input_digest,
+                output=output_digest,
                 public=(i in public_testcases)).export_to_dict())
             if params["task_type"] == "OutputOnly":
                 params["attachments"].append(Attachment(

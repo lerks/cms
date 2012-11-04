@@ -65,13 +65,13 @@ class User(Base):
 
     # Username and password to log in the CWS.
     username = Column(String, nullable=False)
-    password = Column(String, nullable=False, default=generate_random_password)
+    password = Column(String, nullable=False, default=generate_random_password) # FIXME default???
 
     # Email for any communications in case of remote contest.
-    email = Column(String, nullable=False, default='')
+    email = Column(String, nullable=False, default='') # FIXME sure?
 
     # User can log in CWS only from this ip.
-    ip = Column(String, nullable=True, default='0.0.0.0')
+    ip = Column(String, nullable=True, default='0.0.0.0') # FIXME 0.0.0.0?
 
     # A hidden user is used only for debugging purpose.
     hidden = Column(Boolean, nullable=False, default=False)

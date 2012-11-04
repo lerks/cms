@@ -257,7 +257,8 @@ class EvaluationJob(Job):
 
         # EvaluationJob
         job.executables = user_test.executables
-        job.testcases = [Testcase(input=user_test.input,
+        job.testcases = [Testcase(num=0,
+                                  input=user_test.input,
                                   output=None)]
         job.time_limit = user_test.task.time_limit
         job.memory_limit = user_test.task.memory_limit

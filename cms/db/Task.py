@@ -56,7 +56,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True)
 
     # Number of the task for sorting.
-    num = Column(Integer, nullable=False, default=0)
+    num = Column(Integer, nullable=False, default=0)  # FIXME sure?
 
     # Contest (id and object) owning the task.
     contest_id = Column(Integer,
