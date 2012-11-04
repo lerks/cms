@@ -30,8 +30,8 @@ from sqlalchemy.types import Boolean, Integer, String, DateTime, \
     Interval
 from sqlalchemy.orm import relationship, backref
 
-from cms.db.SQLAlchemyUtils import Base
-from cms.db.Contest import Contest
+from SQLAlchemyUtils import Base
+import SQLAlchemyAll as model
 
 from cmscommon.DateTime import make_datetime, make_timestamp
 from datetime import timedelta
@@ -78,12 +78,12 @@ class User(Base):
 
     # Contest (id and object) to which the user is participating.
     contest_id = Column(Integer,
-                        ForeignKey(Contest.id,
+                        ForeignKey(model.Contest.id,
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        Contest,
+        model.Contest,
         backref=backref("users",
                         cascade="all, delete-orphan",
                         passive_deletes=True))
@@ -116,9 +116,6 @@ class User(Base):
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
-    # Moreover, we have the following methods.
-    # get_tokens (defined in SQLAlchemyAll)
-
     def export_to_dict(self, skip_submissions=False):
         """Return object data as a dictionary.
 
@@ -145,6 +142,35 @@ class User(Base):
                                   for question in self.questions],
                 'submissions':   submissions}
 
+    @classmethod
+    def import_from_dict(cls, data, tasks_by_name):
+        """Build the object using data from a dictionary.
+
+        """
+        data['messages'] = [Message.import_from_dict(message_data)
+                            for message_data in data['messages']]
+        data['questions'] = [Question.import_from_dict(question_data)
+                             for question_data in data['questions']]
+        data['submissions'] = [model.Submission.import_from_dict(
+            submission_data, tasks_by_name=tasks_by_name)
+                               for submission_data in data['submissions']]
+        if 'starting_time' in data and data['starting_time'] is not None:
+            data['starting_time'] = make_datetime(data['starting_time'])
+        if 'extra_time' in data:
+            data['extra_time'] = timedelta(seconds=data['extra_time'])
+        obj = cls(**data)
+        for submission in obj.submissions:
+            submission.user = obj
+        return obj
+
+    def get_tokens(self):
+        """Returns a list of tokens used by a user.
+
+        returns (list): list of tokens.
+
+        """
+        return self.get_session().query(model.Token).join(model.Submission).\
+               filter(model.Submission.user == self).all()
 
 class Message(Base):
     """Class to store a private message from the managers to the

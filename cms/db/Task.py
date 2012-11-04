@@ -32,8 +32,8 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.collections import column_mapped_collection
 from sqlalchemy.ext.orderinglist import ordering_list
 
-from cms.db.SQLAlchemyUtils import Base
-from cms.db.Contest import Contest
+from SQLAlchemyUtils import Base
+import SQLAlchemyAll as model
 
 from datetime import timedelta
 
@@ -60,12 +60,12 @@ class Task(Base):
 
     # Contest (id and object) owning the task.
     contest_id = Column(Integer,
-                        ForeignKey(Contest.id,
+                        ForeignKey(model.Contest.id,
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        Contest,
+        model.Contest,
         backref=backref('tasks',
                         collection_class=ordering_list('num'),
                         order_by=[num],

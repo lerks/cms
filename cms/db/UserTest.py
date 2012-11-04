@@ -28,9 +28,8 @@ from sqlalchemy.types import Integer, Float, String, DateTime
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.collections import column_mapped_collection
 
-from cms.db.SQLAlchemyUtils import Base
-from cms.db.Task import Task
-from cms.db.User import User
+from SQLAlchemyUtils import Base
+import SQLAlchemyAll as model
 
 from cmscommon.DateTime import make_timestamp
 
@@ -47,24 +46,24 @@ class UserTest(Base):
 
     # User (id and object) that requested the test.
     user_id = Column(Integer,
-                     ForeignKey(User.id,
+                     ForeignKey(model.User.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        User,
+        model.User,
         backref=backref("user_tests",
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
     # Task (id and object) of the test.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref("user_tests",
                         cascade="all, delete-orphan",
                         passive_deletes=True))

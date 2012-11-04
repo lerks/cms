@@ -29,7 +29,8 @@ from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
 from sqlalchemy.types import Integer, String, DateTime, Interval
 from sqlalchemy.orm import relationship, backref
 
-from cms.db.SQLAlchemyUtils import Base
+from SQLAlchemyUtils import Base
+import SQLAlchemyAll as model
 
 from cmscommon.DateTime import make_datetime, make_timestamp
 from datetime import timedelta
@@ -116,10 +117,6 @@ class Contest(Base):
     # announcements (list of Announcement objects)
     # users (list of User objects)
 
-    # Moreover, we have the following methods.
-    # get_submissions (defined in SQLAlchemyAll)
-    # get_user_tests (defined in SQLAlchemyAll)
-
     def export_to_dict(self, skip_submissions=False):
         """Return object data as a dictionary.
 
@@ -148,6 +145,40 @@ class Contest(Base):
                                        for announcement in self.announcements],
                 }
 
+    @classmethod
+    def import_from_dict(cls, data):
+        """Build the object using data from a dictionary.
+
+        """
+        data['tasks'] = [model.Task.import_from_dict(task_data)
+                         for task_data in data['tasks']]
+        tasks_by_name = dict(map(lambda x: (x.name, x), data['tasks']))
+        data['users'] = [model.User.import_from_dict(user_data,
+                                               tasks_by_name=tasks_by_name)
+                         for user_data in data['users']]
+        data['announcements'] = [Announcement.import_from_dict(ann_data)
+                                 for ann_data in data['announcements']]
+        if 'start' in data and data['start'] is not None:
+            data['start'] = make_datetime(data['start'])
+        if 'stop' in data and data['stop'] is not None:
+            data['stop'] = make_datetime(data['stop'])
+        if 'token_min_interval' in data:
+            data['token_min_interval'] = \
+                timedelta(seconds=data['token_min_interval'])
+        if 'token_gen_time' in data:
+            data['token_gen_time'] = timedelta(seconds=data['token_gen_time'])
+        if 'per_user_time' in data and data['per_user_time'] is not None:
+            data['per_user_time'] = timedelta(seconds=data['per_user_time'])
+        if 'min_submission_interval' in data and \
+                data['min_submission_interval'] is not None:
+            data['min_submission_interval'] = \
+                timedelta(seconds=data['min_submission_interval'])
+        if 'min_usertest_interval' in data and \
+                data['min_usertest_interval'] is not None:
+            data['min_usertest_interval'] = \
+                timedelta(seconds=data['min_usertest_interval'])
+        return cls(**data)
+
     # FIXME - Use SQL syntax
     def get_task(self, task_name):
         """Return the first task in the contest with the given name.
@@ -173,6 +204,28 @@ class Contest(Base):
             if user.username == username:
                 return user
         raise KeyError("User not found")
+
+    def get_submissions(self):
+        """Returns a list of submissions (with the information about the
+        corresponding task) referring to the contest.
+
+        returns (list): list of submissions.
+
+        """
+        return self.get_session().query(model.Submission).join(model.Task).\
+               filter(model.Task.contest == self).all()
+
+
+    def get_user_tests(self):
+        """Returns a list of user tests (with the information about the
+        corresponding user) referring to the contest.
+
+        return (list): list of user tests.
+
+        """
+        return self.get_session().query(model.UserTest).join(model.User).\
+            filter(model.User.contest == self).all()
+
 
     def enumerate_files(self, skip_submissions=False, light=False):
         """Enumerate all the files (by digest) referenced by the
