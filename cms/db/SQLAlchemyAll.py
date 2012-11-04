@@ -29,15 +29,33 @@ import sys
 from cms.db.SQLAlchemyUtils import db, Base, metadata, Session, \
      ScopedSession, SessionGen
 
-from cms.db.Contest import Contest, Announcement
-from cms.db.User import User, Message, Question
-from cms.db.Task import Task, Manager, Testcase, Attachment, \
-     SubmissionFormatElement, Statement
-from cms.db.Submission import Submission, Token, Evaluation, File, Executable
-from cms.db.UserTest import UserTest, UserTestFile, UserTestExecutable, \
+from cms.db.Contest import \
+    Contest, \
+    Announcement
+from cms.db.User import \
+    User, \
+    Message, \
+    Question
+from cms.db.Task import \
+    Task, \
+    Manager, \
+    Testcase, \
+    Attachment, \
+    SubmissionFormatElement, \
+    Statement
+from cms.db.Submission import \
+    Submission, \
+    Token, \
+    Evaluation, \
+    File, \
+    Executable
+from cms.db.UserTest import \
+    UserTest, \
+    UserTestFile, \
+    UserTestExecutable, \
     UserTestManager
-from cms.db.FSObject import FSObject
-import cms.db.ImportFromDict
+from cms.db.FSObject import \
+    FSObject
 
 
 # The following are methods of Contest that cannot be put in the right
