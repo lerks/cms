@@ -78,15 +78,13 @@ class User(Base):
 
     # Contest (id and object) to which the user is participating.
     contest_id = Column(Integer,
-                        ForeignKey(model.Contest.id,
+                        ForeignKey("contests.id",
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        model.Contest,
-        backref=backref("users",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Contest",
+        back_populates='users')
 
     # A JSON-encoded dictionary of lists of strings: statements["a"]
     # contains the language codes of the statments that will be
@@ -111,10 +109,29 @@ class User(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # messages (list of Message objects)
-    # questions (list of Question objects)
-    # submissions (list of Submission objects)
-    # user_tests (list of UserTest objects)
+    submissions = relationship(
+        "Submission",
+        back_populates='user',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    user_tests = relationship(
+        "UserTest",
+        back_populates='user',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    messages = relationship(
+        "Message",
+        back_populates='user',
+        order_by='Message.timestamp',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    questions = relationship(
+        "Question",
+        back_populates='user',
+        # FIXME We were sorting by reply_timestamp too!
+        order_by="Question.question_timestamp",
+        cascade="all, delete-orphan",
+        passive_deletes=True)
 
     def export_to_dict(self, skip_submissions=False):
         """Return object data as a dictionary.
@@ -191,16 +208,13 @@ class Message(Base):
 
     # User (id and object) owning the message.
     user_id = Column(Integer,
-                     ForeignKey(model.User.id,
+                     ForeignKey("users.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        model.User,
-        backref=backref('messages',
-                        order_by=[timestamp],
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "User",
+        back_populates='messages')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -250,16 +264,13 @@ class Question(Base):
 
     # User (id and object) owning the question.
     user_id = Column(Integer,
-                     ForeignKey(model.User.id,
+                     ForeignKey("users.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        model.User,
-        backref=backref('questions',
-                        order_by=[question_timestamp, reply_timestamp],
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "User",
+        back_populates='questions')
 
     def export_to_dict(self):
         """Return object data as a dictionary.

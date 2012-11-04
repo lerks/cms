@@ -29,7 +29,7 @@ from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
     UniqueConstraint
 from sqlalchemy.types import Boolean, Integer, Float, String, Interval
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.orm.collections import column_mapped_collection
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.orderinglist import ordering_list
 
 from SQLAlchemyUtils import Base
@@ -60,17 +60,13 @@ class Task(Base):
 
     # Contest (id and object) owning the task.
     contest_id = Column(Integer,
-                        ForeignKey(model.Contest.id,
+                        ForeignKey("contests.id",
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        model.Contest,
-        backref=backref('tasks',
-                        collection_class=ordering_list('num'),
-                        order_by=[num],
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Contest",
+        back_populates='tasks')
 
     # Short name and long human readable title of the task.
     name = Column(String, nullable=False)
@@ -131,13 +127,45 @@ class Task(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # submission_format (list of SubmissionFormatElement objects)
-    # testcases (list of Testcase objects)
-    # attachments (dict of Attachment objects indexed by filename)
-    # managers (dict of Manager objects indexed by filename)
-    # statements (dict of Statement objects indexed by language code)
-    # submissions (list of Submission objects)
-    # user_tests (list of UserTest objects)
+    submissions = relationship(
+        "Submission",
+        back_populates='task',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    user_tests = relationship(
+        "UserTest",
+        back_populates='task',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    testcases = relationship(
+        "Testcase",
+        back_populates='task',
+        collection_class=ordering_list('num'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    attachments = relationship(
+        "Attachment",
+        back_populates='task',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    managers = relationship(
+        "Manager",
+        back_populates='task',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    submission_format = relationship(
+        "SubmissionFormatElement",
+        back_populates='task',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    statements = relationship(
+        "Statement",
+        back_populates='task',
+        collection_class=attribute_mapped_collection('language'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
 
     # This object (independent from SQLAlchemy) is the instance of the
     # ScoreType class with the given parameters, taking care of
@@ -264,16 +292,13 @@ class Testcase(Base):
 
     # Task (id and object) owning the testcase.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref('testcases',
-                        collection_class=ordering_list('num'), order_by=[num],
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='testcases')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -304,16 +329,13 @@ class Attachment(Base):
 
     # Task (id and object) owning the attachment.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref('attachments',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='attachments')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -344,16 +366,13 @@ class Manager(Base):
 
     # Task (id and object) owning the manager.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref('managers',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='managers')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -377,15 +396,13 @@ class SubmissionFormatElement(Base):
 
     # Task (id and object) owning the submission format.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref('submission_format',
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='submission_format')
 
     # Format of the given submission file.
     filename = Column(String)
@@ -423,16 +440,13 @@ class Statement(Base):
 
     # Task (id and object) the statement is for.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref('statements',
-                        collection_class=column_mapped_collection(language),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='statements')
 
     def export_to_dict(self):
         """Return object data as a dictionary.

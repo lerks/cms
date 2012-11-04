@@ -28,7 +28,7 @@ used directly (import  from SQLAlchemyAll).
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer, Float, String, DateTime
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.orm.collections import column_mapped_collection
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.orderinglist import ordering_list
 
 from SQLAlchemyUtils import Base
@@ -49,27 +49,23 @@ class Submission(Base):
 
     # User (id and object) that did the submission.
     user_id = Column(Integer,
-                     ForeignKey(model.User.id,
+                     ForeignKey("users.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        model.User,
-        backref=backref("submissions",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "User",
+        back_populates='submissions')
 
     # Task (id and object) of the submission.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref("submissions",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='submissions')
 
     # Time of the submission.
     timestamp = Column(DateTime, nullable=False)
@@ -122,10 +118,30 @@ class Submission(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # files (dict of File objects indexed by filename)
-    # executables (dict of Executable objects indexed by filename)
-    # evaluations (list of Evaluation objects, one for testcase)
-    # token (Token object or None)
+    token = relationship(
+        "Token",
+        back_populates='submission',
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    files = relationship(
+        "File",
+        back_populates='submission',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    executables = relationship(
+        "Executable",
+        back_populates='submission',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    evaluations = relationship(
+        "Evaluation",
+        back_populates='submission',
+        collection_class=ordering_list('num'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
 
     LANGUAGES = ["c", "cpp", "pas"]
     LANGUAGES_MAP = {".c": "c",
@@ -261,17 +277,13 @@ class Token(Base):
 
     # Submission (id and object) the token has been played against.
     submission_id = Column(Integer,
-                           ForeignKey(model.Submission.id,
+                           ForeignKey("submissions.id",
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        model.Submission,
-        backref=backref(
-            "token",
-            uselist=False,
-            cascade="all, delete-orphan",
-            passive_deletes=True),
+        "Submission",
+        back_populates='token',
         single_parent=True)
 
     # Time the token was played.
@@ -315,16 +327,13 @@ class File(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(model.Submission.id,
+                           ForeignKey("submissions.id",
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        model.Submission,
-        backref=backref('files',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Submission",
+        back_populates='files')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -357,16 +366,13 @@ class Executable(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(model.Submission.id,
+                           ForeignKey("submissions.id",
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        model.Submission,
-        backref=backref('executables',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Submission",
+        back_populates='executables')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -398,17 +404,13 @@ class Evaluation(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(model.Submission.id,
+                           ForeignKey("submissions.id",
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        model.Submission,
-        backref=backref('evaluations',
-                        collection_class=ordering_list('num'),
-                        order_by=[num],
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Submission",
+        back_populates='evaluations')
 
     # String containing output from the grader (usually "Correct",
     # "Time limit", ...).

@@ -26,7 +26,7 @@ directly (import from SQLAlchemyAll).
 from sqlalchemy.schema import Column, ForeignKey, UniqueConstraint
 from sqlalchemy.types import Integer, Float, String, DateTime
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.orm.collections import column_mapped_collection
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from SQLAlchemyUtils import Base
 import SQLAlchemyAll as model
@@ -46,27 +46,23 @@ class UserTest(Base):
 
     # User (id and object) that requested the test.
     user_id = Column(Integer,
-                     ForeignKey(model.User.id,
+                     ForeignKey("users.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        model.User,
-        backref=backref("user_tests",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "User",
+        back_populates='user_tests')
 
     # Task (id and object) of the test.
     task_id = Column(Integer,
-                     ForeignKey(model.Task.id,
+                     ForeignKey("tasks.id",
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        model.Task,
-        backref=backref("user_tests",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "Task",
+        back_populates='user_tests')
 
     # Time of the request.
     timestamp = Column(DateTime, nullable=False)
@@ -113,9 +109,24 @@ class UserTest(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # files (dict of UserTestFile objects indexed by filename)
-    # executables (dict of UserTestExecutable objects indexed by filename)
-    # managers (dict of UserTestManager objects indexed by filename)
+    files = relationship(
+        "UserTestFile",
+        back_populates='user_test',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    executables = relationship(
+        "UserTestExecutable",
+        back_populates='user_test',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    managers = relationship(
+        "UserTestManager",
+        back_populates='user_test',
+        collection_class=attribute_mapped_collection('filename'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -186,16 +197,13 @@ class UserTestFile(Base):
 
     # Submission (id and object) of the submission.
     user_test_id = Column(Integer,
-                          ForeignKey(model.UserTest.id,
+                          ForeignKey("user_tests.id",
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        model.UserTest,
-        backref=backref('files',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "UserTest",
+        back_populates='files')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -228,16 +236,13 @@ class UserTestExecutable(Base):
 
     # Submission (id and object) of the submission.
     user_test_id = Column(Integer,
-                          ForeignKey(model.UserTest.id,
+                          ForeignKey("user_tests.id",
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        model.UserTest,
-        backref=backref('executables',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "UserTest",
+        back_populates='executables')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
@@ -270,16 +275,13 @@ class UserTestManager(Base):
 
     # Task (id and object) owning the manager.
     user_test_id = Column(Integer,
-                          ForeignKey(model.UserTest.id,
+                          ForeignKey("user_tests.id",
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        model.UserTest,
-        backref=backref('managers',
-                        collection_class=column_mapped_collection(filename),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
+        "UserTest",
+        back_populates='managers')
 
     def export_to_dict(self):
         """Return object data as a dictionary.

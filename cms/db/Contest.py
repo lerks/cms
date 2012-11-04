@@ -28,6 +28,7 @@ directly (import it from SQLAlchemyAll).
 from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
 from sqlalchemy.types import Integer, String, DateTime, Interval
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.ext.orderinglist import ordering_list
 
 from SQLAlchemyUtils import Base
 import SQLAlchemyAll as model
@@ -113,9 +114,23 @@ class Contest(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # tasks (list of Task objects)
-    # announcements (list of Announcement objects)
-    # users (list of User objects)
+    tasks = relationship(
+        "Task",
+        back_populates='contest',
+        collection_class=ordering_list('num'),
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    users = relationship(
+        "User",
+        back_populates='contest',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
+    announcements = relationship(
+        "Announcement",
+        back_populates='contest',
+        order_by='Announcement.timestamp',
+        cascade="all, delete-orphan",
+        passive_deletes=True)
 
     def export_to_dict(self, skip_submissions=False):
         """Return object data as a dictionary.
@@ -546,17 +561,13 @@ class Announcement(Base):
 
     # Contest for which the announcements are.
     contest_id = Column(Integer,
-                        ForeignKey(model.Contest.id,
+                        ForeignKey("contests.id",
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        model.Contest,
-        backref=backref(
-            'announcements',
-            order_by=[timestamp],
-            cascade="all, delete-orphan",
-            passive_deletes=True))
+        "Contest",
+        back_populates='announcements')
 
     def export_to_dict(self):
         """Return object data as a dictionary.
