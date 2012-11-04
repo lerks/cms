@@ -167,18 +167,18 @@ class Submission(Base):
         """Build the object using data from a dictionary.
 
         """
-        data['files'] = [File.import_from_dict(file_data)
+        data['files'] = [model.File.import_from_dict(file_data)
                          for file_data in data['files']]
         data['files'] = dict([(_file.filename, _file)
                               for _file in data['files']])
-        data['executables'] = [Executable.import_from_dict(executable_data)
+        data['executables'] = [model.Executable.import_from_dict(executable_data)
                                for executable_data in data['executables']]
         data['executables'] = dict([(executable.filename, executable)
                                     for executable in data['executables']])
-        data['evaluations'] = [Evaluation.import_from_dict(eval_data)
+        data['evaluations'] = [model.Evaluation.import_from_dict(eval_data)
                                for eval_data in data['evaluations']]
         if data['token'] is not None:
-            data['token'] = Token.import_from_dict(data['token'])
+            data['token'] = model.Token.import_from_dict(data['token'])
         data['task'] = tasks_by_name[data['task']]
         data['user'] = None
         data['timestamp'] = make_datetime(data['timestamp'])
@@ -261,12 +261,12 @@ class Token(Base):
 
     # Submission (id and object) the token has been played against.
     submission_id = Column(Integer,
-                           ForeignKey(Submission.id,
+                           ForeignKey(model.Submission.id,
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        Submission,
+        model.Submission,
         backref=backref(
             "token",
             uselist=False,
@@ -315,12 +315,12 @@ class File(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(Submission.id,
+                           ForeignKey(model.Submission.id,
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        Submission,
+        model.Submission,
         backref=backref('files',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -357,12 +357,12 @@ class Executable(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(Submission.id,
+                           ForeignKey(model.Submission.id,
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        Submission,
+        model.Submission,
         backref=backref('executables',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -398,12 +398,12 @@ class Evaluation(Base):
 
     # Submission (id and object) of the submission.
     submission_id = Column(Integer,
-                           ForeignKey(Submission.id,
+                           ForeignKey(model.Submission.id,
                                       onupdate="CASCADE", ondelete="CASCADE"),
                            nullable=False,
                            index=True)
     submission = relationship(
-        Submission,
+        model.Submission,
         backref=backref('evaluations',
                         collection_class=ordering_list('num'),
                         order_by=[num],

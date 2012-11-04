@@ -147,9 +147,9 @@ class User(Base):
         """Build the object using data from a dictionary.
 
         """
-        data['messages'] = [Message.import_from_dict(message_data)
+        data['messages'] = [model.Message.import_from_dict(message_data)
                             for message_data in data['messages']]
-        data['questions'] = [Question.import_from_dict(question_data)
+        data['questions'] = [model.Question.import_from_dict(question_data)
                              for question_data in data['questions']]
         data['submissions'] = [model.Submission.import_from_dict(
             submission_data, tasks_by_name=tasks_by_name)
@@ -191,12 +191,12 @@ class Message(Base):
 
     # User (id and object) owning the message.
     user_id = Column(Integer,
-                     ForeignKey(User.id,
+                     ForeignKey(model.User.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        User,
+        model.User,
         backref=backref('messages',
                         order_by=[timestamp],
                         cascade="all, delete-orphan",
@@ -250,12 +250,12 @@ class Question(Base):
 
     # User (id and object) owning the question.
     user_id = Column(Integer,
-                     ForeignKey(User.id,
+                     ForeignKey(model.User.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     user = relationship(
-        User,
+        model.User,
         backref=backref('questions',
                         order_by=[question_timestamp, reply_timestamp],
                         cascade="all, delete-orphan",

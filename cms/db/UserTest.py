@@ -186,12 +186,12 @@ class UserTestFile(Base):
 
     # Submission (id and object) of the submission.
     user_test_id = Column(Integer,
-                          ForeignKey(UserTest.id,
+                          ForeignKey(model.UserTest.id,
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        UserTest,
+        model.UserTest,
         backref=backref('files',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -228,12 +228,12 @@ class UserTestExecutable(Base):
 
     # Submission (id and object) of the submission.
     user_test_id = Column(Integer,
-                          ForeignKey(UserTest.id,
+                          ForeignKey(model.UserTest.id,
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        UserTest,
+        model.UserTest,
         backref=backref('executables',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -270,12 +270,12 @@ class UserTestManager(Base):
 
     # Task (id and object) owning the manager.
     user_test_id = Column(Integer,
-                          ForeignKey(UserTest.id,
+                          ForeignKey(model.UserTest.id,
                                      onupdate="CASCADE", ondelete="CASCADE"),
                           nullable=False,
                           index=True)
     user_test = relationship(
-        UserTest,
+        model.UserTest,
         backref=backref('managers',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",

@@ -156,7 +156,7 @@ class Contest(Base):
         data['users'] = [model.User.import_from_dict(user_data,
                                                tasks_by_name=tasks_by_name)
                          for user_data in data['users']]
-        data['announcements'] = [Announcement.import_from_dict(ann_data)
+        data['announcements'] = [model.Announcement.import_from_dict(ann_data)
                                  for ann_data in data['announcements']]
         if 'start' in data and data['start'] is not None:
             data['start'] = make_datetime(data['start'])
@@ -469,12 +469,12 @@ class Contest(Base):
             start = user.starting_time
 
         # Compute separately for contest-wise and task-wise.
-        res_contest = Contest._tokens_available(
+        res_contest = model.Contest._tokens_available(
             token_timestamps_contest, self.token_initial,
             self.token_max, self.token_total, self.token_min_interval,
             self.token_gen_time, self.token_gen_number,
             start, timestamp)
-        res_task = Contest._tokens_available(
+        res_task = model.Contest._tokens_available(
             token_timestamps_task, task.token_initial,
             task.token_max, task.token_total, task.token_min_interval,
             task.token_gen_time, task.token_gen_number,
@@ -546,12 +546,12 @@ class Announcement(Base):
 
     # Contest for which the announcements are.
     contest_id = Column(Integer,
-                        ForeignKey(Contest.id,
+                        ForeignKey(model.Contest.id,
                                    onupdate="CASCADE", ondelete="CASCADE"),
                         nullable=False,
                         index=True)
     contest = relationship(
-        Contest,
+        model.Contest,
         backref=backref(
             'announcements',
             order_by=[timestamp],

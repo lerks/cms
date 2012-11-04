@@ -205,19 +205,19 @@ class Task(Base):
         """Build the object using data from a dictionary.
 
         """
-        data['attachments'] = [Attachment.import_from_dict(attch_data)
+        data['attachments'] = [model.Attachment.import_from_dict(attch_data)
                                for attch_data in data['attachments']]
         data['attachments'] = dict([(attachment.filename, attachment)
                                     for attachment in data['attachments']])
-        data['submission_format'] = [SubmissionFormatElement.import_from_dict(
+        data['submission_format'] = [model.SubmissionFormatElement.import_from_dict(
             sfe_data) for sfe_data in data['submission_format']]
-        data['managers'] = [Manager.import_from_dict(manager_data)
+        data['managers'] = [model.Manager.import_from_dict(manager_data)
                             for manager_data in data['managers']]
         data['managers'] = dict([(manager.filename, manager)
                                  for manager in data['managers']])
-        data['testcases'] = [Testcase.import_from_dict(testcase_data)
+        data['testcases'] = [model.Testcase.import_from_dict(testcase_data)
                              for testcase_data in data['testcases']]
-        data['statements'] = [Statement.import_from_dict(statement_data)
+        data['statements'] = [model.Statement.import_from_dict(statement_data)
                               for statement_data in data['statements']]
         data['statements'] = dict([(statement.language, statement)
                                    for statement in data['statements']])
@@ -264,12 +264,12 @@ class Testcase(Base):
 
     # Task (id and object) owning the testcase.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref('testcases',
                         collection_class=ordering_list('num'), order_by=[num],
                         cascade="all, delete-orphan",
@@ -304,12 +304,12 @@ class Attachment(Base):
 
     # Task (id and object) owning the attachment.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref('attachments',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -344,12 +344,12 @@ class Manager(Base):
 
     # Task (id and object) owning the manager.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref('managers',
                         collection_class=column_mapped_collection(filename),
                         cascade="all, delete-orphan",
@@ -377,12 +377,12 @@ class SubmissionFormatElement(Base):
 
     # Task (id and object) owning the submission format.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref('submission_format',
                         cascade="all, delete-orphan",
                         passive_deletes=True))
@@ -423,12 +423,12 @@ class Statement(Base):
 
     # Task (id and object) the statement is for.
     task_id = Column(Integer,
-                     ForeignKey(Task.id,
+                     ForeignKey(model.Task.id,
                                 onupdate="CASCADE", ondelete="CASCADE"),
                      nullable=False,
                      index=True)
     task = relationship(
-        Task,
+        model.Task,
         backref=backref('statements',
                         collection_class=column_mapped_collection(language),
                         cascade="all, delete-orphan",
