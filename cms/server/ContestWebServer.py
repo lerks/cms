@@ -69,6 +69,7 @@ from cmscommon.Cryptographics import encrypt_number
 from cmscommon.DateTime import make_datetime, make_timestamp, get_timezone
 from cmscommon.MimeTypes import get_type_for_file_name
 
+from cms.server.Cacher import Cacher
 
 class BaseHandler(CommonRequestHandler):
     """Base RequestHandler for this application.
@@ -92,8 +93,9 @@ class BaseHandler(CommonRequestHandler):
         self.set_header("Cache-Control", "no-cache, must-revalidate")
 
         self.sql_session = Session()
-        self.contest = Contest.get_from_id(self.application.service.contest,
-                                           self.sql_session)
+        self.cacher = self.application.service.cacher
+
+        self.contest = self.cacher.get_contest()
 
         self._ = self.locale.translate
 
@@ -121,9 +123,7 @@ class BaseHandler(CommonRequestHandler):
             self.clear_cookie("login")
             return None
 
-        user = self.sql_session.query(User)\
-            .filter(User.contest == self.contest)\
-            .filter(User.username == username).first()
+        user = cacher.get_user(username)
         if user is None:
             self.clear_cookie("login")
             return None
@@ -278,15 +278,15 @@ class BaseHandler(CommonRequestHandler):
         if ret["tokens_contest"] == 2 and not self.contest.token_min_interval:
             ret["tokens_contest"] = 3  # infinite and no min_interval
 
-        t_tokens = sum(self._get_token_status(t) for t in self.contest.tasks)
+        t_tokens = sum(self._get_token_status(t) for t in self.cacher.get_tasks())
         if t_tokens == 0:
             ret["tokens_tasks"] = 0  # all disabled
-        elif t_tokens == 2 * len(self.contest.tasks):
+        elif t_tokens == 2 * len(self.cacher.get_tasks()):
             ret["tokens_tasks"] = 2  # all infinite
         else:
             ret["tokens_tasks"] = 1  # all finite or mixed
         if ret["tokens_tasks"] == 2 and \
-            all(t.token_min_interval <= self.contest.token_min_interval for t in self.contest.tasks):
+            all(t.token_min_interval <= self.contest.token_min_interval for t in self.cacher.get_tasks()):
             ret["tokens_tasks"] = 3  # all infinite and no min_intervals
 
         return ret
@@ -299,6 +299,7 @@ class BaseHandler(CommonRequestHandler):
         """
         if hasattr(self, "sql_session"):
             try:
+                # TODO check if it has been used
                 self.sql_session.close()
             except Exception as error:
                 logger.warning("Couldn't close SQL connection: %r" % error)
@@ -339,6 +340,9 @@ class ContestWebServer(WebService):
     def __init__(self, shard, contest):
         logger.initialize(ServiceCoord("ContestWebServer", shard))
         self.contest = contest
+
+        self.cacher = Cacher(contest)  # FIXME maybe io_loop?
+                                       # FIXME is contest already the ID?
 
         # This is a dictionary (indexed by username) of pending
         # notification. Things like "Yay, your submission went
@@ -430,9 +434,7 @@ class LoginHandler(BaseHandler):
         username = self.get_argument("username", "")
         password = self.get_argument("password", "")
         next_page = self.get_argument("next", "/")
-        user = self.sql_session.query(User)\
-            .filter(User.contest == self.contest)\
-            .filter(User.username == username).first()
+        user = self.cacher.get_user(username)
 
         filtered_user = filter_ascii(username)
         filtered_pass = filter_ascii(password)
@@ -471,6 +473,7 @@ class StartHandler(BaseHandler):
     def post(self):
         user = self.get_current_user()
 
+        # TODO We're updating the DB: notify the Cacher
         logger.info("Starting now for user %s" % user.username)
         user.starting_time = self.timestamp
         self.sql_session.commit()
@@ -494,15 +497,12 @@ class TaskDescriptionHandler(BaseHandler):
     @tornado.web.authenticated
     @actual_phase_required(0)
     def get(self, task_name):
-        try:
-            task = self.contest.get_task(task_name)
-        except KeyError:
+        task = self.cacher.get_task(task_name)
+        if task is None:
             raise tornado.web.HTTPError(404)
 
         # FIXME are submissions actually needed by this handler?
-        submissions = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task).all()
+        submissions = self.cacher.get_submissions(self.current_user, task)
 
         for statement in task.statements.itervalues():
             lang_code = statement.language
@@ -525,14 +525,11 @@ class TaskSubmissionsHandler(BaseHandler):
     @tornado.web.authenticated
     @actual_phase_required(0)
     def get(self, task_name):
-        try:
-            task = self.contest.get_task(task_name)
-        except KeyError:
+        task = self.cacher.get_task(task_name)
+        if task is None:
             raise tornado.web.HTTPError(404)
 
-        submissions = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task).all()
+        submissions = self.cacher.get_submissions(self.current_user, task)
 
         self.render("task_submissions.html", task=task, submissions=submissions, **self.r_params)
 
@@ -545,14 +542,15 @@ class TaskStatementViewHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, lang_code):
-        try:
-            task = self.contest.get_task(task_name)
-        except KeyError:
+        task = self.contest.get_task(task_name)
+        if task is None:
             raise tornado.web.HTTPError(404)
 
+        # OOOPS!!! mmh... maybe not
         if lang_code not in task.statements:
             raise tornado.web.HTTPError(404)
 
+        # FIXME cacher doesn't have statements or attachments
         statement = task.statements[lang_code].digest
         self.sql_session.close()
 
@@ -572,9 +570,8 @@ class TaskAttachmentViewHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, filename):
-        try:
-            task = self.contest.get_task(task_name)
-        except KeyError:
+        task = self.cacher.get_task(task_name)
+        if task is None:
             raise tornado.web.HTTPError(404)
 
         if filename not in task.attachments:
@@ -598,16 +595,12 @@ class SubmissionFileHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, submission_num, filename):
-        try:
-            task = self.contest.get_task(task_name)
-        except KeyError:
+        task = self.cacher.get_task(task_name)
+        if task is not None:
             raise tornado.web.HTTPError(404)
 
-        submission = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task)\
-            .order_by(Submission.timestamp)\
-            .offset(int(submission_num) - 1).first()
+        # FIXME catch indexerrors
+        submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
         if submission is None:
             raise tornado.web.HTTPError(404)
 
@@ -627,6 +620,7 @@ class SubmissionFileHandler(FileHandler):
                 # the '%l' -> 'c|cpp|pas' replacement before giving up.
                 filename = re.sub('\.%s$' % submission.language, '.%l', filename)
 
+        # FIXME submission files are not in the cache
         if filename not in submission.files:
             raise tornado.web.HTTPError(404)
 
@@ -647,6 +641,7 @@ class CommunicationHandler(BaseHandler):
     """
     @tornado.web.authenticated
     def get(self):
+        # FIXME announcements, questions, messages
         self.set_secure_cookie("unread_count", "0")
         self.render("communication.html", **self.r_params)
 
@@ -666,7 +661,7 @@ class NotificationsHandler(BaseHandler):
         last_notification = make_datetime(float(self.get_argument("last_notification", "0")))
 
         # Announcements
-        for announcement in self.contest.announcements:
+        for announcement in self.cacher.announcements:
             if announcement.timestamp > last_notification \
                    and announcement.timestamp < self.timestamp:
                 res.append({"type": "announcement",
