@@ -218,6 +218,8 @@ class UserTest(Base):
             }
         return res
 
+    # TODO import_from_dict is missing
+
     def compiled(self):
         """Return if the user test has been compiled.
 
