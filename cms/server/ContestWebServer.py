@@ -93,7 +93,6 @@ class BaseHandler(CommonRequestHandler):
 
         self.set_header("Cache-Control", "no-cache, must-revalidate")
 
-        self.sql_session = Session()
         self.cacher = self.application.service.cacher
 
         self.contest = self.cacher.get_contest()
@@ -302,12 +301,6 @@ class BaseHandler(CommonRequestHandler):
         We override this method in order to properly close the database.
 
         """
-        if hasattr(self, "sql_session"):
-            try:
-                # TODO check if it has been used
-                self.sql_session.close()
-            except Exception as error:
-                logger.warning("Couldn't close SQL connection: %r" % error)
         try:
             tornado.web.RequestHandler.finish(self, *args, **kwds)
         except IOError:
@@ -346,8 +339,7 @@ class ContestWebServer(WebService):
         logger.initialize(ServiceCoord("ContestWebServer", shard))
         self.contest = contest
 
-        self.cacher = Cacher(contest)  # FIXME maybe io_loop?
-                                       # FIXME is contest already the ID?
+        self.cacher = Cacher(contest)
 
         # This is a dictionary (indexed by username) of pending
         # notification. Things like "Yay, your submission went
@@ -480,12 +472,15 @@ class StartHandler(BaseHandler):
     @tornado.web.authenticated
     @actual_phase_required(-1)
     def post(self):
-        user = self.get_current_user()
-
-        # TODO We're updating the DB: notify the Cacher
         logger.info("Starting now for user %s" % user.username)
-        user.starting_time = self.timestamp
-        self.sql_session.commit()
+        with SessionGen() as session:
+            user = session.merge(self.current_user)
+
+            user.starting_time = self.timestamp
+
+            session.commit()
+
+            self.cacher.trigger(Cacher.UPDATE, User, user.id)
 
         self.redirect("/")
 
@@ -562,7 +557,7 @@ class TaskStatementViewHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         statement = task.statements[lang_code].digest
-        self.sql_session.close()
+        # self.sql_session.close()
 
         if lang_code != '':
             filename = "%s (%s).pdf" % (task.name, lang_code)
@@ -589,7 +584,7 @@ class TaskAttachmentViewHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         attachment = task.attachments[filename].digest
-        self.sql_session.close()
+        # self.sql_session.close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:
@@ -636,7 +631,7 @@ class SubmissionFileHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         digest = submission.files[filename].digest
-        self.sql_session.close()
+        # self.sql_session.close()
 
         mimetype = get_type_for_file_name(real_filename)
         if mimetype is None:
@@ -738,12 +733,18 @@ class QuestionHandler(BaseHandler):
         if not config.allow_questions:
             raise tornado.web.HTTPError(404)
 
-        question = Question(self.timestamp,
-                            self.get_argument("question_subject", ""),
-                            self.get_argument("question_text", ""),
-                            user=self.current_user)
-        self.sql_session.add(question)
-        self.sql_session.commit()
+        with SessionGen() as session:
+            user = session.merge(self.current_user)
+
+            question = Question(self.timestamp,
+                                self.get_argument("question_subject", ""),
+                                self.get_argument("question_text", ""),
+                                user=user)
+            session.add(question)
+
+            session.commit()
+
+            self.cacher.trigger(Cacher.CREATE, Question, question.id)
 
         logger.warning("Question submitted by user %s."
                        % self.current_user.username)
@@ -807,7 +808,7 @@ class SubmitHandler(BaseHandler):
         try:
             last_submission_c = \
                 max(itertools.chain(submissions.itervalues()),
-                    key=lambda a: a.timestamp)
+                    key=lambda a: a.timestamp) \
                 if submission_c > 0 else None
             if contest.min_submission_interval is not None:
                 if last_submission_c is not None and \
@@ -818,8 +819,8 @@ class SubmitHandler(BaseHandler):
                                "after %d seconds from last submission.") %
                         contest.min_submission_interval.total_seconds())
             last_submission_t = \
-                max(submissions[task]),
-                    key=lambda a: a.timestamp)
+                max(submissions[task],
+                    key=lambda a: a.timestamp) \
                 if submission_t > 0 else None
             if task.min_submission_interval is not None:
                 if last_submission_t is not None and \
@@ -1034,16 +1035,25 @@ class SubmitHandler(BaseHandler):
         # All the files are stored, ready to submit!
         logger.info("All files stored for submission sent by %s" %
                     self.current_user.username)
-        submission = Submission(user=self.current_user,
-                                task=task,
-                                timestamp=self.timestamp,
-                                files={},
-                                language=submission_lang)
 
-        for filename, digest in file_digests.items():
-            self.sql_session.add(File(digest, filename, submission))
-        self.sql_session.add(submission)
-        self.sql_session.commit()
+        with SessionGen(commit=True) as session:
+            user = session.merge(self.current_user)
+            task = session.merge(task)
+
+            submission = Submission(self.timestamp,
+                                    submission_lang,
+                                    user=user,
+                                    task=task)
+
+            for filename, digest in file_digests.items():
+                submission.files[filename] = File(digest, filename)
+
+            session.add(submission)
+
+            session.commit()
+
+            self.cacher.trigger(Cacher.CREATE, Submission, submission.id)
+
         self.application.service.evaluation_service.new_submission(
             submission_id=submission.id)
         self.application.service.add_notification(
@@ -1101,11 +1111,7 @@ class UseTokenHandler(BaseHandler):
             self.redirect("/tasks/%s/submissions" % quote(task.name, safe=''))
             return
 
-        if submission.token is None:
-            token = Token(self.timestamp, submission)
-            self.sql_session.add(token)
-            self.sql_session.commit()
-        else:
+        if submission.token is not None:
             self.application.service.add_notification(
                 self.current_user.username,
                 self.timestamp,
@@ -1115,6 +1121,16 @@ class UseTokenHandler(BaseHandler):
                 ContestWebServer.NOTIFICATION_WARNING)
             self.redirect("/tasks/%s/submissions" % quote(task.name, safe=''))
             return
+
+        with SessionGen() as session:
+            submission = session.merge(submission)
+
+            token = Token(self.timestamp, submission=submission)
+            session.add(token)
+
+            session.commit()
+
+            self.cacher.trigger(Cacher.CREATE, Token, token.id)
 
         # Inform ScoringService and eventually the ranking that the
         # token has been played.
@@ -1218,9 +1234,7 @@ class UserTestInterfaceHandler(BaseHandler):
         for task in self.contest.tasks:
             if self.request.query == task.name:
                 default_task = task
-            usertests[task.id] = self.sql_session.query(UserTest)\
-                .filter(UserTest.user == self.current_user)\
-                .filter(UserTest.task == task).all()
+            usertests[task] = self.cacher.get_user_tests(self.current_user, task)
 
         if default_task is None:
             default_task = self.contest.tasks[0]
@@ -1286,7 +1300,7 @@ class UserTestHandler(BaseHandler):
         try:
             last_usertest_c = \
                 max(itertools.chain(usertests.itervalues()),
-                    key=lambda a: a.timestamp)
+                    key=lambda a: a.timestamp) \
                 if usertest_c > 0 else None
             if contest.min_usertest_interval is not None:
                 if last_usertest_c is not None and \
@@ -1297,8 +1311,8 @@ class UserTestHandler(BaseHandler):
                                "after %d seconds from last test.") %
                         contest.min_usertest_interval.total_seconds())
             last_usertest_t = \
-                max(usertests[task]),
-                    key=lambda a: a.timestamp)
+                max(usertests[task],
+                    key=lambda a: a.timestamp) \
                 if usertest_t > 0 else None
             if task.min_usertest_interval is not None:
                 if last_usertest_t is not None and \
@@ -1522,25 +1536,33 @@ class UserTestHandler(BaseHandler):
         # All the files are stored, ready to submit!
         logger.info("All files stored for test sent by %s" %
                     self.current_user.username)
-        usertest = UserTest(user=self.current_user,
-                            task=task,
-                            timestamp=self.timestamp,
-                            files={},
-                            managers={},
-                            input=file_digests["input"],
-                            language=submission_lang)
 
-        for filename in [x.filename for x in task.submission_format]:
-            digest = file_digests[filename]
-            self.sql_session.add(UserTestFile(digest, filename, usertest))
-        for filename in task_type.get_user_managers(task.submission_format):
-            digest = file_digests[filename]
-            if submission_lang is not None:
-                filename = filename.replace("%l", submission_lang)
-            self.sql_session.add(UserTestManager(digest, filename, usertest))
+        with SessionGen(commit=True) as session:
+            user = session.merge(self.current_user)
+            task = session.merge(task)
 
-        self.sql_session.add(usertest)
-        self.sql_session.commit()
+            usertest = UserTest(self.timestamp,
+                                submission_lang,
+                                file_digests["input"],
+                                user=user,
+                                task=task)
+
+            for filename in [x.filename for x in task.submission_format]:
+                digest = file_digests[filename]
+                usertest.files[filename] = UserTestFile(digest, filename)
+
+            for filename in task_type.get_user_managers(task.submission_format):
+                digest = file_digests[filename]
+                if submission_lang is not None:
+                    filename = filename.replace("%l", submission_lang)
+                usertest.managers[filename] = UserTestManager(digest, filename)
+
+            session.add(usertest)
+
+            session.commit()
+
+            self.cacher.trigger(Cacher.CREATE, UserTest, usertest.id)
+
         self.application.service.evaluation_service.new_user_test(
             user_test_id=usertest.id)
         self.application.service.add_notification(
@@ -1635,7 +1657,7 @@ class UserTestIOHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         digest = getattr(usertest, io)
-        self.sql_session.close()
+        # self.sql_session.close()
 
         if digest is None:
             raise tornado.web.HTTPError(404)
@@ -1675,7 +1697,7 @@ class UserTestFileHandler(FileHandler):
             digest = usertest.managers[filename].digest
         else:
             raise tornado.web.HTTPError(404)
-        self.sql_session.close()
+        # self.sql_session.close()
 
         mimetype = get_type_for_file_name(real_filename)
         if mimetype is None:
