@@ -137,7 +137,8 @@ class Cacher(object):
     def trigger(self, event, cls, id_):
         old_obj = self.get_object(cls, id_)
         if old_obj is not None:
-            self.session.expunge(old_obj)
+            self._do_delete(old_obj)
+            self.session.refresh(old_obj)
 
         if event == self.CREATE or event == self.UPDATE:
             new_obj = cls.get_from_id(id_, self.session)
@@ -146,22 +147,23 @@ class Cacher(object):
             # in the DB we could use it to see if we can break here.
 
             if new_obj is not None and self._want_to_keep(new_obj):
+                self._do_create(new_obj)
                 if old_obj is not None:
                     # UPDATE
-                    self._do_update(old_obj, new_obj)
                     # TODO Call event listeners
+                    pass
                 else:
                     # CREATE
-                    self._do_create(new_obj)
                     # TODO Call event listeners
+                    pass
             else:
                 event = self.DELETE
 
-        elif event == self.DELETE
+        elif event == self.DELETE:
             if old_obj is not None:
                 # DELETE
-                self._do_delete(old_obj)
                 # TODO Call event listeners
+                pass
             else:
                 # Nothing to be done
                 pass
@@ -235,9 +237,9 @@ class Cacher(object):
             contest.tasks.sort(key=lambda a: (a.num))
             # Create child dict in self.submissions and self.user_tests
             for v in self.submissions.itervalues():
-                v[obj] = dict()
+                v[obj] = list()
             for v in self.user_tests.itervalues():
-                v[obj] = dict()
+                v[obj] = list()
         if isinstance(obj, Statement):
             task = self.get_object(Task, obj.task_id)
             task.statements[obj.language] = obj
@@ -364,12 +366,12 @@ class Cacher(object):
             submissions = self.session.query(Submission)\
                 .filter(Submission.user == user)\
                 .order_by(Submission.timestamp)\
-                .scalar()
+                .all()
 
-            self.submissions[user] = dict()
+            self.submissions[user] = dict((task, list()) for task in self.contest.tasks)
             for s in submissions:
-                task = self.objects[identity_key(Task, s.task_id)]
-                self.submissions[user].setdefault(task, []).append(s)
+                task = self.get_object(Task, s.task_id)
+                self.submissions[user][task].append(s)
 
         return self.submissions[user][task]
 
@@ -380,11 +382,11 @@ class Cacher(object):
             user_tests = self.session.query(UserTest)\
                 .filter(UserTest.user == user)\
                 .order_by(UserTest.timestamp)\
-                .scalar()
+                .all()
 
-            self.user_tests[user] = dict()
+            self.user_tests[user] = dict((task, list()) for task in self.contest.tasks)
             for u in user_tests:
-                task = self.objects[identity_key(Task, u.task_id)]
-                self.user_tests[user].setdefault(task, []).append(u)
+                task = self.get_object(Task, s.task_id)
+                self.user_tests[user][task].append(u)
 
         return self.user_tests[user][task]
