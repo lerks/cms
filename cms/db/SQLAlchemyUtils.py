@@ -25,6 +25,8 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import session as sessionlib
 
+from sqlalchemy.orm import class_mapper, object_mapper
+
 from cms import config
 
 # We need version 0.7.3 because of the __abstract__ keyword.
@@ -106,6 +108,30 @@ class Base(object):
     # to a table.
     __abstract__ = True
 
+    @property
+    def _identity_key(self):
+        return object_mapper(self).identity_key_from_instance(self)
+
+    @property
+    def _primary_key(self):
+        return object_mapper(self).primary_key_from_instance(self)
+
+    def __hash__(self):
+        # TODO This code is very bad: it assumes that our primary key
+        # is and always will be the 'id' attribute. We should try to
+        # detect the primary key from SQLAlchemy, but __hash__ requires
+        # an integer and this poses some limitations...
+        return self.id
+
+    def __eq__(self, other):
+        if not isinstance(other, Base):
+            return False
+
+        return self._identity_key == other._identity_key
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     @classmethod
     def get_from_id(cls, _id, session):
         """Given a session and an id, this class method returns the object
@@ -153,7 +179,10 @@ class Base(object):
         return cls(**data)
 
 
-Base = declarative_base(db, cls=Base)
+classes = dict()
+
+
+Base = declarative_base(db, cls=Base, class_registry=classes)
 
 
 metadata = Base.metadata

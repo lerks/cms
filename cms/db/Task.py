@@ -500,6 +500,7 @@ class SubmissionFormatElement(Base):
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
+    # FIXME WTF? No mapped collection in the backref?
     task = relationship(
         Task,
         backref=backref('submission_format',

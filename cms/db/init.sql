@@ -1,16 +1,16 @@
 CREATE OR REPLACE FUNCTION notify_change() RETURNS trigger AS '
 BEGIN
     IF TG_OP = ''INSERT'' THEN
-        PERFORM pg_notify (''create'', TG_RELNAME || '' '' || CAST(NEW.id AS text));
+        PERFORM pg_notify (''row_create'', TG_RELNAME || '' '' || CAST(NEW.id AS text));
     END IF;
     IF TG_OP = ''UPDATE'' THEN
         IF OLD.id IS DISTINCT FROM NEW.id THEN
-            PERFORM pg_notify (''rename'', TG_RELNAME || '' '' || CAST(OLD.id AS text) || '' '' || CAST(NEW.id AS text));
+            PERFORM pg_notify (''row_rename'', TG_RELNAME || '' '' || CAST(OLD.id AS text) || '' '' || CAST(NEW.id AS text));
         END IF;
-        PERFORM pg_notify (''update'', TG_RELNAME || '' '' || CAST(NEW.id AS text));
+        PERFORM pg_notify (''row_update'', TG_RELNAME || '' '' || CAST(NEW.id AS text));
     END IF;
     IF TG_OP = ''DELETE'' THEN
-        PERFORM pg_notify (''delete'', TG_RELNAME || '' '' || CAST(OLD.id AS text));
+        PERFORM pg_notify (''row_delete'', TG_RELNAME || '' '' || CAST(OLD.id AS text));
     END IF;
     RETURN NULL;
 END
