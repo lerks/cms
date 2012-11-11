@@ -146,7 +146,7 @@ class Base(object):
         """
         try:
             # This method returns None if the object isn't in the
-            # identity map of the session not in the database, but
+            # identity map of the session nor in the database, but
             # raises ObjectDeletedError in case it was in the identity
             # map, got marked as expired but couldn't be found in the
             # database again.
