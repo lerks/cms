@@ -57,8 +57,6 @@ class Cacher(object):
             async=1,
             **database_url.query)
         self._wait()
-        # XXX WTF??? (Explain)
-        # self.pg_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
         # FIXME Do we handle double operations correctly?
         # (i.e. are we sure to catch all object modified WHILE we start?)
@@ -73,14 +71,13 @@ class Cacher(object):
         self.io_loop.add_handler(self.pg_conn.fileno(), self._callback, self.io_loop.READ)
 
         self.session = Session(autocommit=True)
-        self.objects = dict()
 
         # Not sure whether we should use local_table or mapped_table
         self.tables_to_classes = dict(
-            (class_mapper(cls).local_table.name, cls)
+            (class_mapper(cls).mapped_table.name, cls)
             for cls in mapped_classes.itervalues())
 
-        self._first_load(contest_id)
+        self.contest = Contest.get_from_id(contest_id, self.session)
         self.submissions = dict()  # Indexed by username and taskname
         self.user_tests = dict()  # Indexed by username and taskname
 
@@ -93,7 +90,6 @@ class Cacher(object):
         # garbage collector and closed by its __del__ method.
 
     def _wait(self):
-        # FIXME I guess we can simplify this code a bit...
         while True:
             state = self.pg_conn.poll()
             if state == psycopg2.extensions.POLL_OK:
@@ -114,13 +110,14 @@ class Cacher(object):
         for notify in self.pg_conn.notifies:
 #            notify = self.pg_conn.notifies.pop()
 
+            print
             print "NOTIFY"
             print notify.channel
             print notify.payload
             print
 
             # FIXME Can we use notify.pid somehow?
-            event = notify.channel
+            event = notify.channel[4:]  # XXX XXX XXX
             table, _tmp, id_ = notify.payload.rpartition(' ')
             cls = self.tables_to_classes[table]
             id_ = int(id_)
@@ -130,7 +127,7 @@ class Cacher(object):
         # TODO clear list
 
 
-    CREATE = "create" # FIXME Mmh... row_?
+    CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
 
@@ -142,10 +139,8 @@ class Cacher(object):
         if old_obj is not None:
             self.session.expunge(old_obj)
 
-        if event == "row_create" or event == "row_update": # XXX
+        if event == self.CREATE or event == self.UPDATE:
             new_obj = cls.get_from_id(id_, self.session)
-
-            #self.session.expunge(new_obj)
 
             # TODO When (if?) we introduce some kind of version number
             # in the DB we could use it to see if we can break here.
@@ -153,21 +148,18 @@ class Cacher(object):
             if new_obj is not None and self._want_to_keep(new_obj):
                 if old_obj is not None:
                     # UPDATE
-                    # self.objects[key] = new_obj
                     self._do_update(old_obj, new_obj)
                     # TODO Call event listeners
                 else:
                     # CREATE
-                    # self.objects[key] = new_obj
                     self._do_create(new_obj)
                     # TODO Call event listeners
             else:
-                event = "row_delete" # XXX
+                event = self.DELETE
 
-        elif event == "row_delete": # XXX
+        elif event == self.DELETE
             if old_obj is not None:
                 # DELETE
-                # del self.objects[key]
                 self._do_delete(old_obj)
                 # TODO Call event listeners
             else:
@@ -254,7 +246,7 @@ class Cacher(object):
             task.attachments[obj.filename] = obj
         if isinstance(obj, SubmissionFormatElement):
             task = self.get_object(Task, obj.task_id)
-            task.submission_format.append(obj)  # FIXME not so sure...
+            task.submission_format.append(obj)
 
         if isinstance(obj, User):
             contest = self.get_object(Contest, obj.contest_id)
@@ -324,7 +316,7 @@ class Cacher(object):
             del task.attachments[obj.filename]
         if isinstance(obj, SubmissionFormatElement):
             task = self.get_object(Task, obj.task_id)
-            task.submission_format.remove(obj)  # FIXME not so sure...
+            task.submission_format.remove(obj)
 
         if isinstance(obj, User):
             contest = self.get_object(Contest, obj.contest_id)
@@ -362,48 +354,9 @@ class Cacher(object):
             del user_test.files[obj.filename]
 
 
-
-    def _first_load(self, contest_id):
-        contest = Contest.get_from_id(contest_id, self.session)
-        #self.objects[contest._identity_key] = contest
-
-        #for announcement in contest.announcements:
-            #self.objects[announcement._identity_key] = announcement
-            #self.session.expunge(announcement)
-
-        #for task in contest.tasks:
-            #self.objects[task._identity_key] = task
-
-            #for statement in task.statements:
-                #self.objects[statement._identity_key] = statement
-                #self.session.expunge(statement)
-            #for attachment in task.attachments:
-                #self.objects[attachment._identity_key] = attachment
-                #self.session.expunge(attachment)
-            #for submission_format_element in task.submission_format:
-                #self.objects[submission_format_element._identity_key] = submission_format_element
-                #self.session.expunge(submission_format_element)
-
-            #self.session.expunge(task)
-
-        #for user in contest.users:
-            #self.objects[user._identity_key] = user
-
-            #for message in user.messages:
-                #self.objects[message._identity_key] = message
-                #self.session.expunge(message)
-            #for question in user.questions:
-                #self.objects[question._identity_key] = question
-                #self.session.expunge(question)
-
-            #self.session.expunge(user)
-
-        #self.session.expunge(contest)
-
-        self.contest = contest
-
     def get_contest(self):
         return self.contest
+
 
     def get_submissions(self, user, task):
         # FIXME Assert user and task existence?
@@ -415,18 +368,6 @@ class Cacher(object):
 
             self.submissions[user] = dict()
             for s in submissions:
-                #self.objects[s._identity_key] = s
-
-                #if s.token is not None:
-                    #self.objects[s.token._identity_key] = s.token
-                    ## self.session.expunge(s.token)
-
-                #for file_ in s.files:
-                    #self.objects[file_._identity_key] = file
-                    # self.session.expunge(file_)
-
-                # self.session.expunge(s)
-
                 task = self.objects[identity_key(Task, s.task_id)]
                 self.submissions[user].setdefault(task, []).append(s)
 
@@ -443,18 +384,6 @@ class Cacher(object):
 
             self.user_tests[user] = dict()
             for u in user_tests:
-                #self.objects[u._identity_key] = u
-
-                #for file_ in u.files:
-                    #self.objects[file_._identity_key] = file
-                    # self.session.expunge(file_)
-
-                #for manager in s.managers:
-                    #self.objects[manager._identity_key] = manager
-                    # self.session.expunge(manager)
-
-                # self.session.expunge(u)
-
                 task = self.objects[identity_key(Task, u.task_id)]
                 self.user_tests[user].setdefault(task, []).append(u)
 
