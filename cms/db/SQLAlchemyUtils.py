@@ -127,6 +127,8 @@ class Base(object):
         if not isinstance(other, Base):
             return False
 
+        # FIXME This doesn't take changes into account... bad?
+
         return self._identity_key == other._identity_key
 
     def __ne__(self, other):
