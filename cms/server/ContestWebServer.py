@@ -46,6 +46,7 @@ import traceback
 from datetime import timedelta
 from urllib import quote
 import gettext
+import itertools
 
 import tornado.web
 
@@ -123,7 +124,11 @@ class BaseHandler(CommonRequestHandler):
             self.clear_cookie("login")
             return None
 
-        user = cacher.get_user(username)
+        try:
+            user = self.contest.get_user(username)
+        except KeyError:
+            user = None
+
         if user is None:
             self.clear_cookie("login")
             return None
@@ -278,15 +283,15 @@ class BaseHandler(CommonRequestHandler):
         if ret["tokens_contest"] == 2 and not self.contest.token_min_interval:
             ret["tokens_contest"] = 3  # infinite and no min_interval
 
-        t_tokens = sum(self._get_token_status(t) for t in self.cacher.get_tasks())
+        t_tokens = sum(self._get_token_status(t) for t in self.contest.tasks)
         if t_tokens == 0:
             ret["tokens_tasks"] = 0  # all disabled
-        elif t_tokens == 2 * len(self.cacher.get_tasks()):
+        elif t_tokens == 2 * len(self.contest.tasks):
             ret["tokens_tasks"] = 2  # all infinite
         else:
             ret["tokens_tasks"] = 1  # all finite or mixed
         if ret["tokens_tasks"] == 2 and \
-            all(t.token_min_interval <= self.contest.token_min_interval for t in self.cacher.get_tasks()):
+            all(t.token_min_interval <= self.contest.token_min_interval for t in self.contest.tasks):
             ret["tokens_tasks"] = 3  # all infinite and no min_intervals
 
         return ret
@@ -434,7 +439,11 @@ class LoginHandler(BaseHandler):
         username = self.get_argument("username", "")
         password = self.get_argument("password", "")
         next_page = self.get_argument("next", "/")
-        user = self.cacher.get_user(username)
+
+        try:
+            user = self.contest.get_user(username)
+        except KeyError:
+            user = None
 
         filtered_user = filter_ascii(username)
         filtered_pass = filter_ascii(password)
@@ -497,8 +506,9 @@ class TaskDescriptionHandler(BaseHandler):
     @tornado.web.authenticated
     @actual_phase_required(0)
     def get(self, task_name):
-        task = self.cacher.get_task(task_name)
-        if task is None:
+        try:
+            task = self.contest.get_task(task_name)
+        except KeyError:
             raise tornado.web.HTTPError(404)
 
         # FIXME are submissions actually needed by this handler?
@@ -525,8 +535,9 @@ class TaskSubmissionsHandler(BaseHandler):
     @tornado.web.authenticated
     @actual_phase_required(0)
     def get(self, task_name):
-        task = self.cacher.get_task(task_name)
-        if task is None:
+        try:
+            task = self.contest.get_task(task_name)
+        except KeyError:
             raise tornado.web.HTTPError(404)
 
         submissions = self.cacher.get_submissions(self.current_user, task)
@@ -542,15 +553,14 @@ class TaskStatementViewHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, lang_code):
-        task = self.contest.get_task(task_name)
-        if task is None:
+        try:
+            task = self.contest.get_task(task_name)
+        except KeyError:
             raise tornado.web.HTTPError(404)
 
-        # OOOPS!!! mmh... maybe not
         if lang_code not in task.statements:
             raise tornado.web.HTTPError(404)
 
-        # FIXME cacher doesn't have statements or attachments
         statement = task.statements[lang_code].digest
         self.sql_session.close()
 
@@ -570,8 +580,9 @@ class TaskAttachmentViewHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, filename):
-        task = self.cacher.get_task(task_name)
-        if task is None:
+        try:
+            task = self.contest.get_task(task_name)
+        except KeyError:
             raise tornado.web.HTTPError(404)
 
         if filename not in task.attachments:
@@ -595,13 +606,14 @@ class SubmissionFileHandler(FileHandler):
     @actual_phase_required(0)
     @tornado.web.asynchronous
     def get(self, task_name, submission_num, filename):
-        task = self.cacher.get_task(task_name)
-        if task is not None:
+        try:
+            task = self.contest.get_task(task_name)
+        except KeyError:
             raise tornado.web.HTTPError(404)
 
-        # FIXME catch indexerrors
-        submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
-        if submission is None:
+        try:
+            submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         # The following code assumes that submission.files is a subset
@@ -620,7 +632,6 @@ class SubmissionFileHandler(FileHandler):
                 # the '%l' -> 'c|cpp|pas' replacement before giving up.
                 filename = re.sub('\.%s$' % submission.language, '.%l', filename)
 
-        # FIXME submission files are not in the cache
         if filename not in submission.files:
             raise tornado.web.HTTPError(404)
 
@@ -641,7 +652,6 @@ class CommunicationHandler(BaseHandler):
     """
     @tornado.web.authenticated
     def get(self):
-        # FIXME announcements, questions, messages
         self.set_secure_cookie("unread_count", "0")
         self.render("communication.html", **self.r_params)
 
@@ -661,7 +671,7 @@ class NotificationsHandler(BaseHandler):
         last_notification = make_datetime(float(self.get_argument("last_notification", "0")))
 
         # Announcements
-        for announcement in self.cacher.announcements:
+        for announcement in self.contest.announcements:
             if announcement.timestamp > last_notification \
                    and announcement.timestamp < self.timestamp:
                 res.append({"type": "announcement",
@@ -765,22 +775,19 @@ class SubmitHandler(BaseHandler):
         # Alias for easy access
         contest = self.contest
 
+        submissions = self.cacher.get_submissions(self.current_user, task)
+
         # Enforce maximum number of submissions
         try:
+            submission_c = len(itertools.chain(submissions.itervalues()))
             if contest.max_submission_number is not None:
-                submission_c = self.sql_session.query(func.count(Submission.id))\
-                    .join(Submission.task)\
-                    .filter(Task.contest == contest)\
-                    .filter(Submission.user == self.current_user).scalar()
                 if submission_c >= contest.max_submission_number:
                     raise ValueError(
                         self._("You have reached the maximum limit of "
                                "at most %d submissions among all tasks.") %
                         contest.max_submission_number)
+            submission_t = len(submissions[task])
             if task.max_submission_number is not None:
-                submission_t = self.sql_session.query(func.count(Submission.id))\
-                    .filter(Submission.task == task)\
-                    .filter(Submission.user == self.current_user).scalar()
                 if submission_t >= task.max_submission_number:
                     raise ValueError(
                         self._("You have reached the maximum limit of "
@@ -798,12 +805,11 @@ class SubmitHandler(BaseHandler):
 
         # Enforce minimum time between submissions
         try:
+            last_submission_c = \
+                max(itertools.chain(submissions.itervalues()),
+                    key=lambda a: a.timestamp)
+                if submission_c > 0 else None
             if contest.min_submission_interval is not None:
-                last_submission_c = self.sql_session.query(Submission)\
-                    .join(Submission.task)\
-                    .filter(Task.contest == contest)\
-                    .filter(Submission.user == self.current_user)\
-                    .order_by(Submission.timestamp.desc()).first()
                 if last_submission_c is not None and \
                         self.timestamp - last_submission_c.timestamp < \
                         contest.min_submission_interval:
@@ -811,13 +817,10 @@ class SubmitHandler(BaseHandler):
                         self._("Among all tasks, you can submit again "
                                "after %d seconds from last submission.") %
                         contest.min_submission_interval.total_seconds())
-            # We get the last submission even if we may not need it
-            # for min_submission_interval because we may need it later,
-            # in case this is a ALLOW_PARTIAL_SUBMISSION task.
-            last_submission_t = self.sql_session.query(Submission)\
-                .filter(Submission.task == task)\
-                .filter(Submission.user == self.current_user)\
-                .order_by(Submission.timestamp.desc()).first()
+            last_submission_t = \
+                max(submissions[task]),
+                    key=lambda a: a.timestamp)
+                if submission_t > 0 else None
             if task.min_submission_interval is not None:
                 if last_submission_t is not None and \
                         self.timestamp - last_submission_t.timestamp < \
@@ -1071,13 +1074,11 @@ class UseTokenHandler(BaseHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        submission = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task)\
-            .order_by(Submission.timestamp)\
-            .offset(int(submission_num) - 1).first()
-        if submission is None:
+        try:
+            submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
+
 
         # Don't trust the user, check again if (s)he can really play
         # the token.
@@ -1147,12 +1148,9 @@ class SubmissionStatusHandler(BaseHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        submission = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task)\
-            .order_by(Submission.timestamp)\
-            .offset(int(submission_num) - 1).first()
-        if submission is None:
+        try:
+            submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         score_type = get_score_type(submission=submission)
@@ -1199,12 +1197,9 @@ class SubmissionDetailsHandler(BaseHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        submission = self.sql_session.query(Submission)\
-            .filter(Submission.user == self.current_user)\
-            .filter(Submission.task == task)\
-            .order_by(Submission.timestamp)\
-            .offset(int(submission_num) - 1).first()
-        if submission is None:
+        try:
+            submission = self.cacher.get_submissions(self.current_user, task)[int(submission_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         self.render("submission_details.html", task=task, s=submission)
@@ -1259,22 +1254,19 @@ class UserTestHandler(BaseHandler):
         # Alias for easy access
         contest = self.contest
 
+        usertests = self.cacher.get_user_tests(self.current_user, task)
+
         # Enforce maximum number of usertests
         try:
+            usertest_c = len(itertools.chain(usertests.itervalues()))
             if contest.max_usertest_number is not None:
-                usertest_c = self.sql_session.query(func.count(UserTest.id))\
-                    .join(UserTest.task)\
-                    .filter(Task.contest == contest)\
-                    .filter(UserTest.user == self.current_user).scalar()
                 if usertest_c >= contest.max_usertest_number:
                     raise ValueError(
                         self._("You have reached the maximum limit of "
                                "at most %d tests among all tasks.") %
                         contest.max_usertest_number)
+            usertest_t = len(usertests[task])
             if task.max_usertest_number is not None:
-                usertest_t = self.sql_session.query(func.count(UserTest.id))\
-                    .filter(UserTest.task == task)\
-                    .filter(UserTest.user == self.current_user).scalar()
                 if usertest_t >= task.max_usertest_number:
                     raise ValueError(
                         self._("You have reached the maximum limit of "
@@ -1292,12 +1284,11 @@ class UserTestHandler(BaseHandler):
 
         # Enforce minimum time between usertests
         try:
+            last_usertest_c = \
+                max(itertools.chain(usertests.itervalues()),
+                    key=lambda a: a.timestamp)
+                if usertest_c > 0 else None
             if contest.min_usertest_interval is not None:
-                last_usertest_c = self.sql_session.query(UserTest)\
-                    .join(UserTest.task)\
-                    .filter(Task.contest == contest)\
-                    .filter(UserTest.user == self.current_user)\
-                    .order_by(UserTest.timestamp.desc()).first()
                 if last_usertest_c is not None and \
                         self.timestamp - last_usertest_c.timestamp < \
                         contest.min_usertest_interval:
@@ -1305,13 +1296,10 @@ class UserTestHandler(BaseHandler):
                         self._("Among all tasks, you can test again "
                                "after %d seconds from last test.") %
                         contest.min_usertest_interval.total_seconds())
-            # We get the last usertest even if we may not need it
-            # for min_usertest_interval because we may need it later,
-            # in case this is a ALLOW_PARTIAL_SUBMISSION task.
-            last_usertest_t = self.sql_session.query(UserTest)\
-                .filter(UserTest.task == task)\
-                .filter(UserTest.user == self.current_user)\
-                .order_by(UserTest.timestamp.desc()).first()
+            last_usertest_t = \
+                max(usertests[task]),
+                    key=lambda a: a.timestamp)
+                if usertest_t > 0 else None
             if task.min_usertest_interval is not None:
                 if last_usertest_t is not None and \
                         self.timestamp - last_usertest_t.timestamp < \
@@ -1577,12 +1565,9 @@ class UserTestStatusHandler(BaseHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        usertest = self.sql_session.query(UserTest)\
-            .filter(UserTest.user == self.current_user)\
-            .filter(UserTest.task == task)\
-            .order_by(UserTest.timestamp)\
-            .offset(int(usertest_num) - 1).first()
-        if usertest is None:
+        try:
+            usertest = self.cacher.get_user_tests(self.current_user, task)[int(usertest_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         data = dict()
@@ -1623,12 +1608,9 @@ class UserTestDetailsHandler(BaseHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        usertest = self.sql_session.query(UserTest)\
-            .filter(UserTest.user == self.current_user)\
-            .filter(UserTest.task == task)\
-            .order_by(UserTest.timestamp)\
-            .offset(int(usertest_num) - 1).first()
-        if usertest is None:
+        try:
+            usertest = self.cacher.get_user_tests(self.current_user, task)[int(usertest_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         self.render("usertest_details.html", task=task, t=usertest)
@@ -1647,12 +1629,9 @@ class UserTestIOHandler(FileHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        usertest = self.sql_session.query(UserTest)\
-            .filter(UserTest.user == self.current_user)\
-            .filter(UserTest.task == task)\
-            .order_by(UserTest.timestamp)\
-            .offset(int(usertest_num) - 1).first()
-        if usertest is None:
+        try:
+            usertest = self.cacher.get_user_tests(self.current_user, task)[int(usertest_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         digest = getattr(usertest, io)
@@ -1679,12 +1658,9 @@ class UserTestFileHandler(FileHandler):
         except KeyError:
             raise tornado.web.HTTPError(404)
 
-        usertest = self.sql_session.query(UserTest)\
-            .filter(UserTest.user == self.current_user)\
-            .filter(UserTest.task == task)\
-            .order_by(UserTest.timestamp)\
-            .offset(int(usertest_num) - 1).first()
-        if usertest is None:
+        try:
+            usertest = self.cacher.get_user_tests(self.current_user, task)[int(usertest_num) - 1]
+        except IndexError:
             raise tornado.web.HTTPError(404)
 
         # filename follows our convention (e.g. 'foo.%l'), real_filename
