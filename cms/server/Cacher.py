@@ -135,18 +135,24 @@ class Cacher(object):
         return self.session.identity_map.get(identity_key(cls, id_), None)
 
     def trigger(self, event, cls, id_):
+        print "\nGetting old object\n"
         old_obj = self.get_object(cls, id_)
         if old_obj is not None:
+            print "\nNot None: deleting\n"
             self._do_delete(old_obj)
+            print "\nRefreshing\n"
             self.session.refresh(old_obj)
+            print "\nDone\n"
 
         if event == self.CREATE or event == self.UPDATE:
+            print "\nGetting new object\n"
             new_obj = cls.get_from_id(id_, self.session)
 
             # TODO When (if?) we introduce some kind of version number
             # in the DB we could use it to see if we can break here.
 
             if new_obj is not None and self._want_to_keep(new_obj):
+                print "\nWant to keep! Creating\n"
                 self._do_create(new_obj)
                 if old_obj is not None:
                     # UPDATE
@@ -160,6 +166,7 @@ class Cacher(object):
                 event = self.DELETE
 
         elif event == self.DELETE:
+            print "\nDeleting (noop)\n"
             if old_obj is not None:
                 # DELETE
                 # TODO Call event listeners
@@ -170,6 +177,39 @@ class Cacher(object):
 
         else:
             raise RuntimeError("Unknown event '%s'" % event)
+
+        print "\nDONE\n"
+
+        print "\nLoading contest"
+        print self.contest
+
+        print "\nLoading tasks"
+        print self.contest.tasks
+
+        print "\nLoading our task"
+        print self.contest.tasks[0]
+
+        print "\nAsserting identity"
+        print self.contest.tasks[0] is new_obj
+
+        print "\nGoing up"
+        print self.contest.tasks[0].contest
+
+        print "\nAsserting identity"
+        print self.contest.tasks[0].contest is self.contest
+
+        contest = self.get_contest()
+        user = contest.get_user("luca")
+        contest.tasks
+        contest.tasks[0].token_gen_time
+        contest.token_gen_time
+        task = contest.get_task('test')
+        self.get_submissions(user, task)
+        task.testcases
+        task.submission_format
+        task.statements
+
+        print "\nYep/Nope?\n"
 
 
     def _want_to_keep(self, obj):

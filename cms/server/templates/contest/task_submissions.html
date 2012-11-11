@@ -145,50 +145,10 @@ $(document).ready(function () {
 
 {% if tokens_contest != 0 and tokens_tasks != 0 %}
 <div style="padding-bottom:10px">
-    {% set tokens_info = contest.tokens_available(current_user.username, task.name, timestamp) %}
-    {% set can_play_token = tokens_info[0] > 0 or tokens_info[0] == -1 %}
-    {% set need_to_wait = tokens_info[2] is not None %}
-    {% if can_play_token %}
-        {% if tokens_info[0] == -1 %}
-            {{ _("Right now, you have infinite tokens available on this task.") }}
-        {% elif tokens_info[0] == 1 %}
-            {{ _("Right now, you have one token available on this task.") }}
-        {% else %}
-            {{ _("Right now, you have %(tokens)s tokens available on this task.") % { "tokens": tokens_info[0]} }}
-        {% end %}
-        {% if need_to_wait %}
-            {% set t = format_datetime_smart(tokens_info[2], timezone) %}
-            {% raw _("But you have to wait until %(expiration_time)s to use them.") % {"expiration_time": t} %}
-        {% end %}
-        {% if tokens_info[1] is not None %}
-            {% set t = format_datetime_smart(tokens_info[1], timezone) %}
-            {{ _("You will receive a new token at %(gen_time)s.") % {"gen_time": t} }}
-        {% else %}
-            {{ _("In the current situation, no more tokens will be generated.") }}
-        {% end %}
-    {% else %}
-        {{ _("Right now, you do not have tokens available for this task.") }}
-        {% if tokens_info[1] is not None %}
-            {% set t = format_datetime_smart(tokens_info[1], timezone) %}
-            {{ _("You will receive a new token at %(gen_time)s.") % {"gen_time": t} }}
-            {% if tokens_info[2] is not None and tokens_info[2] > tokens_info[1] %}
-                {% set t = format_datetime_smart(tokens_info[2], timezone) %}
-                {{ _("But you will have to wait until %(expiration_time)s to use it.") % {"expiration_time": t} }}
-            {% end %}
-        {% else %}
-            {{ _("In the current situation, no more tokens will be generated.") }}
-        {% end %}
-    {% end %}
+
 </div>
 {% end %}
 
-
-{% from cms.grading.scoretypes import get_score_type %}
-{% try %}
-    {% set score_type = get_score_type(task=task) %}
-{% except %}
-    {% set score_type = None %}
-{% end %}
 
 {% comment FIXME The following check doesn't take timezones into account. Correct it! %}
 {% set show_date = any(s.timestamp.date() != datetime.date.today() for s in submissions) %}

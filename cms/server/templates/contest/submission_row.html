@@ -49,26 +49,8 @@
         N/A
     </td>
     {% else %}
-        {% if score_type is not None and score_type.max_public_score != 0 %}
-    <td class="public_score {{ get_score_class(s.public_score, score_type.max_public_score) }}">
-            {{ "%g" % s.public_score }} / {{ "%g" % score_type.max_public_score }}
-    </td>
-        {% else %}
-    <td class="public_score">
-            {{ "%g" % s.public_score }}
-    </td>
-        {% end %}
     {% end %}
     {% if s.token is not None %}
-        {% if score_type is not None and score_type.max_score != 0 %}
-    <td class="total_score {{ get_score_class(s.score, score_type.max_score) }}">
-            {{ "%g" % s.score }} / {{ "%g" % score_type.max_score }}
-    </td>
-        {% else %}
-    <td class="total_score">
-            {{ "%g" % s.score }}
-    </td>
-        {% end %}
     {% else %}
     <td class="total_score undefined">
         N/A

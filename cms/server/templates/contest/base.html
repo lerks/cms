@@ -36,8 +36,8 @@ $(document).ready(function () {
     firstDate = new Date(); // FIXME very bad: global variable
     Utils.update_time();
     setInterval(Utils.update_time, 1000);
-    Utils.update_notifications();
-    setInterval(Utils.update_notifications, 15000);
+    // Utils.update_notifications();
+    // setInterval(Utils.update_notifications, 15000);
 });
 
 {% block js %}{% end %}

@@ -94,8 +94,9 @@ class BaseHandler(CommonRequestHandler):
         self.set_header("Cache-Control", "no-cache, must-revalidate")
 
         self.cacher = self.application.service.cacher
-
+        print "\ncontest\n"
         self.contest = self.cacher.get_contest()
+        print "\ncontest\n"
 
         self._ = self.locale.translate
 
@@ -124,7 +125,9 @@ class BaseHandler(CommonRequestHandler):
             return None
 
         try:
+            print "\nuser\n"
             user = self.contest.get_user(username)
+            print "\nuser\n"
         except KeyError:
             user = None
 
@@ -205,6 +208,7 @@ class BaseHandler(CommonRequestHandler):
         return (dict): default render params
 
         """
+        print "\nr_params\n"
         ret = {}
         ret["timestamp"] = self.timestamp
         ret["contest"] = self.contest
@@ -282,7 +286,9 @@ class BaseHandler(CommonRequestHandler):
         if ret["tokens_contest"] == 2 and not self.contest.token_min_interval:
             ret["tokens_contest"] = 3  # infinite and no min_interval
 
+        print "\ntasks\n"
         t_tokens = sum(self._get_token_status(t) for t in self.contest.tasks)
+        print "\ntasks\n"
         if t_tokens == 0:
             ret["tokens_tasks"] = 0  # all disabled
         elif t_tokens == 2 * len(self.contest.tasks):
@@ -293,6 +299,7 @@ class BaseHandler(CommonRequestHandler):
             all(t.token_min_interval <= self.contest.token_min_interval for t in self.contest.tasks):
             ret["tokens_tasks"] = 3  # all infinite and no min_intervals
 
+        print "\nr_params\n"
         return ret
 
     def finish(self, *args, **kwds):
@@ -531,12 +538,17 @@ class TaskSubmissionsHandler(BaseHandler):
     @actual_phase_required(0)
     def get(self, task_name):
         try:
+            print "\ntask[i]\n"
             task = self.contest.get_task(task_name)
+            print "\ntask[i]\n"
         except KeyError:
             raise tornado.web.HTTPError(404)
 
+        print "\nsubmissions\n"
         submissions = self.cacher.get_submissions(self.current_user, task)
+        print "\nsubmissions\n"
 
+        print "\ntemplate!!!\n"
         self.render("task_submissions.html", task=task, submissions=submissions, **self.r_params)
 
 
