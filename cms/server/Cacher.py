@@ -63,11 +63,10 @@ class Cacher(object):
         # FIXME Do we handle double operations correctly?
         # (i.e. are we sure to catch all object modified WHILE we start?)
 
-        self.pg_curs = self.pg_conn.cursor()
-        # FIXME do we need a ._wait()?
-        self.pg_curs.execute("LISTEN row_create;"
-                             "LISTEN row_update;"
-                             "LISTEN row_delete;")
+        cursor = self.pg_conn.cursor()
+        cursor.execute("LISTEN row_create;"
+                       "LISTEN row_update;"
+                       "LISTEN row_delete;")
         self._wait()
 
         self.io_loop = io_loop or tornado.ioloop.IOLoop.instance()
@@ -100,9 +99,9 @@ class Cacher(object):
             if state == psycopg2.extensions.POLL_OK:
                 break
             elif state == psycopg2.extensions.POLL_WRITE:
-                select.select([], [self.pg_conn.fileno()], [])
+                select.select([], [self.pg_conn], [])
             elif state == psycopg2.extensions.POLL_READ:
-                select.select([self.pg_conn.fileno()], [], [])
+                select.select([self.pg_conn], [], [])
             else:
                 raise psycopg2.OperationalError("poll() returned %s" % state)
 
@@ -111,10 +110,14 @@ class Cacher(object):
         # (like... the server died, our connection broke, etc.)
         self.pg_conn.poll()
 
-        print type(self.pg_conn.notifies)  # FIXME remove
         # It seems to be a list: we could just iterate
-        while self.pg_conn.notifies:
-            notify = self.pg_conn.notifies.pop()
+        for notify in self.pg_conn.notifies:
+#            notify = self.pg_conn.notifies.pop()
+
+            print "NOTIFY"
+            print notify.channel
+            print notify.payload
+            print
 
             # FIXME Can we use notify.pid somehow?
             event = notify.channel
@@ -124,32 +127,38 @@ class Cacher(object):
 
             self.trigger(event, cls, id_)
 
+        # TODO clear list
+
 
     CREATE = "create" # FIXME Mmh... row_?
     UPDATE = "update"
     DELETE = "delete"
 
-    def trigger(self, event, cls, id_):
-        key = identity_key(cls, id_)
+    def get_object(self, cls, id_):
+        return self.session.identity_map.get(identity_key(cls, id_), None)
 
-        old_obj = self.objects.get(key, None)
+    def trigger(self, event, cls, id_):
+        old_obj = self.get_object(cls, id_)
+        if old_obj is not None:
+            self.session.expunge(old_obj)
 
         if event == "row_create" or event == "row_update": # XXX
             new_obj = cls.get_from_id(id_, self.session)
-            self.session.expunge(new_obj)
+
+            #self.session.expunge(new_obj)
 
             # TODO When (if?) we introduce some kind of version number
             # in the DB we could use it to see if we can break here.
 
-            if self._want_to_keep(new_obj):
+            if new_obj is not None and self._want_to_keep(new_obj):
                 if old_obj is not None:
                     # UPDATE
-                    self.objects[key] = new_obj
+                    # self.objects[key] = new_obj
                     self._do_update(old_obj, new_obj)
                     # TODO Call event listeners
                 else:
                     # CREATE
-                    self.objects[key] = new_obj
+                    # self.objects[key] = new_obj
                     self._do_create(new_obj)
                     # TODO Call event listeners
             else:
@@ -158,7 +167,7 @@ class Cacher(object):
         elif event == "row_delete": # XXX
             if old_obj is not None:
                 # DELETE
-                del self.objects[key]
+                # del self.objects[key]
                 self._do_delete(old_obj)
                 # TODO Call event listeners
             else:
@@ -172,45 +181,45 @@ class Cacher(object):
     def _want_to_keep(self, obj):
         # This method is horrible: any suggestion is welcome!
         if isinstance(obj, Contest):
-            return identity_key(Contest, obj.id) in self.objects
+            return identity_key(Contest, obj.id) in self.session.identity_map
         if isinstance(obj, Announcement):
-            return identity_key(Contest, obj.contest_id) in self.objects
+            return identity_key(Contest, obj.contest_id) in self.session.identity_map
 
         if isinstance(obj, Task):
-            return identity_key(Contest, obj.contest_id) in self.objects
+            return identity_key(Contest, obj.contest_id) in self.session.identity_map
         if isinstance(obj, Statement):
-            return identity_key(Task, obj.task_id) in self.objects
+            return identity_key(Task, obj.task_id) in self.session.identity_map
         if isinstance(obj, Attachment):
-            return identity_key(Task, obj.task_id) in self.objects
+            return identity_key(Task, obj.task_id) in self.session.identity_map
         if isinstance(obj, SubmissionFormatElement):
-            return identity_key(Task, obj.task_id) in self.objects
+            return identity_key(Task, obj.task_id) in self.session.identity_map
 
         if isinstance(obj, User):
-            return identity_key(User, obj.id) in self.objects
+            return identity_key(User, obj.id) in self.session.identity_map
         if isinstance(obj, Message):
-            return identity_key(User, obj.user_id) in self.objects
+            return identity_key(User, obj.user_id) in self.session.identity_map
         if isinstance(obj, Question):
-            return identity_key(User, obj.user_id) in self.objects
+            return identity_key(User, obj.user_id) in self.session.identity_map
 
         if isinstance(obj, Submission):
             # Only if we are already tracking its user
             # FIXME Explain better
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             return user in self.submissions
         if isinstance(obj, Token):
-            return identity_key(Submission, obj.submission_id) in self.objects
+            return identity_key(Submission, obj.submission_id) in self.session.identity_map
         if isinstance(obj, File):
-            return identity_key(Submission, obj.submission_id) in self.objects
+            return identity_key(Submission, obj.submission_id) in self.session.identity_map
 
         if isinstance(obj, UserTest):
             # Only if we are already tracking its user
             # FIXME Explain better
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             return user in self.user_tests
         if isinstance(obj, UserTestFile):
-            return identity_key(UserTest, obj.user_test_id) in self.objects
+            return identity_key(UserTest, obj.user_test_id) in self.session.identity_map
         if isinstance(obj, UserTestManager):
-            return identity_key(UserTest, obj.user_test_id) in self.objects
+            return identity_key(UserTest, obj.user_test_id) in self.session.identity_map
 
         # We don't know the object's type: we don't want to keep it!
         return False
@@ -224,12 +233,12 @@ class Cacher(object):
         if isinstance(obj, Contest):
             self.contest = obj
         if isinstance(obj, Announcement):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.announcements.append(obj)
             contest.announcements.sort(key=lambda a: (a.timestamp))
 
         if isinstance(obj, Task):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.tasks.append(obj)
             contest.tasks.sort(key=lambda a: (a.num))
             # Create child dict in self.submissions and self.user_tests
@@ -238,50 +247,50 @@ class Cacher(object):
             for v in self.user_tests.itervalues():
                 v[obj] = dict()
         if isinstance(obj, Statement):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             task.statements[obj.language] = obj
         if isinstance(obj, Attachment):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             task.attachments[obj.filename] = obj
         if isinstance(obj, SubmissionFormatElement):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             task.submission_format.append(obj)  # FIXME not so sure...
 
         if isinstance(obj, User):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.tasks.append(obj)
             # We DON'T create dict in self.submissions and self.user_tests!
         if isinstance(obj, Message):
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             user.messages.append(obj)
             user.messages.sort(key=lambda a: (a.timestamp))
         if isinstance(obj, Question):
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             user.questions.append(obj)
             user.questions.sort(key=lambda a: (a.question_timestamp, a.reply_timestamp))
 
         if isinstance(obj, Submission):
-            task = self.objects[identity_key(Task, obj.task_id)]
-            user = self.objects[identity_key(User, obj.user_id)]
+            task = self.get_object(Task, obj.task_id)
+            user = self.get_object(User, obj.user_id)
             self.submissions[user][task].append(obj)
             self.submissions[user][task].sort(key=lambda a: (a.timestamp))
         if isinstance(obj, Token):
-            submission = self.objects[identity_key(Submission, obj.submission_id)]
+            submission = self.get_object(Submission, obj.submission_id)
             submission.token = obj
         if isinstance(obj, File):
-            submission = self.objects[identity_key(Submission, obj.submission_id)]
+            submission = self.get_object(Submission, obj.submission_id)
             submission.files[obj.filename] = obj
 
         if isinstance(obj, UserTest):
-            task = self.objects[identity_key(Task, obj.task_id)]
-            user = self.objects[identity_key(User, obj.user_id)]
+            task = self.get_object(Task, obj.task_id)
+            user = self.get_object(User, obj.user_id)
             self.user_tests[user][task].append(obj)
             self.user_tests[user][task].sort(key=lambda a: (a.timestamp))
         if isinstance(obj, UserTestFile):
-            user_test = self.objects[identity_key(UserTest, obj.user_test_id)]
+            user_test = self.get_object(UserTest, obj.user_test_id)
             user_test.files[obj.filename] = obj
         if isinstance(obj, UserTestManager):
-            user_test = self.objects[identity_key(UserTest, obj.user_test_id)]
+            user_test = self.get_object(UserTest, obj.user_test_id)
             user_test.files[obj.filename] = obj
 
     def _do_update(self, old_obj, new_obj):
@@ -296,11 +305,11 @@ class Cacher(object):
             # FIXME WTF? I think we should just fail lodly!
             pass
         if isinstance(obj, Announcement):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.announcements.remove(obj)
 
         if isinstance(obj, Task):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.tasks.remove(obj)
             # Delete child dict in self.submissions and self.user_tests
             for v in self.submissions.itervalues():
@@ -308,90 +317,93 @@ class Cacher(object):
             for v in self.user_tests.itervalues():
                 del v[obj]  # FIXME Do we want to assert its emptiness? (Hint: see deletion order for CASCADES)
         if isinstance(obj, Statement):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             del task.statements[obj.language]
         if isinstance(obj, Attachment):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             del task.attachments[obj.filename]
         if isinstance(obj, SubmissionFormatElement):
-            task = self.objects[identity_key(Task, obj.task_id)]
+            task = self.get_object(Task, obj.task_id)
             task.submission_format.remove(obj)  # FIXME not so sure...
 
         if isinstance(obj, User):
-            contest = self.objects[identity_key(Contest, obj.contest_id)]
+            contest = self.get_object(Contest, obj.contest_id)
             contest.users.remove(obj)
             # FIXME Should we delete dict in self.submissions and self.user_tests?
         if isinstance(obj, Message):
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             user.messages.remove(obj)
         if isinstance(obj, Question):
-            user = self.objects[identity_key(User, obj.user_id)]
+            user = self.get_object(User, obj.user_id)
             user.questions.remove(obj)
 
         if isinstance(obj, Submission):
             # This has to be handled differently
-            task = self.objects[identity_key(Task, obj.task_id)]
-            user = self.objects[identity_key(User, obj.user_id)]
+            task = self.get_object(Task, obj.task_id)
+            user = self.get_object(User, obj.user_id)
             self.submissions[user][task].remove(obj)
         if isinstance(obj, Token):
-            submission = self.objects[identity_key(Submission, obj.submission_id)]
+            submission = self.get_object(Submission, obj.submission_id)
             submission.token = None
         if isinstance(obj, File):
-            submission = self.objects[identity_key(Submission, obj.submission_id)]
+            submission = self.get_object(Submission, obj.submission_id)
             del submission.files[obj.filename]
 
         if isinstance(obj, UserTest):
             # This has to be handled differently
-            task = self.objects[identity_key(Task, obj.task_id)]
-            user = self.objects[identity_key(User, obj.user_id)]
+            task = self.get_object(Task, obj.task_id)
+            user = self.get_object(User, obj.user_id)
             self.user_tests[user][task].remove(obj)
         if isinstance(obj, UserTestFile):
-            user_test = self.objects[identity_key(UserTest, obj.user_test_id)]
+            user_test = self.get_object(UserTest, obj.user_test_id)
             del user_test.files[obj.filename]
         if isinstance(obj, UserTestManager):
-            user_test = self.objects[identity_key(UserTest, obj.user_test_id)]
+            user_test = self.get_object(UserTest, obj.user_test_id)
             del user_test.files[obj.filename]
 
 
 
     def _first_load(self, contest_id):
         contest = Contest.get_from_id(contest_id, self.session)
-        self.objects[contest._identity_key] = contest
+        #self.objects[contest._identity_key] = contest
 
-        for announcement in contest.announcements:
-            self.objects[announcement._identity_key] = announcement
-            self.session.expunge(announcement)
+        #for announcement in contest.announcements:
+            #self.objects[announcement._identity_key] = announcement
+            #self.session.expunge(announcement)
 
-        for task in contest.tasks:
-            self.objects[task._identity_key] = task
+        #for task in contest.tasks:
+            #self.objects[task._identity_key] = task
 
-            for statement in task.statements:
-                self.objects[statement._identity_key] = statement
-                self.session.expunge(statement)
-            for attachment in task.attachments:
-                self.objects[attachment._identity_key] = attachment
-                self.session.expunge(attachment)
-            for submission_format_element in task.submission_format:
-                self.objects[submission_format_element._identity_key] = submission_format_element
-                self.session.expunge(submission_format_element)
+            #for statement in task.statements:
+                #self.objects[statement._identity_key] = statement
+                #self.session.expunge(statement)
+            #for attachment in task.attachments:
+                #self.objects[attachment._identity_key] = attachment
+                #self.session.expunge(attachment)
+            #for submission_format_element in task.submission_format:
+                #self.objects[submission_format_element._identity_key] = submission_format_element
+                #self.session.expunge(submission_format_element)
 
-            self.session.expunge(task)
+            #self.session.expunge(task)
 
-        for user in contest.users:
-            self.objects[user._identity_key] = user
+        #for user in contest.users:
+            #self.objects[user._identity_key] = user
 
-            for message in user.messages:
-                self.objects[message._identity_key] = message
-                self.session.expunge(message)
-            for question in user.questions:
-                self.objects[question._identity_key] = question
-                self.session.expunge(question)
+            #for message in user.messages:
+                #self.objects[message._identity_key] = message
+                #self.session.expunge(message)
+            #for question in user.questions:
+                #self.objects[question._identity_key] = question
+                #self.session.expunge(question)
 
-            self.session.expunge(user)
+            #self.session.expunge(user)
 
-        self.session.expunge(contest)
+        #self.session.expunge(contest)
 
         self.contest = contest
+
+    def get_contest(self):
+        return self.contest
 
     def get_submissions(self, user, task):
         # FIXME Assert user and task existence?
@@ -403,17 +415,17 @@ class Cacher(object):
 
             self.submissions[user] = dict()
             for s in submissions:
-                self.objects[s._identity_key] = s
+                #self.objects[s._identity_key] = s
 
-                if s.token is not None:
-                    self.objects[s.token._identity_key] = s.token
-                    self.session.expunge(s.token)
+                #if s.token is not None:
+                    #self.objects[s.token._identity_key] = s.token
+                    ## self.session.expunge(s.token)
 
-                for file_ in s.files:
-                    self.objects[file_._identity_key] = file
-                    self.session.expunge(file_)
+                #for file_ in s.files:
+                    #self.objects[file_._identity_key] = file
+                    # self.session.expunge(file_)
 
-                self.session.expunge(s)
+                # self.session.expunge(s)
 
                 task = self.objects[identity_key(Task, s.task_id)]
                 self.submissions[user].setdefault(task, []).append(s)
@@ -431,17 +443,17 @@ class Cacher(object):
 
             self.user_tests[user] = dict()
             for u in user_tests:
-                self.objects[u._identity_key] = u
+                #self.objects[u._identity_key] = u
 
-                for file_ in u.files:
-                    self.objects[file_._identity_key] = file
-                    self.session.expunge(file_)
+                #for file_ in u.files:
+                    #self.objects[file_._identity_key] = file
+                    # self.session.expunge(file_)
 
-                for manager in s.managers:
-                    self.objects[manager._identity_key] = manager
-                    self.session.expunge(manager)
+                #for manager in s.managers:
+                    #self.objects[manager._identity_key] = manager
+                    # self.session.expunge(manager)
 
-                self.session.expunge(u)
+                # self.session.expunge(u)
 
                 task = self.objects[identity_key(Task, u.task_id)]
                 self.user_tests[user].setdefault(task, []).append(u)
