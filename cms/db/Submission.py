@@ -30,6 +30,7 @@ from sqlalchemy.schema import Column, ForeignKey, ForeignKeyConstraint, \
     UniqueConstraint
 from sqlalchemy.types import Integer, Float, String, DateTime
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from cms.db.SQLAlchemyUtils import Base
 from cms.db.Task import Task, Dataset, Testcase
@@ -89,7 +90,6 @@ class Submission(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # files (dict of File objects indexed by filename)
     # token (Token object or None)
     # results (list of SubmissionResult objects)
 

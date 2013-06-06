@@ -27,6 +27,7 @@ from sqlalchemy.schema import Column, ForeignKey, ForeignKeyConstraint, \
     UniqueConstraint
 from sqlalchemy.types import Integer, Float, String, DateTime
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from cms.db.SQLAlchemyUtils import Base
 from cms.db.Task import Task, Dataset
@@ -84,15 +85,8 @@ class UserTest(Base):
         String,
         nullable=True)
 
-    # Input (provided by the user) file's digest for this test.
-    input = Column(
-        String,
-        nullable=False)
-
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # files (dict of UserTestFile objects indexed by filename)
-    # managers (dict of UserTestManager objects indexed by filename)
     # results (list of UserTestResult objects)
 
     def get_result(self, dataset):
@@ -221,11 +215,6 @@ class UserTestResult(Base):
         Dataset)
 
     # Now below follow the actual result fields.
-
-    # Output file's digest for this test
-    output = Column(
-        String,
-        nullable=True)
 
     # Compilation outcome (can be None = yet to compile, "ok" =
     # compilation successful and we can evaluate, "fail" =

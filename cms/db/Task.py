@@ -32,6 +32,7 @@ from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
     UniqueConstraint, ForeignKeyConstraint
 from sqlalchemy.types import Boolean, Integer, Float, String, Interval
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.orderinglist import ordering_list
 
 from cms.db.SQLAlchemyUtils import Base
@@ -188,7 +189,6 @@ class Task(Base):
     # datasets (list of Dataset objects)
     # statements (dict of Statement objects indexed by language code)
     # attachments (dict of Attachment objects indexed by filename)
-    # submission_format (list of SubmissionFormatElement objects)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
@@ -276,39 +276,6 @@ class Attachment(Base):
         nullable=False)
 
 
-class SubmissionFormatElement(Base):
-    """Class to store the requested files that a submission must
-    include. Filenames may include %l to represent an accepted
-    language extension. Not to be used directly (import it from
-    SQLAlchemyAll).
-
-    """
-    __tablename__ = 'submission_format_elements'
-
-    # Auto increment primary key.
-    id = Column(
-        Integer,
-        primary_key=True)
-
-    # Task (id and object) owning the submission format element.
-    task_id = Column(
-        Integer,
-        ForeignKey(Task.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    task = relationship(
-        Task,
-        backref=backref('submission_format',
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
-
-    # Format of the given submission file.
-    filename = Column(
-        String,
-        nullable=False)
-
-
 class Dataset(Base):
     """Class to store the information about a data set. Not to be used
     directly (import it from SQLAlchemyAll).
@@ -384,7 +351,6 @@ class Dataset(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # managers (dict of Manager objects indexed by filename)
     # testcases (dict of Testcase objects indexed by codename)
 
 
@@ -468,10 +434,5 @@ class Testcase(Base):
         nullable=False,
         default=False)
 
-    # Digests of the input and output files.
-    input = Column(
-        String,
-        nullable=False)
-    output = Column(
-        String,
-        nullable=False)
+    # Follows the description of the fields automatically added by
+    # SQLAlchemy.
