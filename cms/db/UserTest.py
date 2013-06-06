@@ -89,6 +89,7 @@ class UserTest(Base):
     # SQLAlchemy.
     # files (dict of UserTestFile objects indexed by codename)
     # managers (dict of UserTestManager objects indexed by codename)
+    # inputs (dict of UserTestInput objects indexed by codename)
     # results (list of UserTestResult objects)
 
     def get_result(self, dataset):
@@ -225,6 +226,62 @@ class UserTestManager(Base):
     @property
     def language(self):
         return self.schema.language
+
+
+class UserTestInput(Base):
+    """An actual input file, an "instance" of an InputSchema.
+
+    See the documentation for InputSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'user_test_inputs'
+    __table_args__ = (
+        UniqueConstraint('user_test_id', 'schema_id'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # UserTest (id and object) owning the input.
+    user_test_id = Column(
+        Integer,
+        ForeignKey(UserTest.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    user_test = relationship(
+        UserTest,
+        backref=backref('inputs',
+                        collection_class=attribute_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # Schema (id and object) this input is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(InputSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        InputSchema)
+
+    # Digest of the provided input.
+    digest = Column(
+        String,
+        nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
 
 
 class UserTestResult(Base):

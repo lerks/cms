@@ -191,6 +191,7 @@ class Task(Base):
     # attachments (dict of Attachment objects indexed by filename)
     # file_schemas (list of FileSchema objects)
     # manager_schemas (list of ManagerSchema objects)
+    # input_schemas (dict of InputSchema objects indexed by codename)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
@@ -502,6 +503,88 @@ class ManagerSchema(Base):
         nullable=False)
 
 
+class InputSchema(Base):
+    """Definition of an input file used in the judging process.
+
+    Input files contain the data that the user's program has to
+    elaborate to prove that it can solve the task correctly and
+    efficiently. Inputs, and their corresponding outputs, are what
+    defines a testcase, which in turn is an "instance" of the task.
+    They play a role in the evaluation stage of the judging process
+    (but not during compilation), and they're simply made available
+    for the contestant's program to read.
+
+    The user is allowed to submit files of this type only when making
+    an usertest.
+
+    The main purpose of this class is to map the language-independent
+    "roles" that need to act during the judging process with the actual
+    language-specific filenames that will "play" them.
+    This is used both when putting and getting files in to and out from
+    the sandbox and when handling the files that the user is submitting
+    (i.e. give hints for, validate and parse the submitted files).
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'input_schemas'
+    __table_args__ = (
+        UniqueConstraint('task_id', 'codename'),
+        UniqueConstraint('task_id', 'filename'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Task (id and object) owning the input schema.
+    task_id = Column(
+        Integer,
+        ForeignKey(Task.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    task = relationship(
+        Task,
+        backref=backref('input_schemas',
+                        collection_class=smart_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # The name that the TaskType uses to identify this file. The most
+    # common example is just "input", and only in rare occasions will
+    # there be the need for something more than this. It should
+    # describe the role of the file in the judging process.
+    codename = Column(
+        String,
+        nullable=False)
+
+    # The filename that both the contestant and the administrator use
+    # when dealing with this file (in the task statement, in their
+    # source code, etc.). This name will be suggested by CWS when
+    # prompting the user to submit files, used when parsing the
+    # submitted files to detect their codenames, used by TaskTypes when
+    # putting files in to the sandbox, etc.
+    filename = Column(
+        String,
+        nullable=False)
+
+    # A not-too-long human readable description to tell contestants
+    # what we expect this file to contain. It's mainly used in the
+    # submission form of CWS.
+    description = Column(
+        String,
+        nullable=False)
+
+    # The maximum size, in bytes, we allow the files submitted by users
+    # to be.
+    max_size = Column(
+        Integer,
+        CheckConstraint("max_size >= 0"),
+        nullable=False)
+
+
 class Dataset(Base):
     """Class to store the information about a data set. Not to be used
     directly (import it from SQLAlchemyAll).
@@ -701,3 +784,60 @@ class Testcase(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
+    # inputs (dict of Input objects indexed by codename)
+
+
+class Input(Base):
+    """An actual input file, an "instance" of an InputSchema.
+
+    See the documentation for InputSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'inputs'
+    __table_args__ = (
+        UniqueConstraint('testcase_id', 'schema_id'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Testcase (id and object) owning the input.
+    testcase_id = Column(
+        Integer,
+        ForeignKey(Testcase.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    testcase = relationship(
+        Testcase,
+        backref=backref('inputs',
+                        collection_class=attribute_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # Schema (id and object) this input is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(InputSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        InputSchema)
+
+    # Digest of the provided input.
+    digest = Column(
+        String,
+        nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
