@@ -190,6 +190,7 @@ class Task(Base):
     # statements (dict of Statement objects indexed by language code)
     # attachments (dict of Attachment objects indexed by filename)
     # file_schemas (list of FileSchema objects)
+    # manager_schemas (list of ManagerSchema objects)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
@@ -205,6 +206,23 @@ class Task(Base):
             # Fill with language-specific files, overwriting the
             # previous ones if needed.
             for s in self.file_schemas:
+                if s.language == lang:
+                    result[s.codename] = s
+
+        return result
+
+    def get_manager_schemas(self, lang=None):
+        result = dict()
+
+        # Fill with the language-independent files first.
+        for s in self.manager_schemas:
+            if s.language is None:
+                result[s.codename] = s
+
+        if lang is not None:
+            # Fill with language-specific files, overwriting the
+            # previous ones if needed.
+            for s in self.manager_schemas:
                 if s.language == lang:
                     result[s.codename] = s
 
@@ -384,6 +402,106 @@ class FileSchema(Base):
         nullable=False)
 
 
+class ManagerSchema(Base):
+    """Definition of a manager used in the judging process.
+
+    Managers are subsidiary utilities needed to perform the judging
+    process. They're provided by the administrators, but for usertests
+    the users can be allowed to provide their own implementations. The
+    most common use-cases are:
+    - "graders" (or "stubs") are compiled together with a user-provided
+      source file to implement the main function, the input parsing and
+      the output formatting;
+    - "managers" are independently-compiled programs that interact with
+      the user's program using appropriate communication channels (e.g.
+      pipes) providing data, making queries and checking results, in
+      order to prevent the user to access input data before it's
+      supposed to do it;
+    - "checkers" are tools that verify the correctness of the produced
+      output.
+
+    The user is allowed to submit files of this type only when making
+    an usertest, and only if the administrator decides to allow it (by
+    not providing its own implementation).
+
+    The main purpose of this class is to map the language-independent
+    "roles" that need to act during the judging process with the actual
+    language-specific filenames that will "play" them.
+    This is used both when putting and getting files in to and out from
+    the sandbox and when handling the files that the user is submitting
+    (i.e. give hints for, validate and parse the submitted files).
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'manager_schemas'
+    __table_args__ = (
+        UniqueConstraint('task_id', 'codename', 'language'),
+        UniqueConstraint('task_id', 'filename', 'language'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Task (id and object) owning the manager schema.
+    task_id = Column(
+        Integer,
+        ForeignKey(Task.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    task = relationship(
+        Task,
+        backref=backref('manager_schemas',
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # The name that the TaskType uses to identify this file. Common
+    # examples are "grader", "manager", "checker", etc. It should
+    # describe the role of the file in the judging process and it has
+    # to be language-independent.
+    codename = Column(
+        String,
+        nullable=False)
+
+    # The filename that both the contestant and the administrator use
+    # when dealing with this file (in the task statement, in their
+    # source code, etc.). This name will be suggested by CWS when
+    # prompting the user to submit files, used when parsing the
+    # submitted files to detect their codenames and the language of the
+    # whole submission, used by TaskTypes when putting files in to the
+    # sandbox, etc. This name has to be language-specific and cannot
+    # contain wildcards (like "%l").
+    filename = Column(
+        String,
+        nullable=False)
+
+    # The programming language this file is supposed to be written in,
+    # or None if not applicable (for example a plain-text file with a
+    # large dictionary of words to be used in a text-processing task).
+    # This value should be the codename of one of the supported
+    # languages, i.e. one of the elements of cms.LANGUAGES.
+    language = Column(
+        String,
+        nullable=True)
+
+    # A not-too-long human readable description to tell contestants
+    # what we expect this file to contain. It's mainly used in the
+    # submission form of CWS.
+    description = Column(
+        String,
+        nullable=False)
+
+    # The maximum size, in bytes, we allow the files submitted by users
+    # to be.
+    max_size = Column(
+        Integer,
+        CheckConstraint("max_size >= 0"),
+        nullable=False)
+
+
 class Dataset(Base):
     """Class to store the information about a data set. Not to be used
     directly (import it from SQLAlchemyAll).
@@ -459,18 +577,39 @@ class Dataset(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
+    # managers (list of Manager objects)
     # testcases (dict of Testcase objects indexed by codename)
+
+    def get_managers(self, lang=None):
+        result = dict()
+
+        # Fill with the language-independent files first.
+        for m in self.managers:
+            if m.language is None:
+                result[m.codename] = m
+
+        if lang is not None:
+            # Fill with language-specific files, overwriting the
+            # previous ones if needed.
+            for m in self.managers:
+                if m.language == lang:
+                    result[m.codename] = m
+
+        return result
 
 
 class Manager(Base):
-    """Class to store additional files needed to compile or evaluate a
-    submission (e.g., graders). Not to be used directly (import it from
-    SQLAlchemyAll).
+    """An actual manager file, an "instance" of a ManagerSchema.
+
+    See the documentation for ManagerSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
 
     """
     __tablename__ = 'managers'
     __table_args__ = (
-        UniqueConstraint('dataset_id', 'filename'),
+        UniqueConstraint('dataset_id', 'schema_id'),
     )
 
     # Auto increment primary key.
@@ -488,17 +627,35 @@ class Manager(Base):
     dataset = relationship(
         Dataset,
         backref=backref('managers',
-                        collection_class=smart_mapped_collection('filename'),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
-    # Filename and digest of the provided manager.
-    filename = Column(
-        String,
-        nullable=False)
+    # Schema (id and object) this manager is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(ManagerSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        ManagerSchema)
+
+    # Digest of the provided manager.
     digest = Column(
         String,
         nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
+
+    @property
+    def language(self):
+        return self.schema.language
 
 
 class Testcase(Base):

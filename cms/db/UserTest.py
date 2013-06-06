@@ -88,6 +88,7 @@ class UserTest(Base):
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
     # files (dict of UserTestFile objects indexed by codename)
+    # managers (dict of UserTestManager objects indexed by codename)
     # results (list of UserTestResult objects)
 
     def get_result(self, dataset):
@@ -171,10 +172,12 @@ class UserTestManager(Base):
     user test (e.g., graders). Not to be used directly (import it from
     SQLAlchemyAll).
 
+    FIXME
+
     """
     __tablename__ = 'user_test_managers'
     __table_args__ = (
-        UniqueConstraint('user_test_id', 'filename'),
+        UniqueConstraint('user_test_id', 'schema_id'),
     )
 
     # Auto increment primary key.
@@ -192,17 +195,36 @@ class UserTestManager(Base):
     user_test = relationship(
         UserTest,
         backref=backref('managers',
-                        collection_class=smart_mapped_collection('filename'),
+                        collection_class=attribute_mapped_collection('codename'),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
-    # Filename and digest of the submitted manager.
-    filename = Column(
-        String,
-        nullable=False)
+    # Schema (id and object) this manager is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(ManagerSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        ManagerSchema)
+
+    # Digest of the provided manager.
     digest = Column(
         String,
         nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
+
+    @property
+    def language(self):
+        return self.schema.language
 
 
 class UserTestResult(Base):
