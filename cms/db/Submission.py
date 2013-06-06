@@ -90,6 +90,7 @@ class Submission(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
+    # files (dict of File objects indexed by codename)
     # token (Token object or None)
     # results (list of SubmissionResult objects)
 
@@ -119,14 +120,16 @@ class Submission(Base):
 
 
 class File(Base):
-    """Class to store information about one file submitted within a
-    submission. Not to be used directly (import it from
-    SQLAlchemyAll).
+    """An actual source file, an "instance" of a FileSchema.
+
+    See the documentation for FileSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
 
     """
     __tablename__ = 'files'
     __table_args__ = (
-        UniqueConstraint('submission_id', 'filename'),
+        UniqueConstraint('submission_id', 'schema_id'),
     )
 
     # Auto increment primary key.
@@ -144,17 +147,36 @@ class File(Base):
     submission = relationship(
         Submission,
         backref=backref('files',
-                        collection_class=smart_mapped_collection('filename'),
+                        collection_class=attribute_mapped_collection('codename'),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
 
-    # Filename and digest of the submitted file.
-    filename = Column(
-        String,
-        nullable=False)
+    # Schema (id and object) this file is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(FileSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        FileSchema)
+
+    # Digest of the submitted file.
     digest = Column(
         String,
         nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
+
+    @property
+    def language(self):
+        return self.schema.language
 
 
 class Token(Base):

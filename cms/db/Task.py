@@ -189,8 +189,26 @@ class Task(Base):
     # datasets (list of Dataset objects)
     # statements (dict of Statement objects indexed by language code)
     # attachments (dict of Attachment objects indexed by filename)
+    # file_schemas (list of FileSchema objects)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
+
+    def get_file_schemas(self, lang=None):
+        result = dict()
+
+        # Fill with the language-independent files first.
+        for s in self.file_schemas:
+            if s.language is None:
+                result[s.codename] = s
+
+        if lang is not None:
+            # Fill with language-specific files, overwriting the
+            # previous ones if needed.
+            for s in self.file_schemas:
+                if s.language == lang:
+                    result[s.codename] = s
+
+        return result
 
 
 class Statement(Base):
@@ -273,6 +291,96 @@ class Attachment(Base):
         nullable=False)
     digest = Column(
         String,
+        nullable=False)
+
+
+class FileSchema(Base):
+    """Definition of a source file used in the judging process.
+
+    Source files are what contestants are supposed to produce during
+    the contest. They're mostly written in a programming language and
+    are intended to be (compiled and) executed, but this isn't always
+    the case (in output-only tasks the "source files" are actually
+    plain-text output files produced by a previous computation).
+
+    All files the user is required to provide in a submission have to
+    be of this type; usertests, on the other hand, can require other
+    file types to be submitted too.
+
+    The main purpose of this class is to map the language-independent
+    "roles" that need to act during the judging process with the actual
+    language-specific filenames that will "play" them.
+    This is used both when putting and getting files in to and out from
+    the sandbox and when handling the files that the user is submitting
+    (i.e. give hints for, validate and parse the submitted files).
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'file_schemas'
+    __table_args__ = (
+        UniqueConstraint('task_id', 'codename', 'language'),
+        UniqueConstraint('task_id', 'filename', 'language'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Task (id and object) owning the file schema.
+    task_id = Column(
+        Integer,
+        ForeignKey(Task.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    task = relationship(
+        Task,
+        backref=backref('file_schemas',
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # The name that the TaskType uses to identify this file. Common
+    # examples are "source", "encoder", "decoder", etc. It should
+    # describe the role of the file in the judging process and it has
+    # to be language-independent.
+    codename = Column(
+        String,
+        nullable=False)
+
+    # The filename that both the contestant and the administrator use
+    # when dealing with this file (in the task statement, in their
+    # source code, etc.). This name will be suggested by CWS when
+    # prompting the user to submit files, used when parsing the
+    # submitted files to detect their codenames and the language of the
+    # whole submission, used by TaskTypes when putting files in to the
+    # sandbox, etc. This name has to be language-specific and cannot
+    # contain wildcards (like "%l").
+    filename = Column(
+        String,
+        nullable=False)
+
+    # The programming language this file is supposed to be written in,
+    # or None if not applicable (for example in an output-only task).
+    # This value should be the codename of one of the supported
+    # languages, i.e. one of the elements of cms.LANGUAGES.
+    language = Column(
+        String,
+        nullable=True)
+
+    # A not-too-long human readable description to tell contestants
+    # what we expect this file to contain. It's mainly used in the
+    # submission form of CWS.
+    description = Column(
+        String,
+        nullable=False)
+
+    # The maximum size, in bytes, we allow the files submitted by users
+    # to be.
+    max_size = Column(
+        Integer,
+        CheckConstraint("max_size >= 0"),
         nullable=False)
 
 
