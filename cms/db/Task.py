@@ -192,6 +192,7 @@ class Task(Base):
     # file_schemas (list of FileSchema objects)
     # manager_schemas (list of ManagerSchema objects)
     # input_schemas (dict of InputSchema objects indexed by codename)
+    # output_schemas (dict of OutputSchema objects indexed by codename)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
@@ -585,6 +586,69 @@ class InputSchema(Base):
         nullable=False)
 
 
+class OutputSchema(Base):
+    """Definition of an output file used in the judging process.
+
+    Output files are the results that a program has produced from an
+    input file. They contain the "answer" that we will read, parse,
+    validate and compare with the official result to verify its
+    correctness. From them we will derive an outcome and a text that
+    ScoreTypes will use to assign a score to the submission.
+
+    The user is never allowed to submit files of this type.
+
+    The main purpose of this class is to map the language-independent
+    "roles" that need to act during the judging process with the actual
+    language-specific filenames that will "play" them.
+    This is used both when putting and getting files in to and out from
+    the sandbox and when presenting the results of an usertest (i.e.
+    the outputs produced by the execution) to the user.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'output_schemas'
+    __table_args__ = (
+        UniqueConstraint('task_id', 'codename'),
+        UniqueConstraint('task_id', 'filename'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Task (id and object) owning the output schema.
+    task_id = Column(
+        Integer,
+        ForeignKey(Task.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    task = relationship(
+        Task,
+        backref=backref('output_schemas',
+                        collection_class=smart_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # The name that the TaskType uses to identify this file. The most
+    # common example is just "output", and only in rare occasions will
+    # there be the need for something more than this. It should
+    # describe the role of the file in the judging process.
+    codename = Column(
+        String,
+        nullable=False)
+
+    # The filename that both the contestant and the administrator use
+    # when dealing with this file (in the task statement, in their
+    # source code, etc.). This name will be used by TaskTypes when
+    # getting and putting files out of an in to the sandbox, etc.
+    filename = Column(
+        String,
+        nullable=False)
+
+
 class Dataset(Base):
     """Class to store the information about a data set. Not to be used
     directly (import it from SQLAlchemyAll).
@@ -785,6 +849,7 @@ class Testcase(Base):
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
     # inputs (dict of Input objects indexed by codename)
+    # outputs (dict of Output objects indexed by codename)
 
 
 class Input(Base):
@@ -830,6 +895,62 @@ class Input(Base):
         InputSchema)
 
     # Digest of the provided input.
+    digest = Column(
+        String,
+        nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
+
+
+class Output(Base):
+    """An actual output file, an "instance" of an OutputSchema.
+
+    See the documentation for OutputSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'outputs'
+    __table_args__ = (
+        UniqueConstraint('testcase_id', 'schema_id'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Testcase (id and object) owning the output.
+    testcase_id = Column(
+        Integer,
+        ForeignKey(Testcase.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    testcase = relationship(
+        Testcase,
+        backref=backref('outputs',
+                        collection_class=attribute_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # Schema (id and object) this output is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(OutputSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        OutputSchema)
+
+    # Digest of the provided output.
     digest = Column(
         String,
         nullable=False)

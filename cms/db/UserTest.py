@@ -381,6 +381,7 @@ class UserTestResult(Base):
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
     # executables (dict of UserTestExecutable objects indexed by filename)
+    # outputs (dict of UserTestOutput objects indexed by codename)
 
     def compiled(self):
         """Return if the user test has been compiled.
@@ -480,3 +481,73 @@ class UserTestExecutable(Base):
     digest = Column(
         String,
         nullable=False)
+
+
+class UserTestOutput(Base):
+    """An actual output file, an "instance" of an OutputSchema.
+
+    See the documentation for OutputSchema.
+
+    Not to be used directly (import it from SQLAlchemyAll).
+
+    """
+    __tablename__ = 'user_test_outputs'
+    __table_args__ = (
+        UniqueConstraint('user_test_id', 'schema_id'),
+    )
+
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # UserTest (id and object) owning the output.
+    user_test_id = Column(
+        Integer,
+        ForeignKey(UserTest.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    user_test = relationship(
+        UserTest)
+
+    # Dataset (id and object) owning the output.
+    dataset_id = Column(
+        Integer,
+        ForeignKey(Dataset.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    dataset = relationship(
+        Dataset)
+
+    # UserTestResult owning the output.
+    user_test_result = relationship(
+        UserTestResult,
+        backref=backref('outputs',
+                        collection_class=attribute_mapped_collection('codename'),
+                        cascade="all, delete-orphan",
+                        passive_deletes=True))
+
+    # Schema (id and object) this output is an instance of.
+    schema_id = Column(
+        Integer,
+        ForeignKey(OutputSchema.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    schema = relationship(
+        OutputSchema)
+
+    # Digest of the provided output.
+    digest = Column(
+        String,
+        nullable=False)
+
+    @property
+    def codename(self):
+        return self.schema.codename
+
+    @property
+    def filename(self):
+        return self.schema.filename
