@@ -24,7 +24,7 @@ import os
 import tempfile
 import shutil
 
-from cms import LANGUAGES, LANGUAGE_TO_SOURCE_EXT_MAP, config, logger
+from cms import LANGUAGE_TO_SOURCE_EXT_MAP, config, logger
 from cms.grading.Sandbox import wait_without_std
 from cms.grading import get_compilation_command, compilation_step, \
     human_evaluation_message, is_evaluation_passed, \
@@ -53,21 +53,16 @@ class Communication(TaskType):
 
     name = "Communication"
 
-    def get_compilation_commands(self, submission_format):
-        """See TaskType.get_compilation_commands."""
-        res = dict()
-        for language in LANGUAGES:
-            format_filename = submission_format[0]
-            source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-            source_filenames = []
-            source_filenames.append("stub%s" % source_ext)
-            source_filenames.append(format_filename.replace(".%l", source_ext))
-            executable_filename = format_filename.replace(".%l", "")
-            command = " ".join(get_compilation_command(language,
-                                                       source_filenames,
-                                                       executable_filename))
-            res[language] = [command]
-        return res
+    def get_compilation_command(self, language, files, managers):
+        """See TaskType.get_compilation_command."""
+        source_filenames = [files["source"], managers["stub"]]
+
+        # XXX Dangerous heuristic!
+        executable_filename = files["source"].partition('.')[0]
+
+        return [" ".join(get_compilation_command(language,
+                                                 source_filenames,
+                                                 executable_filename))]
 
     def get_user_managers(self, submission_format):
         """See TaskType.get_user_managers."""

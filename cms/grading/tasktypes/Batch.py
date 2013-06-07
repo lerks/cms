@@ -22,7 +22,7 @@
 
 import os
 
-from cms import LANGUAGES, LANGUAGE_TO_SOURCE_EXT_MAP, logger
+from cms import LANGUAGE_TO_SOURCE_EXT_MAP, logger
 from cms.grading import get_compilation_command, compilation_step, \
     evaluation_step, human_evaluation_message, is_evaluation_passed, \
     extract_outcome_and_text, white_diff_step
@@ -92,24 +92,22 @@ class Batch(TaskType):
         # TODO add some details if a grader/comparator is used, etc...
         return "Batch"
 
-    def get_compilation_commands(self, submission_format):
-        """See TaskType.get_compilation_commands."""
-        res = dict()
-        for language in LANGUAGES:
-            format_filename = submission_format[0]
-            source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-            source_filenames = []
-            # If a grader is specified, we add to the command line (and to
-            # the files to get) the corresponding manager.
-            if self.parameters[0] == "grader":
-                source_filenames.append("grader%s" % source_ext)
-            source_filenames.append(format_filename.replace(".%l", source_ext))
-            executable_filename = format_filename.replace(".%l", "")
-            command = " ".join(get_compilation_command(language,
-                                                       source_filenames,
-                                                       executable_filename))
-            res[language] = [command]
-        return res
+    def get_compilation_command(self, language, files, managers):
+        """See TaskType.get_compilation_command."""
+        source_filenames = [files["source"]]
+        if "grader" in managers:
+            source_filenames += [managers["grader"]]
+        # XXX should header be "task_name.h" or "grader.h"?
+        # XXX should this if be nested?
+        if "grader_h" in managers:
+            source_filenames += [managers["grader_h"]]
+
+        # XXX Dangerous heuristic!
+        executable_filename = files["source"].partition('.')[0]
+
+        return [" ".join(get_compilation_command(language,
+                                                 source_filenames,
+                                                 executable_filename))]
 
     def get_user_managers(self, submission_format):
         """See TaskType.get_user_managers."""

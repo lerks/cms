@@ -151,15 +151,15 @@ class TaskType:
 
     testable = True
 
-    def get_compilation_commands(self, submission_format):
-        """Return the compilation command for all supported languages
+    # XXX docstring
+    def get_compilation_command(self, language, files, managers):
+        """Return the compilation command for the given language
 
-        submission_format (list of str): the list of files provided by the
-            user that have to be compiled (the compilation command may
-            contain references to other files like graders, stubs, etc...);
-            they may contain the string "%l" as a language-wildcard.
-        return (dict of list of str): a dict whose keys are language codes
-            and whose values are lists of compilation commands for that
+        files (dict of str to str): the keys are the codenames for
+            the roles the administrator has decided to use (!) and
+            their values are the filename it has chosen for them.
+        managers (dict of str to str): same as for files.
+        return (list of str): the compilation commands for the given
             language (this is because the task type may require multiple
             compilations, e.g. encoder and decoder); return None if no
             compilation is required (e.g. output only).

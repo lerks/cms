@@ -61,8 +61,8 @@ class OutputOnly(TaskType):
 
     testable = False
 
-    def get_compilation_commands(self, submission_format):
-        """See TaskType.get_compilation_commands."""
+    def get_compilation_command(self, language, files, managers):
+        """See TaskType.get_compilation_command."""
         return None
 
     def get_user_managers(self, submission_format):

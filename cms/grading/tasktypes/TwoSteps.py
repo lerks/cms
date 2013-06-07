@@ -23,8 +23,8 @@
 import os
 import tempfile
 
-from cms import LANGUAGES, LANGUAGE_TO_SOURCE_EXT_MAP, \
-    LANGUAGE_TO_HEADER_EXT_MAP, config, logger
+from cms import LANGUAGE_TO_SOURCE_EXT_MAP, LANGUAGE_TO_HEADER_EXT_MAP, \
+    config, logger
 from cms.grading.Sandbox import wait_without_std
 from cms.grading import get_compilation_command, compilation_step, \
     evaluation_step_before_run, evaluation_step_after_run, \
@@ -53,34 +53,17 @@ class TwoSteps(TaskType):
 
     name = "Two steps"
 
-    def get_compilation_commands(self, submission_format):
-        """See TaskType.get_compilation_commands."""
-        res = dict()
-        for language in LANGUAGES:
-            source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-            header_ext = LANGUAGE_TO_HEADER_EXT_MAP[language]
-            source_filenames = []
-            for filename in submission_format:
-                source_filename = filename.replace(".%l", source_ext)
-                source_filenames.append(source_filename)
-                # Headers.
-                header_filename = filename.replace(".%l", header_ext)
-                source_filenames.append(header_filename)
+    def get_compilation_command(self, language, files, managers):
+        """See TaskType.get_compilation_command."""
+        source_filenames = [files["encoder"], managers["encoder_h"],
+                            files["decoder"], managers["decoder_h"],
+                            managers["manager"], managers["manager_h"]]
 
-            # Manager.
-            manager_source_filename = "manager%s" % source_ext
-            source_filenames.append(manager_source_filename)
-            # Manager's header.
-            manager_header_filename = "manager%s" % header_ext
-            source_filenames.append(manager_header_filename)
+        executable_filename = "manager"
 
-            # Get compilation command and compile.
-            executable_filename = "manager"
-            command = " ".join(get_compilation_command(language,
-                                                       source_filenames,
-                                                       executable_filename))
-            res[language] = [command]
-        return res
+        return [" ".join(get_compilation_command(language,
+                                                 source_filenames,
+                                                 executable_filename))]
 
     def compile(self, job, file_cacher):
         """See TaskType.compile."""
