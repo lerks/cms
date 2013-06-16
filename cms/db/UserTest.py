@@ -380,7 +380,7 @@ class UserTestResult(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # executables (dict of UserTestExecutable objects indexed by filename)
+    # executables (dict of UserTestExecutable objects indexed by codename)
     # outputs (dict of UserTestOutput objects indexed by codename)
 
     def compiled(self):
@@ -470,9 +470,14 @@ class UserTestExecutable(Base):
     user_test_result = relationship(
         UserTestResult,
         backref=backref('executables',
-                        collection_class=smart_mapped_collection('filename'),
+                        collection_class=smart_mapped_collection('codename'),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
+
+    # Codename.
+    codename = Column(
+        String,
+        nullable=False)
 
     # Filename and digest of the generated executable.
     filename = Column(

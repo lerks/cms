@@ -322,7 +322,7 @@ class SubmissionResult(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # executables (dict of Executable objects indexed by filename)
+    # executables (dict of Executable objects indexed by codename)
     # evaluations (list of Evaluation objects)
 
     def get_evaluation(self, testcase):
@@ -447,9 +447,14 @@ class Executable(Base):
     submission_result = relationship(
         SubmissionResult,
         backref=backref('executables',
-                        collection_class=smart_mapped_collection('filename'),
+                        collection_class=smart_mapped_collection('codename'),
                         cascade="all, delete-orphan",
                         passive_deletes=True))
+
+    # Codename.
+    codename = Column(
+        String,
+        nullable=False)
 
     # Filename and digest of the generated executable.
     filename = Column(
