@@ -22,7 +22,7 @@
 
 import os
 
-from cms import LANGUAGE_TO_SOURCE_EXT_MAP, logger
+from cms import logger
 from cms.grading import get_compilation_command, compilation_step, \
     evaluation_step, human_evaluation_message, is_evaluation_passed, \
     extract_outcome_and_text, white_diff_step
@@ -30,7 +30,6 @@ from cms.grading.ParameterTypes import ParameterTypeCollection, \
     ParameterTypeChoice, ParameterTypeString
 from cms.grading.TaskType import TaskType, \
     create_sandbox, delete_sandbox
-from cms.db.SQLAlchemyAll import Executable
 
 
 class Batch(TaskType):
@@ -139,7 +138,7 @@ class Batch(TaskType):
 
         # Create the sandbox
         sandbox = create_sandbox(file_cacher)
-        job.sandboxes.append(sandbox.path)
+        job.sandboxes = [sandbox.path]
 
         # Prepare the source files in the sandbox
         files_to_get = {}
@@ -181,6 +180,7 @@ class Batch(TaskType):
         job.compilation_success = compilation_success
         job.plus = plus
         job.text = text
+
         if operation_success and compilation_success:
             digest = sandbox.get_file_to_storage(
                 executable_filename,
@@ -196,6 +196,7 @@ class Batch(TaskType):
         """See TaskType.evaluate."""
         # Create the sandbox
         sandbox = create_sandbox(file_cacher)
+        job.sandboxes = [sandbox.path]
 
         # Prepare the execution
         executable_filename = job.executables.keys()[0]
@@ -223,7 +224,7 @@ class Batch(TaskType):
         for filename, digest in files_to_get.iteritems():
             sandbox.create_file_from_storage(filename, digest)
 
-        # Actually performs the execution
+        # Actually perform the execution
         success, plus = evaluation_step(
             sandbox,
             command,
@@ -231,9 +232,6 @@ class Batch(TaskType):
             job.memory_limit,
             stdin_redirect=stdin_redirect,
             stdout_redirect=stdout_redirect)
-
-        job.sandboxes = [sandbox.path]
-        job.plus = plus
 
         outcome = None
         text = None
@@ -246,8 +244,6 @@ class Batch(TaskType):
         elif not is_evaluation_passed(plus):
             outcome = 0.0
             text = human_evaluation_message(plus)
-            if job.get_output:
-                job.user_output = None
 
         # Otherwise, advance to checking the solution
         else:
@@ -257,8 +253,6 @@ class Batch(TaskType):
                 outcome = 0.0
                 text = "Execution didn't produce file %s" % \
                     (output_filename)
-                if job.get_output:
-                    job.user_output = None
 
             else:
                 # If asked so, put the output file into the storage
@@ -318,5 +312,6 @@ class Batch(TaskType):
         job.success = success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
+        job.plus = plus
 
         delete_sandbox(sandbox)

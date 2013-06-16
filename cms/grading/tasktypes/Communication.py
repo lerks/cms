@@ -24,7 +24,7 @@ import os
 import tempfile
 import shutil
 
-from cms import LANGUAGE_TO_SOURCE_EXT_MAP, config, logger
+from cms import config, logger
 from cms.grading.Sandbox import wait_without_std
 from cms.grading import get_compilation_command, compilation_step, \
     human_evaluation_message, is_evaluation_passed, \
@@ -32,7 +32,6 @@ from cms.grading import get_compilation_command, compilation_step, \
     evaluation_step_after_run
 from cms.grading.TaskType import TaskType, \
     create_sandbox, delete_sandbox
-from cms.db.SQLAlchemyAll import Executable
 
 
 class Communication(TaskType):
@@ -94,7 +93,7 @@ class Communication(TaskType):
 
         # Create the sandbox
         sandbox = create_sandbox(file_cacher)
-        job.sandboxes.append(sandbox.path)
+        job.sandboxes = [sandbox.path]
 
         # Prepare the source files in the sandbox
         files_to_get = {}
@@ -126,6 +125,7 @@ class Communication(TaskType):
         job.compilation_success = compilation_success
         job.plus = plus
         job.text = text
+
         if operation_success and compilation_success:
             digest = sandbox.get_file_to_storage(
                 executable_filename,
@@ -142,6 +142,8 @@ class Communication(TaskType):
         # Create sandboxes and FIFOs
         sandbox_mgr = create_sandbox(file_cacher)
         sandbox_user = create_sandbox(file_cacher)
+        job.sandboxes = [sandbox_user.path, sandbox_mgr.path]
+
         fifo_dir = tempfile.mkdtemp(dir=config.temp_dir)
         fifo_in = os.path.join(fifo_dir, "in")
         fifo_out = os.path.join(fifo_dir, "out")
@@ -203,19 +205,20 @@ class Communication(TaskType):
         success_mgr, plus_mgr = \
             evaluation_step_after_run(sandbox_mgr)
 
-        job.sandboxes = [sandbox_user.path,
-                         sandbox_mgr.path]
-        job.plus = plus_user
+        outcome = None
+        text = None
 
         # If at least one evaluation had problems, we report the
         # problems.
         if not success_user or not success_mgr:
-            success, outcome, text = False, None, None
+            success = False
+
         # If the user sandbox detected some problem (timeout, ...),
         # the outcome is 0.0 and the text describes that problem.
         elif not is_evaluation_passed(plus_user):
             success = True
             outcome, text = 0.0, human_evaluation_message(plus_user)
+
         # Otherwise, we use the manager to obtain the outcome.
         else:
             success = True
@@ -227,13 +230,12 @@ class Communication(TaskType):
                 job.user_output = sandbox_mgr.get_file_to_storage(
                     "output.txt",
                     "Output file in job %s" % job.info)
-            else:
-                job.user_output = None
 
         # Whatever happened, we conclude.
         job.success = success
         job.outcome = str(outcome) if outcome is not None else None
         job.text = text
+        job.plus = plus_user
 
         delete_sandbox(sandbox_mgr)
         delete_sandbox(sandbox_user)

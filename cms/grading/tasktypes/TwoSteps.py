@@ -23,15 +23,13 @@
 import os
 import tempfile
 
-from cms import LANGUAGE_TO_SOURCE_EXT_MAP, LANGUAGE_TO_HEADER_EXT_MAP, \
-    config, logger
+from cms import config, logger
 from cms.grading.Sandbox import wait_without_std
 from cms.grading import get_compilation_command, compilation_step, \
     evaluation_step_before_run, evaluation_step_after_run, \
     is_evaluation_passed, human_evaluation_message, white_diff_step
 from cms.grading.TaskType import TaskType, \
     create_sandbox, delete_sandbox
-from cms.db.SQLAlchemyAll import Executable
 
 
 class TwoSteps(TaskType):
@@ -88,7 +86,7 @@ class TwoSteps(TaskType):
 
         # First and only one compilation.
         sandbox = create_sandbox(file_cacher)
-        job.sandboxes.append(sandbox.path)
+        job.sandboxes = [sandbox.path]
         files_to_get = {}
 
         # User's submissions and headers.
@@ -146,9 +144,13 @@ class TwoSteps(TaskType):
         # f stand for first, s for second.
         first_sandbox = create_sandbox(file_cacher)
         second_sandbox = create_sandbox(file_cacher)
+        job.sandboxes = [first_sandbox.path, second_sandbox.path]
+
         fifo_dir = tempfile.mkdtemp(dir=config.temp_dir)
         fifo = os.path.join(fifo_dir, "fifo")
         os.mkfifo(fifo)
+        os.chmod(fifo_dir, 0o755)
+        os.chmod(fifo, 0o666)
 
         # First step: we start the first manager.
         first_filename = "manager"
@@ -215,10 +217,6 @@ class TwoSteps(TaskType):
         success_second, second_plus = \
             evaluation_step_after_run(second_sandbox)
 
-        job.sandboxes = [first_sandbox.path,
-                         second_sandbox.path]
-        job.plus = second_plus
-
         success = True
         outcome = None
         text = None
@@ -269,6 +267,7 @@ class TwoSteps(TaskType):
         job.success = success
         job.outcome = outcome
         job.text = text
+        job.plus = second_plus
 
         delete_sandbox(first_sandbox)
         delete_sandbox(second_sandbox)

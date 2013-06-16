@@ -83,10 +83,9 @@ class OutputOnly(TaskType):
     def evaluate(self, job, file_cacher):
         """See TaskType.evaluate."""
         sandbox = create_sandbox(file_cacher)
-        job.sandboxes.append(sandbox.path)
+        job.sandboxes = [sandbox.path]
 
         # Immediately prepare the skeleton to return
-        job.sandboxes = [sandbox.path]
         job.plus = {}
 
         outcome = None
