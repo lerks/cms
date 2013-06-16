@@ -20,10 +20,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import simplejson as json
+from collections import namedtuple
 from copy import deepcopy
 
-from cms.db.SQLAlchemyAll import File, Manager, Executable, \
-    UserTestExecutable, Evaluation
+from cms.db.SQLAlchemyAll import Executable, UserTestExecutable, Evaluation
+
+File = namedtuple('File', ['filename', 'digest'])
 
 
 class Job(object):
@@ -108,13 +110,13 @@ class CompilationJob(Job):
         res.update({
             'type': 'compilation',
             'language': self.language,
-            'files': dict((k, v.digest)
+            'files': dict((k, (v.filename, v.digest))
                           for k, v in self.files.iteritems()),
-            'managers': dict((k, v.digest)
+            'managers': dict((k, (v.filename, v.digest))
                              for k, v in self.managers.iteritems()),
             'success': self.success,
             'compilation_success': self.compilation_success,
-            'executables': dict((k, v.digest)
+            'executables': dict((k, (v.filename, v.digest))
                                 for k, v in self.executables.iteritems()),
             'text': self.text,
             'plus': self.plus,
@@ -124,28 +126,28 @@ class CompilationJob(Job):
     @classmethod
     def import_from_dict(cls, data):
         data['files'] = dict(
-            (k, File(k, v)) for k, v in data['files'].iteritems())
+            (k, File(*v)) for k, v in data['files'].iteritems())
         data['managers'] = dict(
-            (k, Manager(k, v)) for k, v in data['managers'].iteritems())
+            (k, File(*v)) for k, v in data['managers'].iteritems())
         data['executables'] = dict(
-            (k, Executable(k, v)) for k, v in data['executables'].iteritems())
+            (k, File(*v)) for k, v in data['executables'].iteritems())
         return cls(**data)
 
 
 class EvaluationJob(Job):
 
-    # Input: language, files, managers, executables, input, output,
+    # Input: language, files, managers, executables, inputs, outputs
     #        time_limit, memory_limit
-    # Output: success, outcome, text, user_output, plus
+    # Output: success, outcome, text, user_outputs, plus
     # Metadata: only_execution, get_output
 
     def __init__(self, task_type=None, task_type_parameters=None,
                  shard=None, sandboxes=None, info=None,
                  language=None, files=None, managers=None,
-                 executables=None, input=None, output=None,
+                 executables=None, inputs=None, outputs=None,
                  time_limit=None, memory_limit=None,
                  success=None, outcome=None, text=None,
-                 user_output=None, plus=None,
+                 user_outputs=None, plus=None,
                  only_execution=False, get_output=False):
         if files is None:
             files = {}
@@ -153,6 +155,12 @@ class EvaluationJob(Job):
             managers = {}
         if executables is None:
             executables = {}
+        if inputs is None:
+            inputs = {}
+        if outputs is None:
+            outputs = {}
+        if user_outputs is None:
+            user_outputs = {}
 
         Job.__init__(self, task_type, task_type_parameters,
                      shard, sandboxes, info)
@@ -160,14 +168,14 @@ class EvaluationJob(Job):
         self.files = files
         self.managers = managers
         self.executables = executables
-        self.input = input
-        self.output = output
+        self.inputs = inputs
+        self.outputs = outputs
         self.time_limit = time_limit
         self.memory_limit = memory_limit
         self.success = success
         self.outcome = outcome
         self.text = text
-        self.user_output = user_output
+        self.user_outputs = user_outputs
         self.plus = plus
         self.only_execution = only_execution
         self.get_output = get_output
@@ -177,20 +185,23 @@ class EvaluationJob(Job):
         res.update({
             'type': 'evaluation',
             'language': self.language,
-            'files': dict((k, v.digest)
+            'files': dict((k, (v.filename, v.digest))
                           for k, v in self.files.iteritems()),
-            'managers': dict((k, v.digest)
+            'managers': dict((k, (v.filename, v.digest))
                              for k, v in self.managers.iteritems()),
-            'executables': dict((k, v.digest)
+            'executables': dict((k, (v.filename, v.digest))
                                 for k, v in self.executables.iteritems()),
-            'input': self.input,
-            'output': self.output,
+            'inputs': dict((k, (v.filename, v.digest))
+                           for k, v in self.inputs.iteritems()),
+            'outputs': dict((k, (v.filename, v.digest))
+                            for k, v in self.outputs.iteritems()),
             'time_limit': self.time_limit,
             'memory_limit': self.memory_limit,
             'success': self.success,
             'outcome': self.outcome,
             'text': self.text,
-            'user_output': self.user_output,
+            'user_outputs': dict((k, (v.filename, v.digest))
+                                 for k, v in self.user_outputs.iteritems())
             'plus': self.plus,
             'only_execution': self.only_execution,
             'get_output': self.get_output,
@@ -200,11 +211,17 @@ class EvaluationJob(Job):
     @classmethod
     def import_from_dict(cls, data):
         data['files'] = dict(
-            (k, File(k, v)) for k, v in data['files'].iteritems())
+            (k, File(*v)) for k, v in data['files'].iteritems())
         data['managers'] = dict(
-            (k, Manager(k, v)) for k, v in data['managers'].iteritems())
+            (k, File(*v)) for k, v in data['managers'].iteritems())
         data['executables'] = dict(
-            (k, Executable(k, v)) for k, v in data['executables'].iteritems())
+            (k, File(*v)) for k, v in data['executables'].iteritems())
+        data['inputs'] = dict(
+            (k, File(*v)) for k, v in data['inputs'].iteritems())
+        data['outputs'] = dict(
+            (k, File(*v)) for k, v in data['outputs'].iteritems())
+        data['user_outputs'] = dict(
+            (k, File(*v)) for k, v in data['user_outputs'].iteritems())
         return cls(**data)
 
 
@@ -241,11 +258,14 @@ class JobGroup(object):
         job.task_type = dataset.task_type
         job.task_type_parameters = dataset.task_type_parameters
 
-        # CompilationJob; dict() is required to detach the dictionary
-        # that gets added to the Job from the control of SQLAlchemy
+        # CompilationJob
         job.language = submission.language
-        job.files = dict(submission.files)
-        job.managers = dict(dataset.managers)
+        job.files = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in submission.files.iteritems())
+        job.managers = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in dataset.get_managers(job.language).iteritems())
         job.info = "compile submission %d" % (submission.id)
 
         jobs = {"": job}
@@ -267,8 +287,11 @@ class JobGroup(object):
         sr.compilation_text = job.text
         sr.compilation_shard = job.shard
         sr.compilation_sandbox = ":".join(job.sandboxes)
-        for executable in job.executables.itervalues():
-            sr.executables += [executable]
+        for k, f in job.executables.iteritems():
+            sr.executables += [Executable(
+                codename=k,
+                filename=f.filename,
+                digest=f.digest)]
 
     @staticmethod
     def from_user_test_compilation(user_test, dataset):
@@ -278,12 +301,17 @@ class JobGroup(object):
         job.task_type = dataset.task_type
         job.task_type_parameters = dataset.task_type_parameters
 
-        # CompilationJob; dict() is required to detach the dictionary
-        # that gets added to the Job from the control of SQLAlchemy
+        # CompilationJob
         job.language = user_test.language
-        job.files = dict(user_test.files)
-        job.managers = dict(user_test.managers)
+        job.files = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test.files.iteritems())
+        job.managers = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test.managers.iteritems())
         job.info = "compile user test %d" % (user_test.id)
+
+        # FIXME
 
         # Add the managers to be got from the Task; get_task_type must
         # be imported here to avoid circular dependencies
@@ -319,10 +347,11 @@ class JobGroup(object):
         ur.compilation_text = job.text
         ur.compilation_shard = job.shard
         ur.compilation_sandbox = ":".join(job.sandboxes)
-        for executable in job.executables.itervalues():
-            ut_executable = UserTestExecutable(
-                executable.filename, executable.digest)
-            ur.executables += [ut_executable]
+        for k, f in job.executables.iteritems():
+            ur.executables += [UserTestExecutable(
+                codename=k,
+                filename=f.filename,
+                digest=f.digest)]
 
     # Evaluation
 
@@ -339,12 +368,17 @@ class JobGroup(object):
         # This should have been created by now.
         assert submission_result is not None
 
-        # EvaluationJob; dict() is required to detach the dictionary
-        # that gets added to the Job from the control of SQLAlchemy
+        # EvaluationJob
         job.language = submission.language
-        job.files = dict(submission.files)
-        job.managers = dict(dataset.managers)
-        job.executables = dict(submission_result.executables)
+        job.files = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in submission.files.iteritems())
+        job.managers = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in dataset.get_managers(job.language).iteritems())
+        job.executables = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in submission_result.executables.iteritems())
         job.time_limit = dataset.time_limit
         job.memory_limit = dataset.memory_limit
 
@@ -353,8 +387,12 @@ class JobGroup(object):
         for k, testcase in dataset.testcases.iteritems():
             job2 = deepcopy(job)
 
-            job2.input = testcase.input
-            job2.output = testcase.output
+            job2.inputs = dict(
+                (k, File(v.filename, v.digest))
+                for k, v in testcase.inputs.iteritems())
+            job2.outputs = dict(
+                (k, File(v.filename, v.digest))
+                for k, v in testcase.outputs.iteritems())
             job2.info = "evaluate submission %d on testcase %s" % \
                         (submission.id, testcase.codename)
 
@@ -402,13 +440,23 @@ class JobGroup(object):
         # EvaluationJob; dict() is required to detach the dictionary
         # that gets added to the Job from the control of SQLAlchemy
         job.language = user_test.language
-        job.files = dict(user_test.files)
-        job.managers = dict(user_test.managers)
-        job.executables = dict(user_test_result.executables)
-        job.input = user_test.input
+        job.files = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test.files.iteritems())
+        job.managers = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test.managers.iteritems())
+        job.executables = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test_result.executables.iteritems())
+        job.inputs = dict(
+            (k, File(v.filename, v.digest))
+            for k, v in user_test.inputs.iteritems())
         job.time_limit = dataset.time_limit
         job.memory_limit = dataset.memory_limit
         job.info = "evaluate user test %d" % (user_test.id)
+
+        # FIXME
 
         # Add the managers to be got from the Task; get_task_type must
         # be imported here to avoid circular dependencies
