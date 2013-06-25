@@ -65,25 +65,6 @@ class TwoSteps(TaskType):
 
     def compile(self, job, file_cacher):
         """See TaskType.compile."""
-        # Detect the submission's language. The checks about the
-        # formal correctedness of the submission are done in CWS,
-        # before accepting it.
-        language = job.language
-        source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-        header_ext = LANGUAGE_TO_HEADER_EXT_MAP[language]
-
-        # TODO: here we are sure that submission.files are the same as
-        # task.submission_format. The following check shouldn't be
-        # here, but in the definition of the task, since this actually
-        # checks that task's task type and submission format agree.
-        if len(job.files) != 2:
-            job.success = True
-            job.compilation_success = False
-            job.text = "Invalid files in submission"
-            logger.error("Submission contains %d files, expecting 2" %
-                         len(job.files))
-            return True
-
         # First and only one compilation.
         sandbox = create_sandbox(file_cacher)
         job.sandboxes = [sandbox.path]
@@ -117,7 +98,7 @@ class TwoSteps(TaskType):
 
         # Get compilation command and compile.
         executable_filename = "manager"
-        command = get_compilation_command(language,
+        command = get_compilation_command(job.language,
                                           source_filenames,
                                           executable_filename)
         operation_success, compilation_success, text, plus = \

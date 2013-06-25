@@ -73,47 +73,27 @@ class Communication(TaskType):
 
     def compile(self, job, file_cacher):
         """See TaskType.compile."""
-        # Detect the submission's language. The checks about the
-        # formal correctedness of the submission are done in CWS,
-        # before accepting it.
-        language = job.language
-        source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-
-        # TODO: here we are sure that submission.files are the same as
-        # task.submission_format. The following check shouldn't be
-        # here, but in the definition of the task, since this actually
-        # checks that task's task type and submission format agree.
-        if len(job.files) != 1:
-            job.success = True
-            job.compilation_success = False
-            job.text = "Invalid files in submission"
-            logger.error("Submission contains %d files, expecting 1" %
-                         len(job.files))
-            return True
-
         # Create the sandbox
         sandbox = create_sandbox(file_cacher)
         job.sandboxes = [sandbox.path]
 
         # Prepare the source files in the sandbox
-        files_to_get = {}
-        format_filename = job.files.keys()[0]
-        source_filenames = []
-        # Stub.
-        source_filenames.append("stub%s" % source_ext)
-        files_to_get[source_filenames[-1]] = \
-                job.managers["stub%s" % source_ext].digest
-        # User's submission.
-        source_filenames.append(format_filename.replace(".%l", source_ext))
-        files_to_get[source_filenames[-1]] = \
-            job.files[format_filename].digest
-        for filename, digest in files_to_get.iteritems():
+        source_files = [job.files["source"]]
+        if "stub" in job.managers:
+            source_files += [job.managers["stub"]]
+        if "header" in job.managers:
+            source_files += [job.managers["header"]]
+
+        for filename, digest in source_files:
             sandbox.create_file_from_storage(filename, digest)
 
+        # Determine the executable filename
+        # XXX Dangerous heuristic!
+        executable_filename = job.files["source"].filename.partition('.')[0]
+
         # Prepare the compilation command
-        executable_filename = format_filename.replace(".%l", "")
-        command = get_compilation_command(language,
-                                          source_filenames,
+        command = get_compilation_command(job.language,
+                                          [f.filename for f in source_files],
                                           executable_filename)
 
         # Run the compilation
@@ -129,10 +109,8 @@ class Communication(TaskType):
         if operation_success and compilation_success:
             digest = sandbox.get_file_to_storage(
                 executable_filename,
-                "Executable %s for %s" %
-                (executable_filename, job.info))
-            job.executables[executable_filename] = \
-                Executable(executable_filename, digest)
+                "Executable %s for %s" % (executable_filename, job.info))
+            job.executables["executable"] = File(executable_filename, digest)
 
         # Cleanup
         delete_sandbox(sandbox)
@@ -154,47 +132,41 @@ class Communication(TaskType):
         os.chmod(fifo_out, 0o666)
 
         # First step: we start the manager.
-        manager_filename = "manager"
-        manager_command = ["./%s" % manager_filename, fifo_in, fifo_out]
-        manager_executables_to_get = {
-            manager_filename:
-            job.managers[manager_filename].digest
-            }
-        manager_files_to_get = {
-            "input.txt": job.input
-            }
-        manager_allow_dirs = [fifo_dir]
-        for filename, digest in manager_executables_to_get.iteritems():
-            sandbox_mgr.create_file_from_storage(
-                filename, digest, executable=True)
-        for filename, digest in manager_files_to_get.iteritems():
-            sandbox_mgr.create_file_from_storage(filename, digest)
+        manager = job.managers["manager"]
+        input_ = job.inputs["input"]
+
+        sandbox_mgr.create_file_from_storage(
+            manager.filename, manager.digest, executable=True)
+        sandbox_mgr.create_file_from_storage(
+            input_.filename, input_.digest)
+
+        manager_command = [os.path.join(".", manager.filename),
+                           fifo_in, fifo_out]
+
         manager = evaluation_step_before_run(
             sandbox_mgr,
             manager_command,
             job.time_limit,
-            0,
-            allow_dirs=manager_allow_dirs,
-            stdin_redirect="input.txt")
+            0,  # XXX Why not job.memory_limit?
+            allow_dirs=[fifo_dir],
+            stdin_redirect="input.txt")  # FIXME WTF input redirect?
 
         # Second step: we start the user submission compiled with the
         # stub.
-        executable_filename = job.executables.keys()[0]
-        command = ["./%s" % executable_filename, fifo_out, fifo_in]
-        executables_to_get = {
-            executable_filename:
-            job.executables[executable_filename].digest
-            }
-        user_allow_dirs = [fifo_dir]
-        for filename, digest in executables_to_get.iteritems():
-            sandbox_user.create_file_from_storage(
-                filename, digest, executable=True)
+        executable = job.executables["executable"]
+
+        sandbox_user.create_file_from_storage(
+            executable.filename, executable.digest, executable=True)
+
+        command = [os.path.join(".", executable.filename),
+                   fifo_out, fifo_in]
+
         process = evaluation_step_before_run(
             sandbox_user,
             command,
             job.time_limit,
             job.memory_limit,
-            allow_dirs=user_allow_dirs)
+            allow_dirs=[fifo_dir])
 
         # Consume output.
         wait_without_std([process, manager])
@@ -227,7 +199,7 @@ class Communication(TaskType):
         # If asked so, save the output file, provided that it exists
         if job.get_output:
             if sandbox_mgr.file_exists("output.txt"):
-                job.user_output = sandbox_mgr.get_file_to_storage(
+                job.user_outputs["output"] = sandbox_mgr.get_file_to_storage(
                     "output.txt",
                     "Output file in job %s" % job.info)
 
