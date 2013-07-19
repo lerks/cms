@@ -42,7 +42,8 @@ from urlparse import urljoin, urlsplit
 
 from cms import config
 from cms.io import Service, rpc_method
-from cms.db import SessionGen, Contest, Task, Submission, get_contest_list
+from cms.db import SessionGen, Contest, User, Task, Submission, \
+    SubmissionResult, Token, Watcher, get_contest_list
 from cms.grading.scoretypes import get_score_type
 from cmscommon.datetime import make_timestamp
 
@@ -259,10 +260,12 @@ class ProxyService(Service):
         """
         Service.__init__(self, shard)
 
-        # Store what data we already sent to rankings. This is to aid
-        # search_jobs_not_done determine what data we didn't send yet.
-        self.scores_sent_to_rankings = set()
-        self.tokens_sent_to_rankings = set()
+        # Store what data we already sent to rankings.
+        self.contests_sent = dict()
+        self.users_sent = dict()
+        self.tasks_sent = dict()
+        self.scores_sent = dict()
+        self.tokens_sent = dict()
 
         # Create and spawn threads to send data to rankings.
         self.rankings = list()
@@ -271,103 +274,131 @@ class ProxyService(Service):
             gevent.spawn(proxy.run)
             self.rankings.append(proxy)
 
-        # Send some initial data to rankings.
-        self.initialize()
+        # Obtain a Watcher and attach callbacks to it.
+        self.watcher = Watcher(self.initialize)
 
-        self.add_timeout(self.search_jobs_not_done, None,
-                         ProxyService.JOBS_NOT_DONE_CHECK_TIME,
-                         immediately=True)
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_CREATE, Contest)
+        self.watcher.listen(lambda id_, *args: self.contest_created(id_),
+                            Watcher.EVENT_UPDATE, Contest,
+                            "name", "description", "start", "stop", "score_precision")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, Contest)
 
-    @rpc_method
-    def search_jobs_not_done(self):
-        """Sweep the database and search for work to do.
+        self.watcher.listen(lambda id_, *args: self.user_created(id_),
+                            Watcher.EVENT_CREATE, User)
+        self.watcher.listen(lambda id_, *args: self.user_created(id_),
+                            Watcher.EVENT_UPDATE, User,
+                            "username", "first_name", "last_name")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, User)
 
-        Iterate over all submissions and look if they are in a suitable
-        status to be sent (scored and not hidden) but, for some reason,
-        haven't been sent yet (that is, their ID doesn't appear in the
-        *_sent_to_rankings sets). In case, arrange for them to be sent.
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_UPDATE, User, "rws_hidden")
 
-        """
-        logger.info("Going to search for unsent subchanges.")
+        self.watcher.listen(lambda id_, *args: self.task_created(id_),
+                            Watcher.EVENT_CREATE, Task)
+        self.watcher.listen(lambda id_, *args: self.task_created(id_),
+                            Watcher.EVENT_UPDATE, Task,
+                            "contest_id", "name", "title", "num", "score_precision")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, Task)
 
-        job_count = 0
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_CREATE, Submission)
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_UPDATE, Submission,
+                            "user_id", "task_id", "timestamp")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, Submission)
 
-        with SessionGen() as session:
-            for contest in get_contest_list(session):
-                if contest.rws_hidden:
-                    continue
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_CREATE, SubmissionResult)
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_UPDATE, SubmissionResult,
+                            "submission_id", "dataset_id", "score", "ranking_score_details")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, SubmissionResult)
 
-                for submission in contest.get_submissions():
-                    if submission.user.rws_hidden or \
-                            submission.task.rws_hidden:
-                        continue
+        # XXX SubmissionResult.dataset_id
 
-                    if submission.get_result().scored() and \
-                            submission.id not in self.scores_sent_to_rankings:
-                        self.send_score(submission)
-                        job_count += 1
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_CREATE, Token)
+        self.watcher.listen(lambda id_, *args: self....
+                            Watcher.EVENT_UPDATE, Token,
+                            "submission_id", "timestamp")
+        # self.watcher.listen(lambda id_, *args: self.
+        #                     Watcher.EVENT_DELETE, Token)
 
-                    if submission.tokened() and \
-                            submission.id not in self.tokens_sent_to_rankings:
-                        self.send_token(submission)
-                        job_count += 1
-
-        logger.info("Found %d unsent subchanges." % job_count)
+        lambda x, *args: x
 
     def initialize(self):
-        """Send basic data to all the rankings.
-
-        It's data that's supposed to be sent before the contest, that's
-        needed to understand what we're talking about when we send
-        submissions: contest, users, tasks.
-
-        No support for teams, flags and faces.
+        """Send to all the rankings all the data that are supposed to be
+        sent before the contest: contest, users, tasks. No support for
+        teams, flags and faces.
 
         """
         logger.info("Initializing rankings.")
 
-        contests = dict()
-        users = dict()
-        tasks = dict()
-
         with SessionGen() as session:
             for contest in get_contest_list(session):
                 if contest.rws_hidden:
                     continue
 
-                contests[encode_id(contest.name)] = {
-                    "name": contest.description,
-                    "begin": int(make_timestamp(contest.start)),
-                    "end": int(make_timestamp(contest.stop)),
-                    "score_precision": contest.score_precision}
+                self.send_contest(contest)
 
                 for user in contest.users:
                     if user.rws_hidden:
                         continue
 
-                    users[encode_id(user.username)] = \
-                        {"f_name": user.first_name,
-                         "l_name": user.last_name,
-                         "team": None}
+                    self.send_user(user)
 
                 for task in contest.tasks:
                     if task.rws_hidden:
                         continue
 
-                    score_type = get_score_type(dataset=task.active_dataset)
-                    tasks[encode_id(task.name)] = \
-                        {"short_name": task.name,
-                         "name": task.title,
-                         "contest": encode_id(contest.name),
-                         "order": task.num,
-                         "max_score": score_type.max_score,
-                         "extra_headers": score_type.ranking_headers,
-                         "score_precision": task.score_precision}
+                    self.send_task(task)
 
-        for ranking in self.rankings:
-            ranking.data_queue.put((ranking.CONTEST_TYPE, contests))
-            ranking.data_queue.put((ranking.USER_TYPE, users))
-            ranking.data_queue.put((ranking.TASK_TYPE, tasks))
+    def send_contest(self, contest):
+        # Data to send to remote rankings.
+        contest_id = encode_id(contest.name)
+        contest_data = {
+            "name": contest.description,
+            "begin": int(make_timestamp(contest.start)),
+            "end": int(make_timestamp(contest.stop)),
+            "score_precision": contest.score_precision}
+
+        # Adding operations to the queue.
+        ranking.data_queue.put((ranking.CONTEST_TYPE,
+                                {contest_id: contest_data}))
+
+    def send_user(self, user):
+        # Data to send to remote rankings.
+        user_id = encode_id(user.username)
+        user_data = {
+            "f_name": user.first_name,
+            "l_name": user.last_name,
+            "team": None}
+
+        # Adding operations to the queue.
+        ranking.data_queue.put((ranking.USER_TYPE,
+                                {user_id: user_data}))
+
+    def send_task(self, task):
+        # Data to send to remote rankings.
+        task_id = encode_id(task.name)
+        task_data = {
+            "short_name": task.name
+            "name": task.title,
+            "contest": encode_id(user.contest.name),
+            "order": task.num,
+            "max_score": 100.0,
+            "extra_headers": [],
+            "score_precision": task.score_precision}
+
+        # Adding operations to the queue.
+        ranking.data_queue.put((ranking.TASK_TYPE,
+                                {task_id: task_data}))
 
     def send_score(self, submission):
         """Send the score for the given submission to all rankings.
@@ -448,6 +479,39 @@ class ProxyService(Service):
         """
         logger.info("Reinitializing rankings.")
         self.initialize()
+
+    def contest_created(self, contest_id):
+        with SessionGen(commit=False) as session:
+            contest = Contest.get_from_id(contest_id, session)
+
+            if contest is None:
+                logger.error("Asked to send non-existent contest.")
+                raise ValueError
+
+            if not contest.rws_hidden:
+                self.send_contest(contest)
+
+    def user_created(self, user_id):
+        with SessionGen(commit=False) as session:
+            user = User.get_from_id(user_id, session)
+
+            if user is None:
+                logger.error("Asked to send non-existent user.")
+                raise ValueError
+
+            if not user.rws_hidden:
+                self.send_user(user)
+
+    def task_created(self, task_id):
+        with SessionGen(commit=False) as session:
+            task = Task.get_from_id(task_id, session)
+
+            if task is None:
+                logger.error("Asked to send non-existent task.")
+                raise ValueError
+
+            if not task.rws_hidden:
+                self.send_task(task)
 
     @rpc_method
     def submission_scored(self, submission_id):
