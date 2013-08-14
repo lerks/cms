@@ -105,6 +105,8 @@ class FileCacherBackend(object):
 
         digest (unicode): the digest of the file to delete.
 
+        raise: KeyError if the file cannot be found.
+
         """
         raise NotImplementedError("Please subclass this class.")
 
@@ -198,10 +200,10 @@ class FSBackend(FileCacherBackend):
         """
         file_path = os.path.join(self.path, digest)
 
-        try:
-            os.unlink(file_path)
-        except OSError:
-            pass
+        if not os.path.exists(file_path):
+            raise KeyError("File not found.")
+
+        os.unlink(file_path)
 
     def list(self):
         """See FileCacherBackend.list().
@@ -305,11 +307,9 @@ class DBBackend(FileCacherBackend):
             fso = FSObject.get_from_digest(digest, session)
 
             if fso is None:
-                session.rollback()
-                return
+                raise KeyError("File not found.")
 
             fso.delete()
-
             session.commit()
 
     def list(self, session=None):
@@ -358,7 +358,7 @@ class NullBackend(FileCacherBackend):
         raise KeyError("File not found.")
 
     def delete(self, digest):
-        pass
+        raise KeyError("File not found.")
 
     def list(self):
         return list()
