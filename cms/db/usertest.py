@@ -27,9 +27,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from sqlalchemy.schema import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint
+    UniqueConstraint, Index
 from sqlalchemy.types import Integer, Float, String, Unicode, DateTime
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import Base, User, Task, Dataset
 from .smartmappedcollection import smart_mapped_collection
@@ -94,6 +95,7 @@ class UserTest(Base):
     # results (list of UserTestResult objects)
 
     def get_result(self, dataset=None):
+<<<<<<< HEAD
         """Return the result associated to a dataset.
 
         dataset (Dataset|None): the dataset for which the caller wants
@@ -104,15 +106,16 @@ class UserTest(Base):
             the database, otherwise None.
 
         """
-        if dataset is not None:
-            # Use IDs to avoid triggering a lazy-load query.
-            assert self.task_id == dataset.task_id
-            dataset_id = dataset.id
-        else:
-            dataset_id = self.task.active_dataset_id
+        if dataset is None:
+            dataset = self.task.active_dataset
+        assert self.task == dataset.task
 
-        return UserTestResult.get_from_id(
-            (self.id, dataset_id), self.sa_session)
+        try:
+            return self.sa_session.query(UserTestResult)\
+                .filter(UserTestResult.user_test == self)\
+                .filter(UserTestResult.dataset == dataset).one()
+        except NoResultFound:
+            return None
 
     def get_result_or_create(self, dataset=None):
         """Return and, if necessary, create the result for a dataset.
@@ -127,14 +130,14 @@ class UserTest(Base):
         """
         if dataset is None:
             dataset = self.task.active_dataset
+        assert self.task == dataset.task
 
-        user_test_result = self.get_result(dataset)
-
-        if user_test_result is None:
-            user_test_result = UserTestResult(user_test=self,
-                                              dataset=dataset)
-
-        return user_test_result
+        try:
+            return self.sa_session.query(UserTestResult)\
+                .filter(UserTestResult.user_test == self)\
+                .filter(UserTestResult.dataset == dataset).one()
+        except NoResultFound:
+            return UserTestResult(user_test=self, dataset=dataset)
 
 
 class UserTestFile(Base):
@@ -219,15 +222,20 @@ class UserTestResult(Base):
     """
     __tablename__ = 'user_test_results'
     __table_args__ = (
-        UniqueConstraint('user_test_id', 'dataset_id'),
+        Index("idx_user_test_dataset",
+              "user_test_id", "dataset_id", unique=True),
     )
 
-    # Primary key is (user_test_id, dataset_id).
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # UserTest (id and object) this result is for.
     user_test_id = Column(
         Integer,
         ForeignKey(UserTest.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        primary_key=True)
+                   onupdate="CASCADE", ondelete="CASCADE"))
     user_test = relationship(
         UserTest,
         backref=backref(
@@ -235,11 +243,11 @@ class UserTestResult(Base):
             cascade="all, delete-orphan",
             passive_deletes=True))
 
+    # Dataset (id and object) this result is on.
     dataset_id = Column(
         Integer,
         ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        primary_key=True)
+                   onupdate="CASCADE", ondelete="CASCADE"))
     dataset = relationship(
         Dataset)
 
@@ -420,11 +428,7 @@ class UserTestExecutable(Base):
     """
     __tablename__ = 'user_test_executables'
     __table_args__ = (
-        ForeignKeyConstraint(
-            ('user_test_id', 'dataset_id'),
-            (UserTestResult.user_test_id, UserTestResult.dataset_id),
-            onupdate="CASCADE", ondelete="CASCADE"),
-        UniqueConstraint('user_test_id', 'dataset_id', 'filename'),
+        UniqueConstraint('user_test_result_id', 'filename'),
     )
 
     # Auto increment primary key.
@@ -432,27 +436,18 @@ class UserTestExecutable(Base):
         Integer,
         primary_key=True)
 
-    # UserTest (id and object) owning the executable.
-    user_test_id = Column(
+    # Auto increment primary key.
+    id = Column(
         Integer,
-        ForeignKey(UserTest.id,
+        primary_key=True)
+
+    # UserTestResult (id and object) owning the executable.
+    user_test_result_id = Column(
+        Integer,
+        ForeignKey(UserTestResult.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
-    user_test = relationship(
-        UserTest)
-
-    # Dataset (id and object) owning the executable.
-    dataset_id = Column(
-        Integer,
-        ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    dataset = relationship(
-        Dataset)
-
-    # UserTestResult owning the executable.
     user_test_result = relationship(
         UserTestResult,
         backref=backref('executables',

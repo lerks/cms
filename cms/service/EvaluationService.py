@@ -1144,8 +1144,9 @@ class EvaluationService(Service):
         # We get the submission from DB and update it.
         with SessionGen() as session:
             if job_type == EvaluationService.JOB_TYPE_COMPILATION:
-                submission_result = SubmissionResult.get_from_id(
-                    (object_id, dataset_id), session)
+                submission = Submission.get_from_id(object_id, session)
+                dataset = Dataset.get_from_id(dataset_id, session)
+                submission_result = submission.get_result(dataset)
                 if submission_result is None:
                     logger.error("[action_finished] Couldn't find "
                                  "submission %d(%d) in the database." %
@@ -1160,8 +1161,9 @@ class EvaluationService(Service):
                 self.compilation_ended(submission_result)
 
             elif job_type == EvaluationService.JOB_TYPE_EVALUATION:
-                submission_result = SubmissionResult.get_from_id(
-                    (object_id, dataset_id), session)
+                submission = Submission.get_from_id(object_id, session)
+                dataset = Dataset.get_from_id(dataset_id, session)
+                submission_result = submission.get_result(dataset)
                 if submission_result is None:
                     logger.error("[action_finished] Couldn't find "
                                  "submission %d(%d) in the database." %
@@ -1176,8 +1178,9 @@ class EvaluationService(Service):
                 self.evaluation_ended(submission_result)
 
             elif job_type == EvaluationService.JOB_TYPE_TEST_COMPILATION:
-                user_test_result = UserTestResult.get_from_id(
-                    (object_id, dataset_id), session)
+                user_test = UserTest.get_from_id(object_id, session)
+                dataset = Dataset.get_from_id(dataset_id, session)
+                user_test_result = user_test.get_result(dataset)
                 if user_test_result is None:
                     logger.error("[action_finished] Couldn't find "
                                  "user test %d(%d) in the database." %
@@ -1192,8 +1195,9 @@ class EvaluationService(Service):
                 self.user_test_compilation_ended(user_test_result)
 
             elif job_type == EvaluationService.JOB_TYPE_TEST_EVALUATION:
-                user_test_result = UserTestResult.get_from_id(
-                    (object_id, dataset_id), session)
+                user_test = UserTest.get_from_id(object_id, session)
+                dataset = Dataset.get_from_id(dataset_id, session)
+                user_test_result = user_test.get_result(dataset)
                 if user_test_result is None:
                     logger.error("[action_finished] Couldn't find "
                                  "user test %d(%d) in the database." %

@@ -31,9 +31,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from sqlalchemy.schema import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint
+    UniqueConstraint, Index
 from sqlalchemy.types import Integer, Float, String, Unicode, DateTime
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import Base, User, Task, Dataset, Testcase
 from .smartmappedcollection import smart_mapped_collection
@@ -116,15 +117,16 @@ class Submission(Base):
             exists in the database, otherwise None.
 
         """
-        if dataset is not None:
-            # Use IDs to avoid triggering a lazy-load query.
-            assert self.task_id == dataset.task_id
-            dataset_id = dataset.id
-        else:
-            dataset_id = self.task.active_dataset_id
+        if dataset is None:
+            dataset = self.task.active_dataset
+        assert self.task == dataset.task
 
-        return SubmissionResult.get_from_id(
-            (self.id, dataset_id), self.sa_session)
+        try:
+            return self.sa_session.query(SubmissionResult)\
+                .filter(SubmissionResult.submission == self)\
+                .filter(SubmissionResult.dataset == dataset).one()
+        except NoResultFound:
+            return None
 
     def get_result_or_create(self, dataset=None):
         """Return and, if necessary, create the result for a dataset.
@@ -139,14 +141,14 @@ class Submission(Base):
         """
         if dataset is None:
             dataset = self.task.active_dataset
+        assert self.task == dataset.task
 
-        submission_result = self.get_result(dataset)
-
-        if submission_result is None:
-            submission_result = SubmissionResult(submission=self,
-                                                 dataset=dataset)
-
-        return submission_result
+        try:
+            return self.sa_session.query(SubmissionResult)\
+                .filter(SubmissionResult.submission == self)\
+                .filter(SubmissionResult.dataset == dataset).one()
+        except NoResultFound:
+            return SubmissionResult(submission=self, dataset=dataset)
 
     def tokened(self):
         """Return if the user played a token against the submission.
@@ -238,15 +240,20 @@ class SubmissionResult(Base):
     """
     __tablename__ = 'submission_results'
     __table_args__ = (
-        UniqueConstraint('submission_id', 'dataset_id'),
+        Index("idx_submission_dataset",
+              "submission_id", "dataset_id", unique=True),
     )
 
-    # Primary key is (submission_id, dataset_id).
+    # Auto increment primary key.
+    id = Column(
+        Integer,
+        primary_key=True)
+
+    # Submission (id and object) this result is for.
     submission_id = Column(
         Integer,
         ForeignKey(Submission.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        primary_key=True)
+                   onupdate="CASCADE", ondelete="CASCADE"))
     submission = relationship(
         Submission,
         backref=backref(
@@ -254,11 +261,11 @@ class SubmissionResult(Base):
             cascade="all, delete-orphan",
             passive_deletes=True))
 
+    # Dataset (id and object) this result is on.
     dataset_id = Column(
         Integer,
         ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        primary_key=True)
+                   onupdate="CASCADE", ondelete="CASCADE"))
     dataset = relationship(
         Dataset)
 
@@ -491,11 +498,7 @@ class Executable(Base):
     """
     __tablename__ = 'executables'
     __table_args__ = (
-        ForeignKeyConstraint(
-            ('submission_id', 'dataset_id'),
-            (SubmissionResult.submission_id, SubmissionResult.dataset_id),
-            onupdate="CASCADE", ondelete="CASCADE"),
-        UniqueConstraint('submission_id', 'dataset_id', 'filename'),
+        UniqueConstraint('submission_result_id', 'filename'),
     )
 
     # Auto increment primary key.
@@ -503,27 +506,13 @@ class Executable(Base):
         Integer,
         primary_key=True)
 
-    # Submission (id and object) owning the executable.
-    submission_id = Column(
+    # SubmissionResult (id and object) owning the executable.
+    submission_result_id = Column(
         Integer,
-        ForeignKey(Submission.id,
+        ForeignKey(SubmissionResult.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
-    submission = relationship(
-        Submission)
-
-    # Dataset (id and object) owning the executable.
-    dataset_id = Column(
-        Integer,
-        ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    dataset = relationship(
-        Dataset)
-
-    # SubmissionResult owning the executable.
     submission_result = relationship(
         SubmissionResult,
         backref=backref('executables',
@@ -547,11 +536,7 @@ class Evaluation(Base):
     """
     __tablename__ = 'evaluations'
     __table_args__ = (
-        ForeignKeyConstraint(
-            ('submission_id', 'dataset_id'),
-            (SubmissionResult.submission_id, SubmissionResult.dataset_id),
-            onupdate="CASCADE", ondelete="CASCADE"),
-        UniqueConstraint('submission_id', 'dataset_id', 'testcase_id'),
+        UniqueConstraint('submission_result_id', 'testcase_id'),
     )
 
     # Auto increment primary key.
@@ -559,27 +544,13 @@ class Evaluation(Base):
         Integer,
         primary_key=True)
 
-    # Submission (id and object) owning the evaluation.
-    submission_id = Column(
+    # SubmissionResult (id and object) owning the evaluation.
+    submission_result_id = Column(
         Integer,
-        ForeignKey(Submission.id,
+        ForeignKey(SubmissionResult.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
-    submission = relationship(
-        Submission)
-
-    # Dataset (id and object) owning the evaluation.
-    dataset_id = Column(
-        Integer,
-        ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    dataset = relationship(
-        Dataset)
-
-    # SubmissionResult owning the evaluation.
     submission_result = relationship(
         SubmissionResult,
         backref=backref('evaluations',
