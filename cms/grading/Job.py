@@ -3,7 +3,7 @@
 
 # Contest Management System - http://cms-dev.github.io/
 # Copyright © 2012 Giovanni Mascellani <mascellani@poisson.phc.unipi.it>
-# Copyright © 2013 Luca Wehrstedt <luca.wehrstedt@gmail.com>
+# Copyright © 2013-2014 Luca Wehrstedt <luca.wehrstedt@gmail.com>
 # Copyright © 2013 Bernard Blackham <bernard@largestprime.net>
 # Copyright © 2013 Stefano Maggiolo <s.maggiolo@gmail.com>
 #
@@ -42,7 +42,10 @@ from __future__ import unicode_literals
 import json
 from copy import deepcopy
 
-from cms.db import File, Manager, Executable, UserTestExecutable, Evaluation
+from cms.db import CompilationFile, EvaluationFile
+from cms.grading.files import File, FileSchema, \
+    get_format_for_compilation, get_files_for_compilation, \
+    get_format_for_evaluation, get_files_for_evaluation
 
 
 class Job(object):
@@ -116,31 +119,29 @@ class CompilationJob(Job):
     Can represent either the compilation of a user test, or of a
     submission, or of an arbitrary source (as used in cmsMake).
 
-    Input data (usually filled by ES): language, files,
-    managers. Output data (filled by the Worker): success,
-    compilation_success, executables, text, plus.
+    Input data (usually filled by ES): language, files, expected_files.
+    Output data (filled by the Worker): success, compilation_success,
+    files, text, plus.
 
     """
 
     def __init__(self, task_type=None, task_type_parameters=None,
-                 shard=None, sandboxes=None, info=None,
-                 language=None, files=None, managers=None,
-                 success=None, compilation_success=None,
-                 executables=None, text=None, plus=None):
+                 shard=None, sandboxes=None, info=None, language=None,
+                 files=None, expected_files=None, success=None,
+                 compilation_success=None, text=None, plus=None):
         """Initialization.
 
         See base class for the remaining arguments.
 
         language (string|None): the language of the submission / user
             test.
-        files ({string: File}|None): files submitted by the user.
-        managers ({string: Manager}|None): managers provided by the
-            admins.
+        files ({string: File}|None): all the files the process will
+            require.
+        expected_files ({string: FileSchema}|None): the schemas of the
+            files the process is expected to produce.
         success (bool|None): whether the job succeeded.
         compilation_success (bool|None): whether the compilation implicit
             in the job succeeded, or there was a compilation error.
-        executables ({string: Executable}|None): executables created
-            in the job.
         text ([object]|None): description of the outcome of the job,
             to be presented to the user. The first item is a string,
             potentially with %-escaping; the following items are the
@@ -150,19 +151,16 @@ class CompilationJob(Job):
         """
         if files is None:
             files = {}
-        if managers is None:
-            managers = {}
-        if executables is None:
-            executables = {}
+        if expected_files is None:
+            expected_files = {}
 
         Job.__init__(self, task_type, task_type_parameters,
                      shard, sandboxes, info)
         self.language = language
         self.files = files
-        self.managers = managers
+        self.expected_files = expected_files
         self.success = success
         self.compilation_success = compilation_success
-        self.executables = executables
         self.text = text
         self.plus = plus
 
@@ -171,14 +169,10 @@ class CompilationJob(Job):
         res.update({
             'type': 'compilation',
             'language': self.language,
-            'files': dict((k, v.digest)
-                          for k, v in self.files.iteritems()),
-            'managers': dict((k, v.digest)
-                             for k, v in self.managers.iteritems()),
+            'files': self.files,
+            'expected_files': self.expected_files,
             'success': self.success,
             'compilation_success': self.compilation_success,
-            'executables': dict((k, v.digest)
-                                for k, v in self.executables.iteritems()),
             'text': self.text,
             'plus': self.plus,
             })
@@ -187,11 +181,9 @@ class CompilationJob(Job):
     @classmethod
     def import_from_dict(cls, data):
         data['files'] = dict(
-            (k, File(k, v)) for k, v in data['files'].iteritems())
-        data['managers'] = dict(
-            (k, Manager(k, v)) for k, v in data['managers'].iteritems())
-        data['executables'] = dict(
-            (k, Executable(k, v)) for k, v in data['executables'].iteritems())
+            (k, File(*v)) for k, v in data['files'].iteritems())
+        data['expected_files'] = dict(
+            (k, FileSchema(*v)) for k, v in data['expected_files'].iteritems())
         return cls(**data)
 
 
@@ -201,32 +193,26 @@ class EvaluationJob(Job):
     Can represent either the evaluation of a user test, or of a
     submission, or of an arbitrary source (as used in cmsMake).
 
-    Input data (usually filled by ES): language, files, managers,
-    executables, input, output, time_limit, memory_limit. Output data
-    (filled by the Worker): success, outcome, text, user_output,
-    executables, text, plus. Metadata: only_execution, get_output.
+    Input data (usually filled by ES): language, files, expected_files,
+    time_limit, memory_limit. Output data (filled by the Worker):
+    success, outcome, files, text, plus. Metadata: only_execution,
+    get_output.
 
     """
     def __init__(self, task_type=None, task_type_parameters=None,
-                 shard=None, sandboxes=None, info=None,
-                 language=None, files=None, managers=None,
-                 executables=None, input=None, output=None,
-                 time_limit=None, memory_limit=None,
-                 success=None, outcome=None, text=None,
-                 user_output=None, plus=None,
-                 only_execution=False, get_output=False):
+                 shard=None, sandboxes=None, info=None, language=None,
+                 files=None, expected_files=None, time_limit=None,
+                 memory_limit=None, success=None, outcome=None, text=None,
+                 plus=None, only_execution=False, get_output=False):
         """Initialization.
 
         See base class for the remaining arguments.
 
         language (string|None): the language of the submission / user test.
-        files ({string: File}|None): files submitted by the user.
-        managers ({string: Manager}|None): managers provided by the
-            admins.
-        executables ({string: Executable}|None): executables created
-            in the compilation.
-        input (string|None): digest of the input file.
-        output (string|None): digest of the output file.
+        files ({string: File}|None): all the files the process will
+            require.
+        expected_files ({string: FileSchema}|None): the schemas of the
+            files the process is expected to produce.
         time_limit (float|None): user time limit in seconds.
         memory_limit (int|None): memory limit in bytes.
         success (bool|None): whether the job succeeded.
@@ -236,9 +222,6 @@ class EvaluationJob(Job):
             to be presented to the user. The first item is a string,
             potentially with %-escaping; the following items are the
             values to be %-formatted into the first.
-        user_output (unicode|None): if requested (with get_output),
-            the digest of the file containing the output of the user
-            program.
         plus ({}|None): additional metadata.
         only_execution (bool|None): whether to perform only the
             execution, or to compare the output with the reference
@@ -250,25 +233,19 @@ class EvaluationJob(Job):
         """
         if files is None:
             files = {}
-        if managers is None:
-            managers = {}
-        if executables is None:
-            executables = {}
+        if expected_files is None:
+            expected_files = {}
 
         Job.__init__(self, task_type, task_type_parameters,
                      shard, sandboxes, info)
         self.language = language
         self.files = files
-        self.managers = managers
-        self.executables = executables
-        self.input = input
-        self.output = output
+        self.expected_files = expected_files
         self.time_limit = time_limit
         self.memory_limit = memory_limit
         self.success = success
         self.outcome = outcome
         self.text = text
-        self.user_output = user_output
         self.plus = plus
         self.only_execution = only_execution
         self.get_output = get_output
@@ -278,20 +255,13 @@ class EvaluationJob(Job):
         res.update({
             'type': 'evaluation',
             'language': self.language,
-            'files': dict((k, v.digest)
-                          for k, v in self.files.iteritems()),
-            'managers': dict((k, v.digest)
-                             for k, v in self.managers.iteritems()),
-            'executables': dict((k, v.digest)
-                                for k, v in self.executables.iteritems()),
-            'input': self.input,
-            'output': self.output,
+            'files': self.files,
+            'expected_files': self.expected_files,
             'time_limit': self.time_limit,
             'memory_limit': self.memory_limit,
             'success': self.success,
             'outcome': self.outcome,
             'text': self.text,
-            'user_output': self.user_output,
             'plus': self.plus,
             'only_execution': self.only_execution,
             'get_output': self.get_output,
@@ -301,11 +271,9 @@ class EvaluationJob(Job):
     @classmethod
     def import_from_dict(cls, data):
         data['files'] = dict(
-            (k, File(k, v)) for k, v in data['files'].iteritems())
-        data['managers'] = dict(
-            (k, Manager(k, v)) for k, v in data['managers'].iteritems())
-        data['executables'] = dict(
-            (k, Executable(k, v)) for k, v in data['executables'].iteritems())
+            (k, File(*v)) for k, v in data['files'].iteritems())
+        data['expected_files'] = dict(
+            (k, FileSchema(*v)) for k, v in data['expected_files'].iteritems())
         return cls(**data)
 
 
@@ -348,25 +316,34 @@ class JobGroup(object):
     # Compilation
 
     @staticmethod
-    def from_submission_compilation(submission, dataset):
+    def prepare_compilation(submission, dataset):
+        operation = "compilation of submission %d(%d)" % (submission.id,
+                                                          dataset.id)
+
+        task_type = get_task_type(dataset=dataset)
+
+        # Verify language.
+        if language not in task_type.supported_languages:
+            logger.error("Language was not supported by TaskType %s when "
+                         "preparing %s.", task_type.name, operation)
+            raise ValueError("Language not supported.")
+
         job = CompilationJob()
 
-        # Job
         job.task_type = dataset.task_type
         job.task_type_parameters = dataset.task_type_parameters
-
-        # CompilationJob; dict() is required to detach the dictionary
-        # that gets added to the Job from the control of SQLAlchemy
+        job.info = operation
         job.language = submission.language
-        job.files = dict(submission.files)
-        job.managers = dict(dataset.managers)
-        job.info = "compile submission %d" % (submission.id)
+
+        provided, expected = get_format_for_compilation(dataset, language, operation)
+        job.files = get_files_for_compilation(provided, submission, dataset, operation)
+        job.expected_files = expected
 
         jobs = {"": job}
 
         return JobGroup(jobs)
 
-    def to_submission_compilation(self, sr):
+    def extract_compilation(self, sr):
         # This should actually be useless.
         sr.invalidate_compilation()
 
@@ -387,48 +364,69 @@ class JobGroup(object):
         sr.compilation_memory = job.plus.get('execution_memory')
         sr.compilation_shard = job.shard
         sr.compilation_sandbox = ":".join(job.sandboxes)
-        for executable in job.executables.itervalues():
-            sr.executables += [executable]
+
+        # We're placing great trust in the TaskType by not verifying
+        # the data we're storing. We should check the files against the
+        # expected_files field more thoroughly (max_size & optional),
+        # and maybe even generate that field from scratch to avoid
+        # (accidental?) changes.
+        for codename, schema in job.expected_files.iteritems():
+            if codename in job.files:
+                sr.compilation_files += [
+                    CompilationFile(codename, job.files[codename].digest)]
+            else:
+                # XXX Should we do something? Make the Job fail? Print
+                # a warning?
+                pass
 
     # Evaluation
 
     @staticmethod
-    def from_submission_evaluation(submission, dataset):
-        job = EvaluationJob()
-
-        # Job
-        job.task_type = dataset.task_type
-        job.task_type_parameters = dataset.task_type_parameters
-
+    def prepare_evaluation(submission, dataset):
         submission_result = submission.get_result(dataset)
-
         # This should have been created by now.
         assert submission_result is not None
 
-        # EvaluationJob; dict() is required to detach the dictionary
-        # that gets added to the Job from the control of SQLAlchemy
+        operation = "evaluation of submission %d(%d)" % (submission.id,
+                                                         dataset.id)
+
+        task_type = get_task_type(dataset=dataset)
+
+        # Verify language.
+        if submission.language not in task_type.supported_languages:
+            logger.error("Language was not supported by TaskType %s when "
+                         "preparing %s.", task_type.name, operation)
+            raise ValueError("Language not supported.")
+
+        # A template, containing the values common to all testcases.
+        job = EvaluationJob()
+
+        job.task_type = dataset.task_type
+        job.task_type_parameters = dataset.task_type_parameters
         job.language = submission.language
-        job.files = dict(submission.files)
-        job.managers = dict(dataset.managers)
-        job.executables = dict(submission_result.executables)
         job.time_limit = dataset.time_limit
         job.memory_limit = dataset.memory_limit
 
+        provided, expected = get_format_for_evaluation(dataset, language, operation)
+        job.expected_files = expected
+
+        # The actual Jobs, one for each testcase, indexed by codename.
         jobs = dict()
 
-        for k, testcase in dataset.testcases.iteritems():
+        for codename, testcase in dataset.testcases.iteritems():
+            operation = "evaluation of submission %d(%d) on testcase %s" % \
+                (submission.id, dataset.id, codename)
+
             job2 = deepcopy(job)
 
-            job2.input = testcase.input
-            job2.output = testcase.output
-            job2.info = "evaluate submission %d on testcase %s" % \
-                        (submission.id, testcase.codename)
+            job2.info = operation
+            job2.files = get_files_for_evaluation(provided, submission, dataset, submission_result, testcase, operation)
 
             jobs[k] = job2
 
         return JobGroup(jobs)
 
-    def to_submission_evaluation(self, sr):
+    def extract_evaluation(self, sr):
         # This should actually be useless.
         sr.invalidate_evaluation()
 
@@ -438,16 +436,31 @@ class JobGroup(object):
 
         sr.set_evaluation_outcome()
 
-        for test_name, job in self.jobs.iteritems():
+        for codename, job in self.jobs.iteritems():
             assert isinstance(job, EvaluationJob)
 
-            sr.evaluations += [Evaluation(
-                text=json.dumps(job.text, encoding='utf-8'),
+            evaluation = Evaluation(
                 outcome=job.outcome,
+                text=json.dumps(job.text, encoding='utf-8'),
                 execution_time=job.plus.get('execution_time'),
                 execution_wall_clock_time=job.plus.get(
                     'execution_wall_clock_time'),
                 execution_memory=job.plus.get('execution_memory'),
                 evaluation_shard=job.shard,
                 evaluation_sandbox=":".join(job.sandboxes),
-                testcase=sr.dataset.testcases[test_name])]
+                submission_result=sr,
+                testcase=sr.dataset.testcases[codename])
+
+            # We're placing great trust in the TaskType by not
+            # verifying the data we're storing. We should check the
+            # files against the expected_files field more thoroughly
+            # (max_size & optional), and maybe even generate that field
+            # from scratch to avoid (accidental?) changes.
+            for codename, schema in job.expected_files.iteritems():
+                if codename in job.files:
+                    evaluation.evaluation_files += [
+                        EvaluationFile(codename, job.files[codename].digest)]
+                else:
+                    # XXX Should we do something? Make the Job fail?
+                    # Print a warning?
+                    pass
