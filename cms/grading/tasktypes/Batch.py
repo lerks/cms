@@ -32,10 +32,9 @@ from cms.grading import get_compilation_commands, get_evaluation_commands, \
     compilation_step, evaluation_step, human_evaluation_message, \
     is_evaluation_passed, extract_outcome_and_text, white_diff_step
 from cms.grading.ParameterTypes import ParameterTypeCollection, \
-    ParameterTypeChoice, ParameterTypeString
+    ParameterTypeChoice, ParameterTypeString, ParameterTypeBoolean
 from cms.grading.TaskType import TaskType, \
     create_sandbox, delete_sandbox
-from cms.db import Executable
 
 
 logger = logging.getLogger(__name__)
@@ -81,23 +80,23 @@ class Batch(TaskType):
         {"alone": "Submissions are self-sufficient",
          "grader": "Submissions are compiled with a grader"})
 
-    _USE_FILE = ParameterTypeCollection(
-        "I/O (blank for stdin/stdout)",
-        "io",
+    _REDIRECT = ParameterTypeCollection(
+        "Redirect I/O files to stdin/stdout",
+        "redirect",
         "",
         [
-            ParameterTypeString("Input file", "inputfile", ""),
-            ParameterTypeString("Output file", "outputfile", ""),
+            ParameterTypeBoolean("Input file", "input", False),
+            ParameterTypeBoolean("Output file", "output", False),
         ])
 
     _EVALUATION = ParameterTypeChoice(
-        "Output evaluation",
-        "output_eval",
+        "Evaluation",
+        "evaluation",
         "",
-        {"diff": "Outputs compared with white diff",
+        {"white_diff": "Outputs compared with white diff",
          "comparator": "Outputs are compared by a comparator"})
 
-    ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION]
+    ACCEPTED_PARAMETERS = [_COMPILATION, _REDIRECT, _EVALUATION]
 
     @property
     def name(self):
@@ -124,6 +123,44 @@ class Batch(TaskType):
             res[language] = commands
         return res
 
+    supported_languages = LANGUAGES
+
+    user_file_format = \
+        [UserFileSchema(
+             lang, "source", "%(task)s" + SRC_MAP[lang], 102400, False)
+         for lang in supported_languages]
+
+    @property
+    def dataset_file_format(self):
+        result = []
+        if self.parameters[0] == "grader":
+            result += \
+                [DatasetFileSchema(
+                     lang, "grader", "grader" + SRC_MAP[lang], 102400, False)
+                 for lang in self.supported_languages] + \
+                [DatasetFileSchema(
+                     lang, "header", "grader" + HDR_MAP[lang], 102400, True)
+                 for lang in self.supported_languages]
+        if self.parameters[2] == "comparator":
+            result += \
+                [DatasetFileSchema(
+                     None, "checker", "checker", None, False)
+        return result
+
+    compilation_file_format = \
+        [CompilationFileSchema(
+             None, "executable", "%(task)s", None, False)]
+
+    testcase_file_format = \
+        [TestcaseFileSchema(
+             None, "input", "input.txt", 5242880, False)] + \
+        [TestcaseFileSchema(
+             None, "result", "res.txt", None, False)]
+
+    execution_file_format = \
+        [ExecutionFileSchema(
+             None, "input", "output.txt", 102400, False)]
+
     def get_user_managers(self, submission_format):
         """See TaskType.get_user_managers."""
         return []
@@ -134,56 +171,28 @@ class Batch(TaskType):
 
     def compile(self, job, file_cacher):
         """See TaskType.compile."""
-        # Detect the submission's language. The checks about the
-        # formal correctedness of the submission are done in CWS,
-        # before accepting it.
-        language = job.language
-        source_ext = LANGUAGE_TO_SOURCE_EXT_MAP[language]
-
-        # TODO: here we are sure that submission.files are the same as
-        # task.submission_format. The following check shouldn't be
-        # here, but in the definition of the task, since this actually
-        # checks that task's task type and submission format agree.
-        if len(job.files) != 1:
-            job.success = True
-            job.compilation_success = False
-            job.text = [N_("Invalid files in submission")]
-            logger.error("Submission contains %d files, expecting 1" %
-                         len(job.files), extra={"operation": job.info})
-            return True
+        # The adherence of the submission files to the format published
+        # by the TaskType has already been verified by CMS.
 
         # Create the sandbox
         sandbox = create_sandbox(file_cacher)
         job.sandboxes.append(sandbox.path)
 
         # Prepare the source files in the sandbox
-        files_to_get = {}
-        format_filename = job.files.keys()[0]
-        source_filenames = []
-        source_filenames.append(format_filename.replace(".%l", source_ext))
-        files_to_get[source_filenames[0]] = \
-            job.files[format_filename].digest
-        # If a grader is specified, we add to the command line (and to
-        # the files to get) the corresponding manager. The grader must
-        # be the first file in source_filenames.
+        files = [job.files["source"]]
+        # If a grader is specified we add it.
         if self.parameters[0] == "grader":
-            source_filenames.insert(0, "grader%s" % source_ext)
-            files_to_get["grader%s" % source_ext] = \
-                job.managers["grader%s" % source_ext].digest
+            files += [job.files["grader"]]
+            if "header" in job.files:
+                files += [job.files["header"]]
 
-        # Also copy all *.h and *lib.pas graders
-        for filename in job.managers.iterkeys():
-            if any(filename.endswith(header)
-                   for header in LANGUAGE_TO_HEADER_EXT_MAP.itervalues()):
-                files_to_get[filename] = \
-                    job.managers[filename].digest
-
-        for filename, digest in files_to_get.iteritems():
+        for filename, digest in files:
             sandbox.create_file_from_storage(filename, digest)
 
         # Prepare the compilation command
-        executable_filename = format_filename.replace(".%l", "")
-        commands = get_compilation_commands(language,
+        source_filenames = [filename for filename, digest in files]
+        executable_filename = job.expected_files["executable"].filename
+        commands = get_compilation_commands(job.language,
                                             source_filenames,
                                             executable_filename)
 
@@ -197,12 +206,11 @@ class Batch(TaskType):
         job.plus = plus
         job.text = text
         if operation_success and compilation_success:
+            # FIXME Truncate?
             digest = sandbox.get_file_to_storage(
                 executable_filename,
-                "Executable %s for %s" %
-                (executable_filename, job.info))
-            job.executables[executable_filename] = \
-                Executable(executable_filename, digest)
+                "Executable %s for %s" % (executable_filename, job.info))
+            job.files["executable"] = File(executable_filename, digest)
 
         # Cleanup
         delete_sandbox(sandbox)
@@ -213,31 +221,24 @@ class Batch(TaskType):
         sandbox = create_sandbox(file_cacher)
 
         # Prepare the execution
-        executable_filename = job.executables.keys()[0]
-        language = job.language
-        commands = get_evaluation_commands(language, executable_filename)
-        executables_to_get = {
-            executable_filename:
-            job.executables[executable_filename].digest
-            }
-        input_filename, output_filename = self.parameters[1]
+        executable = job.files["executable"]
+        input_ = job.files["input"]
+        output = job.expected_files["output"]
+
+        # Prepare the evaluation command
+        commands = get_evaluation_commands(job.language, executable.filename)
+
         stdin_redirect = None
         stdout_redirect = None
-        if input_filename == "":
-            input_filename = "input.txt"
-            stdin_redirect = input_filename
-        if output_filename == "":
-            output_filename = "output.txt"
-            stdout_redirect = output_filename
-        files_to_get = {
-            input_filename: job.input
-            }
+        if self.parameters[1][0]:
+            stdin_redirect = input_.filename
+        if self.parameters[1][1]:
+            stdout_redirect = output.filename
 
         # Put the required files into the sandbox
-        for filename, digest in executables_to_get.iteritems():
-            sandbox.create_file_from_storage(filename, digest, executable=True)
-        for filename, digest in files_to_get.iteritems():
-            sandbox.create_file_from_storage(filename, digest)
+        sandbox.create_file_from_storage(
+            executable.filename, executable.digest, executable=True)
+        sandbox.create_file_from_storage(input_.filename, input_.digest)
 
         # Actually performs the execution
         success, plus = evaluation_step(
@@ -262,6 +263,7 @@ class Batch(TaskType):
         elif not is_evaluation_passed(plus):
             outcome = 0.0
             text = human_evaluation_message(plus)
+            # FIXME
             if job.get_output:
                 job.user_output = None
 
@@ -269,20 +271,22 @@ class Batch(TaskType):
         else:
 
             # Check that the output file was created
-            if not sandbox.file_exists(output_filename):
+            if not sandbox.file_exists(output.filename):
                 outcome = 0.0
                 text = [N_("Evaluation didn't produce file %s"),
-                        output_filename]
+                        output.filename]
+                # FIXME
                 if job.get_output:
                     job.user_output = None
 
             else:
                 # If asked so, put the output file into the storage
                 if job.get_output:
-                    job.user_output = sandbox.get_file_to_storage(
-                        output_filename,
+                    digest = sandbox.get_file_to_storage(
+                        output.filename,
                         "Output file in job %s" % job.info,
-                        trunc_len=100 * 1024)
+                        trunc_len=output.max_size)
+                    job.files["output"] = File(output.filename, digest)
 
                 # If just asked to execute, fill text and set dummy
                 # outcome.
@@ -294,35 +298,27 @@ class Batch(TaskType):
                 else:
 
                     # Put the reference solution into the sandbox
-                    sandbox.create_file_from_storage(
-                        "res.txt",
-                        job.output)
+                    result = job.files["result"]
+                    sandbox.create_file_from_storage(result.filename,
+                                                     result.digest)
 
                     # Check the solution with white_diff
-                    if self.parameters[2] == "diff":
+                    if self.parameters[2] == "white_diff":
                         outcome, text = white_diff_step(
-                            sandbox, output_filename, "res.txt")
+                            sandbox, output.filename, result.filename)
 
                     # Check the solution with a comparator
                     elif self.parameters[2] == "comparator":
-                        manager_filename = "checker"
+                        checker = job.files["checker"]
+                        sandbox.create_file_from_storage(checker.filename,
+                                                         checker.digest,
+                                                         executable=True)
 
-                        if not manager_filename in job.managers:
-                            logger.error("Configuration error: missing or "
-                                         "invalid comparator (it must be "
-                                         "named 'checker')",
-                                         extra={"operation": job.info})
-                            success = False
+                        success, _ = evaluation_step(
+                            sandbox,
+                            [["./%s" % checker.filename, input_.filename,
+                              result.filename, output.filename]])
 
-                        else:
-                            sandbox.create_file_from_storage(
-                                manager_filename,
-                                job.managers[manager_filename].digest,
-                                executable=True)
-                            success, _ = evaluation_step(
-                                sandbox,
-                                [["./%s" % manager_filename,
-                                  input_filename, "res.txt", output_filename]])
                         if success:
                             try:
                                 outcome, text = \
