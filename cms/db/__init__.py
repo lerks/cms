@@ -55,11 +55,14 @@ __all__ = [
     # user
     "User", "Message", "Question",
     # task
-    "Task", "Statement", "Attachment", "SubmissionFormatElement", "Dataset",
-    "Manager", "Testcase",
+    "Task", "Statement", "Attachment", "Dataset", "Testcase",
     # submission
-    "Submission", "File", "Token", "SubmissionResult", "Executable",
-    "Evaluation",
+    "Submission", "Token", "SubmissionResult", "Evaluation",
+    # files
+    "FileSchema", "UserFileSchema", "DatasetFileSchema",
+    "CompilationFileSchema", "TestcaseFileSchema", "ExecutionFileSchema",
+    "UserFile", "DatasetFile", "CompilationFile", "TestcaseFile",
+    "ExecutionFile",
     # printjob
     "PrintJob",
     # fsobject
@@ -90,10 +93,11 @@ from .types import RepeatedUnicode
 from .base import metadata, Base
 from .contest import Contest, Announcement
 from .user import User, Message, Question
-from .task import Task, Statement, Attachment, SubmissionFormatElement, \
-    Dataset, Manager, Testcase
-from .submission import Submission, File, Token, SubmissionResult, \
-    Executable, Evaluation
+from .task import Task, Statement, Attachment, Dataset, Testcase
+from .submission import Submission, Token, SubmissionResult, Evaluation
+from .files import FileSchema, UserFileSchema, DatasetFileSchema, \
+    CompilationFileSchema, TestcaseFileSchema, ExecutionFileSchema, \
+    UserFile, DatasetFile, CompilationFile, TestcaseFile, ExecutionFile
 from .printjob import PrintJob
 from .fsobject import FSObject
 

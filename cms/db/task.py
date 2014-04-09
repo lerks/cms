@@ -211,7 +211,6 @@ class Task(Base):
     # datasets (list of Dataset objects)
     # statements (dict of Statement objects indexed by language code)
     # attachments (dict of Attachment objects indexed by filename)
-    # submission_format (list of SubmissionFormatElement objects)
     # submissions (list of Submission objects)
     # user_tests (list of UserTest objects)
 
@@ -297,38 +296,6 @@ class Attachment(Base):
         nullable=False)
 
 
-class SubmissionFormatElement(Base):
-    """Class to store the requested files that a submission must
-    include. Filenames may include %l to represent an accepted
-    language extension.
-
-    """
-    __tablename__ = 'submission_format_elements'
-
-    # Auto increment primary key.
-    id = Column(
-        Integer,
-        primary_key=True)
-
-    # Task (id and object) owning the submission format element.
-    task_id = Column(
-        Integer,
-        ForeignKey(Task.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    task = relationship(
-        Task,
-        backref=backref('submission_format',
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
-
-    # Format of the given submission file.
-    filename = Column(
-        Unicode,
-        nullable=False)
-
-
 class Dataset(Base):
     """Class to store the information about a data set.
 
@@ -403,7 +370,12 @@ class Dataset(Base):
 
     # Follows the description of the fields automatically added by
     # SQLAlchemy.
-    # managers (dict of Manager objects indexed by filename)
+    # user_file_schemas (list of UserFileSchema objects)
+    # dataset_file_schemas (list of DatasetFileSchema objects)
+    # compilation_file_schemas (list of CompilationFileSchema objects)
+    # testcase_file_schemas (list of TestcaseFileSchema objects)
+    # execution_file_schemas (list of ExecutionFileSchema objects)
+    # dataset_files (list of DatasetFile objects)
     # testcases (dict of Testcase objects indexed by codename)
 
     @property
@@ -415,44 +387,6 @@ class Dataset(Base):
 
         """
         return self is self.task.active_dataset
-
-
-class Manager(Base):
-    """Class to store additional files needed to compile or evaluate a
-    submission (e.g., graders).
-
-    """
-    __tablename__ = 'managers'
-    __table_args__ = (
-        UniqueConstraint('dataset_id', 'filename'),
-    )
-
-    # Auto increment primary key.
-    id = Column(
-        Integer,
-        primary_key=True)
-
-    # Dataset (id and object) owning the manager.
-    dataset_id = Column(
-        Integer,
-        ForeignKey(Dataset.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
-    dataset = relationship(
-        Dataset,
-        backref=backref('managers',
-                        collection_class=smart_mapped_collection('filename'),
-                        cascade="all, delete-orphan",
-                        passive_deletes=True))
-
-    # Filename and digest of the provided manager.
-    filename = Column(
-        Unicode,
-        nullable=False)
-    digest = Column(
-        String,
-        nullable=False)
 
 
 class Testcase(Base):
@@ -495,10 +429,6 @@ class Testcase(Base):
         nullable=False,
         default=False)
 
-    # Digests of the input and output files.
-    input = Column(
-        String,
-        nullable=False)
-    output = Column(
-        String,
-        nullable=False)
+    # Follows the description of the fields automatically added by
+    # SQLAlchemy.
+    # testcase_files (list of TestcaseFile objects)
