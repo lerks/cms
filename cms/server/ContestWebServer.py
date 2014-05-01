@@ -171,9 +171,6 @@ class BaseHandler(CommonRequestHandler):
                 and not check_ip(self.request.remote_ip, user.ip):
             self.clear_cookie("login")
             return None
-        if config.block_hidden_users and user.hidden:
-            self.clear_cookie("login")
-            return None
 
         if self.refresh_cookie:
             self.set_secure_cookie("login",
@@ -557,12 +554,6 @@ class LoginHandler(BaseHandler):
         if config.ip_lock and user.ip is not None \
                 and not check_ip(self.request.remote_ip, user.ip):
             logger.info("Unexpected IP: user=%s pass=%s remote_ip=%s." %
-                        (filtered_user, filtered_pass, self.request.remote_ip))
-            self.redirect("/?login_error=true")
-            return
-        if user.hidden and config.block_hidden_users:
-            logger.info("Hidden user login attempt: "
-                        "user=%s pass=%s remote_ip=%s." %
                         (filtered_user, filtered_pass, self.request.remote_ip))
             self.redirect("/?login_error=true")
             return
