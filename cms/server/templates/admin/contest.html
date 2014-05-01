@@ -98,6 +98,10 @@
       <td>The number of decimal places the scores will be rounded to</td>
       <td><input type="text" name="score_precision" value="{{ contest.score_precision }}"></td>
     </tr>
+    <tr>
+      <td>Hide from public scoreboard?</td>
+      <td><input type="checkbox" name="rws_hidden" {% if contest.rws_hidden %}checked{% end %}/></td>
+    </tr>
   </table>
   <input type="submit" value="Update">
   <input type="reset" value="Reset">

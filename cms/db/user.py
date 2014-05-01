@@ -87,8 +87,9 @@ class User(Base):
         Unicode,
         nullable=True)
 
-    # A hidden user is used only for debugging purpose.
-    hidden = Column(
+    # Determine whether to send data about this user (and its
+    # submissions) to the RankingWebServers.
+    rws_hidden = Column(
         Boolean,
         nullable=False,
         default=False)

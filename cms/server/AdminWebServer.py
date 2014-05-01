@@ -612,6 +612,7 @@ class AddContestHandler(BaseHandler):
             self.get_string(attrs, "timezone", empty=None)
             self.get_timedelta_sec(attrs, "per_user_time")
             self.get_int(attrs, "score_precision")
+            self.get_bool(attrs, "rws_hidden")
 
             # Create the contest.
             contest = Contest(**attrs)
@@ -679,6 +680,7 @@ class ContestHandler(BaseHandler):
             self.get_string(attrs, "timezone", empty=None)
             self.get_timedelta_sec(attrs, "per_user_time")
             self.get_int(attrs, "score_precision")
+            self.get_bool(attrs, "rws_hidden")
 
             # Update the contest.
             contest.set_attrs(attrs)
@@ -1505,6 +1507,7 @@ class AddTaskHandler(BaseHandler):
             self.get_timedelta_sec(attrs, "min_user_test_interval")
 
             self.get_int(attrs, "score_precision")
+            self.get_bool(attrs, "rws_hidden")
 
             # Create the task.
             attrs["num"] = len(self.contest.tasks)
@@ -1596,6 +1599,7 @@ class TaskHandler(BaseHandler):
             self.get_timedelta_sec(attrs, "min_user_test_interval")
 
             self.get_int(attrs, "score_precision")
+            self.get_bool(attrs, "rws_hidden")
 
             # Update the task.
             task.set_attrs(attrs)
@@ -1766,7 +1770,7 @@ class UserViewHandler(BaseHandler):
             self.get_datetime(attrs, "starting_time")
             self.get_timedelta_sec(attrs, "extra_time")
 
-            self.get_bool(attrs, "hidden")
+            self.get_bool(attrs, "rws_hidden")
             self.get_string(attrs, "primary_statements")
 
             # Update the user.
@@ -1806,7 +1810,7 @@ class AddUserHandler(SimpleContestHandler("add_user.html")):
             self.get_datetime(attrs, "starting_time")
             self.get_timedelta_sec(attrs, "extra_time")
 
-            self.get_bool(attrs, "hidden")
+            self.get_bool(attrs, "rws_hidden")
             self.get_string(attrs, "primary_statements")
 
             # Create the user.

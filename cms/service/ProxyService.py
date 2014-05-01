@@ -294,8 +294,12 @@ class ProxyService(Service):
 
         with SessionGen() as session:
             for contest in get_contest_list(session):
+                if contest.rws_hidden:
+                    continue
+
                 for submission in contest.get_submissions():
-                    if submission.user.hidden:
+                    if submission.user.rws_hidden or \
+                            submission.task.rws_hidden:
                         continue
 
                     if submission.get_result().scored() and \
@@ -328,6 +332,9 @@ class ProxyService(Service):
 
         with SessionGen() as session:
             for contest in get_contest_list(session):
+                if contest.rws_hidden:
+                    continue
+
                 contests[encode_id(contest.name)] = {
                     "name": contest.description,
                     "begin": int(make_timestamp(contest.start)),
@@ -335,13 +342,18 @@ class ProxyService(Service):
                     "score_precision": contest.score_precision}
 
                 for user in contest.users:
-                    if not user.hidden:
-                        users[encode_id(user.username)] = \
-                            {"f_name": user.first_name,
-                             "l_name": user.last_name,
-                             "team": None}
+                    if user.rws_hidden:
+                        continue
+
+                    users[encode_id(user.username)] = \
+                        {"f_name": user.first_name,
+                         "l_name": user.last_name,
+                         "team": None}
 
                 for task in contest.tasks:
+                    if task.rws_hidden:
+                        continue
+
                     score_type = get_score_type(dataset=task.active_dataset)
                     tasks[encode_id(task.name)] = \
                         {"short_name": task.name,
@@ -457,9 +469,19 @@ class ProxyService(Service):
                              "unexistent submission id %s." % submission_id)
                 raise KeyError("Submission not found.")
 
-            if submission.user.hidden:
+            if submission.user.rws_hidden:
                 logger.info("[submission_scored] Score for submission %d "
                             "not sent because user is hidden." % submission_id)
+                return
+
+            if submission.task.rws_hidden:
+                logger.info("[submission_scored] Score for submission %d "
+                            "not sent because task is hidden." % submission_id)
+                return
+
+            if submission.task.contest.rws_hidden:
+                logger.info("[submission_scored] Score for submission %d "
+                            "not sent because contest is hidden." % submission_id)
                 return
 
             # Update RWS.
@@ -484,9 +506,19 @@ class ProxyService(Service):
                              "unexistent submission id %s." % submission_id)
                 raise KeyError("Submission not found.")
 
-            if submission.user.hidden:
+            if submission.user.rws_hidden:
                 logger.info("[submission_tokened] Token for submission %d "
                             "not sent because user is hidden." % submission_id)
+                return
+
+            if submission.task.rws_hidden:
+                logger.info("[submission_tokened] Token for submission %d "
+                            "not sent because task is hidden." % submission_id)
+                return
+
+            if submission.task.contest.rws_hidden:
+                logger.info("[submission_tokened] Token for submission %d "
+                            "not sent because contest is hidden." % submission_id)
                 return
 
             # Update RWS.
@@ -510,6 +542,9 @@ class ProxyService(Service):
             task = Task.get_from_id(task_id, session)
             dataset = task.active_dataset
 
+            if task.rws_hidden or task.contest.rws_hidden:
+                return
+
             logger.info("Dataset update for task %d (dataset now is %d)." % (
                 task.id, dataset.id))
 
@@ -518,6 +553,6 @@ class ProxyService(Service):
 
             for submission in task.submissions:
                 # Update RWS.
-                if not submission.user.hidden and \
+                if not submission.user.rws_hidden and \
                         submission.get_result().scored():
                     self.send_score(submission)

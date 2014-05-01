@@ -345,6 +345,10 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
         <td>The number of decimal places the scores will be rounded to</td>
         <td><input type="text" name="score_precision" value="{{ task.score_precision }}"></td>
       </tr>
+      <tr>
+        <td>Hide from public scoreboard?</td>
+        <td><input type="checkbox" name="rws_hidden" {% if task.rws_hidden %}checked{% end %}/></td>
+      </tr>
     </table>
     <div class="hr"></div>
   </div>

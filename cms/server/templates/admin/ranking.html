@@ -19,7 +19,6 @@ Download as <a href="{{ url_root }}/ranking/{{ contest.id }}/csv">csv</a>, <a hr
   </thead>
   <tbody>
     {% for user in sorted(contest.users, key=lambda u: u.username) %}
-      {% if not user.hidden %}
     <tr>
       {% set score = 0.0 %}
       {% set partial = False %}
@@ -34,7 +33,6 @@ Download as <a href="{{ url_root }}/ranking/{{ contest.id }}/csv">csv</a>, <a hr
       {% end %}
       <td>{{ round(score, contest.score_precision) }}{% if partial %}*{% end %}</td>
     </tr>
-      {% end %}
     {% end %}
   </tbody>
 </table>

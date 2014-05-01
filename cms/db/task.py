@@ -191,6 +191,13 @@ class Task(Base):
         nullable=False,
         default=0)
 
+    # Determine whether to send data about this task (and its
+    # submissions) to the RankingWebServers.
+    rws_hidden = Column(
+        Boolean,
+        nullable=False,
+        default=False)
+
     # Active Dataset (id and object) currently being used for scoring.
     # The ForeignKeyConstraint for this column is set at table-level.
     active_dataset_id = Column(

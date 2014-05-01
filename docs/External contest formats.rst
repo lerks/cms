@@ -78,7 +78,7 @@ The following are optional keys.
 
 - ``ip`` (string): the IP address or subnet from which incoming connections for this user are accepted, see :ref:`configuringacontest_login`.
 
-- ``hidden`` (boolean; also accepted: ``fake``): when set to true set the ``hidden`` flag in the user; defaults to false (the case-sensitive _string_ ``True`` is also accepted).
+- ``hidden`` (boolean; also accepted: ``fake``): when set to true set the ``rws_hidden`` flag in the user; defaults to false (the case-sensitive _string_ ``True`` is also accepted).
 
 
 Task directory

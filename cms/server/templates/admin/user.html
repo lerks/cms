@@ -197,8 +197,8 @@ function update_additional_answer(element, invoker)
         <td><input type="text" name="extra_time" value="{{ int(selected_user.extra_time.total_seconds()) }}"></td>
       </tr>
       <tr>
-        <td>Hidden?</td>
-        <td><input type="checkbox" name="hidden" {% if selected_user.hidden %}checked{% end %}/></td>
+        <td>Hide from public scoreboard?</td>
+        <td><input type="checkbox" name="rws_hidden" {% if selected_user.rws_hidden %}checked{% end %}/></td>
       </tr>
       <tr>
         <td>Primary statements (JSON-encoded dict whose keys are task names and whose values are lists of language codes)</td>

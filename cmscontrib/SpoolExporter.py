@@ -86,12 +86,12 @@ class SpoolExporter(object):
             self.submissions = sorted(
                 (submission
                  for submission in self.contest.get_submissions()
-                 if not submission.user.hidden),
+                 if not submission.user.rws_hidden),
                 key=lambda submission: submission.timestamp)
 
             # Creating users' directory.
             for user in self.contest.users:
-                if not user.hidden:
+                if not user.rws_hidden:
                     os.mkdir(os.path.join(self.upload_dir, user.username))
 
             try:
@@ -182,14 +182,14 @@ class SpoolExporter(object):
         # Create the structure to store the scores.
         scores = dict((user.username, 0.0)
                       for user in self.contest.users
-                      if not user.hidden)
+                      if not user.rws_hidden)
         task_scores = dict((task.id, dict((user.username, 0.0)
                                           for user in self.contest.users
-                                          if not user.hidden))
+                                          if not user.rws_hidden))
                            for task in self.contest.tasks)
         last_scores = dict((task.id, dict((user.username, 0.0)
                                           for user in self.contest.users
-                                          if not user.hidden))
+                                          if not user.rws_hidden))
                            for task in self.contest.tasks)
 
         # Make the score type compute the scores.
