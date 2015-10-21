@@ -3,6 +3,7 @@
 
 # Contest Management System - http://cms-dev.github.io/
 # Copyright © 2015 Stefano Maggiolo <s.maggiolo@gmail.com>
+# Copyright © 2015 Luca Wehrstedt <luca.wehrstedt@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -26,65 +27,18 @@ import tornado.web
 
 
 class ReevaluationButtons(tornado.web.UIModule):
-    def render(self,
-               url_root,
-               contest_id=None,
-               submission_id=None,
-               dataset_id=None,
-               participation_id=None,
-               user_id=None):
+    def render(self, url_root, url, **invalidate_arguments):
         """Render reevaluation buttons for the given filters.
 
-        These are the possible configuration of not-none arguments
-        received (other might work but needs to be checked):
-        - contest_id: all submissions in the contest watched by ES or
-          SS are invalidated (regardless of the actual id passed);
-        - dataset_id: all submission for the task identified by the
-          dataset are reevaluated for that dataset;
-        - submission_id, dataset_id: the submission is reevaluated for
-          the given dataset;
-        - participation_id, user_id, contest_id: all submissions for
-          the participation are reevaluated, for all datasets (user_id
-          and contest_id are used only for rendering the correct
-          link, as they are implied by the participation_id).
-
         url_root (unicode): path to the root of the server.
-        contest_id (int|None): the id of the contest containing the
-            submission results to invalidate, or None not to filter
-            for contest.
-        submission_id (int|None): id of the submission to invalidate,
-            or None.
-        dataset_id (int|None): id of the dataset to invalidate, or
-            None.
-        participation_id (int|None): id of the participation to
-            invalidate, or None.
-        user_id (int|None): id of the user (mandatory if participation_id
-            is given, to write the redirect).
+        url (unicode): the url to redirect the user to after they
+            performed the reevaluation.
+        invalidate_arguments (dict): a set of constraints, of the form
+            "<entity>_id: <int>", defining which submissions have to be
+            reevaluated; accepts all combinations supported by the
+            invalidate_submission method of ES and SS.
 
         """
-        url = "%s/" % url_root
-        invalidate_arguments = {}
-        if submission_id is not None:
-            # A specific submission for a specific dataset (if
-            # specified) or for the live dataset.
-            url += "submission/%s" % submission_id
-            invalidate_arguments["submission_id"] = submission_id
-            if dataset_id is not None:
-                url += "/%s" % dataset_id
-                invalidate_arguments["dataset_id"] = dataset_id
-        elif participation_id is not None:
-            # All submissions of the participation.
-            url += "contest/%s/user/%s" % (contest_id, user_id)
-            invalidate_arguments["participation_id"] = participation_id
-        elif dataset_id is not None:
-            url += "dataset/%s" % dataset_id
-            invalidate_arguments["dataset_id"] = dataset_id
-        else:
-            # Reevaluate all submission in the specified contest.
-            # TODO: block request to invalidate contests different
-            # from those running in ES/SS.
-            url += "contest/%s/submissions" % (contest_id)
-
         return self.render_string(
             "views/reevaluation_buttons.html",
             url_root=url_root,

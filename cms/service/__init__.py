@@ -5,7 +5,7 @@
 # Copyright © 2010-2014 Giovanni Mascellani <mascellani@poisson.phc.unipi.it>
 # Copyright © 2010-2015 Stefano Maggiolo <s.maggiolo@gmail.com>
 # Copyright © 2010-2012 Matteo Boscariol <boscarim@hotmail.com>
-# Copyright © 2013 Luca Wehrstedt <luca.wehrstedt@gmail.com>
+# Copyright © 2013-2015 Luca Wehrstedt <luca.wehrstedt@gmail.com>
 # Copyright © 2013 Bernard Blackham <bernard@largestprime.net>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -34,11 +34,11 @@ from cms.db import SessionGen, Participation, Submission, SubmissionResult, \
 logger = logging.getLogger(__name__)
 
 
-def get_submissions(contest_id=None, participation_id=None, task_id=None,
-                    submission_id=None, session=None):
+def get_submissions(contest_id=None, task_id=None, user_id=None,
+                    participation_id=None,submission_id=None, session=None):
     """Search for submissions that match the given criteria
 
-    The submissions will be returned as a list, and the first four
+    The submissions will be returned as a list, and the first five
     parameters determine the filters used to decide which submissions
     to include. Some of them are incompatible, that is they cannot be
     non-None at the same time. When this happens it means that one of
@@ -48,9 +48,10 @@ def get_submissions(contest_id=None, participation_id=None, task_id=None,
     and errors.
 
     contest_id (int|None): id of the contest to filter with, or None.
+    task_id (int|None): id of the task to filter with, or None.
+    user_id (int|None): id of the user to filter with, or None.
     participation_id (int|None): id of the participation to filter with, or
         None.
-    task_id (int|None): id of the task to filter with, or None.
     submission_id (int|None): id of the submission to filter with, or
         None.
     session (Session|None): the database session to use, or None to
@@ -67,16 +68,13 @@ def get_submissions(contest_id=None, participation_id=None, task_id=None,
 
     if task_id is not None and contest_id is not None:
         raise ValueError("contest_id is superfluous if task_id is given")
-    if participation_id is not None and contest_id is not None:
-        raise ValueError(
-            "contest_id is superfluous if participation_id is given")
-    if submission_id is not None and contest_id is not None:
-        raise ValueError("contest_id is superfluous if submission_id is given")
-    if submission_id is not None and task_id is not None:
-        raise ValueError("task_id is superfluous if submission_id is given")
-    if submission_id is not None and participation_id is not None:
-        raise ValueError(
-            "participation_id is superfluous if submission_id is given")
+    if participation_id is not None and {contest_id, user_id} != {None}:
+        raise ValueError("contest_id and user_id are superfluous "
+                         "if participation_id is given")
+    if submission_id is not None and \
+            {contest_id, task_id, user_id, participation_id} != {None}:
+        raise ValueError("contest_id, task_id, user_id and participation_id "
+                         "are superfluous if submission_id is given")
 
     query = session.query(Submission)
     if submission_id is not None:
@@ -84,6 +82,9 @@ def get_submissions(contest_id=None, participation_id=None, task_id=None,
     if participation_id is not None:
         query = query.join(Participation) \
             .filter(Participation.id == participation_id)
+    if user_id is not None:
+        query = query.join(Participation) \
+            .filter(Participation.user_id == user_id)
     if task_id is not None:
         query = query.filter(Submission.task_id == task_id)
     if contest_id is not None:
@@ -93,13 +94,13 @@ def get_submissions(contest_id=None, participation_id=None, task_id=None,
     return query.all()
 
 
-def get_submission_results(contest_id=None, participation_id=None,
-                           task_id=None, submission_id=None,
-                           dataset_id=None, session=None):
+def get_submission_results(contest_id=None, task_id=None, dataset_id=None,
+                           user_id=None, participation_id=None,
+                           submission_id=None, session=None):
     """Search for submission results that match the given criteria
 
     The submission results will be returned as a list, and the first
-    five parameters determine the filters used to decide which
+    six parameters determine the filters used to decide which
     submission results to include. Some of them are incompatible, that
     is they cannot be non-None at the same time. When this happens it
     means that one of the parameters "implies" the other (for example,
@@ -108,12 +109,13 @@ def get_submission_results(contest_id=None, participation_id=None,
     inconsistencies and errors.
 
     contest_id (int|None): id of the contest to filter with, or None.
+    task_id (int|None): id of the task to filter with, or None.
+    dataset_id (int|None): id of the dataset to filter with, or None.
+    user_id (int|None): id of the user to filter with, or None.
     participation_id (int|None): id of the participation to filter with,
         or None.
-    task_id (int|None): id of the task to filter with, or None.
     submission_id (int|None): id of the submission to filter with, or
         None.
-    dataset_id (int|None): id of the dataset to filter with, or None.
     session (Session|None): the database session to use, or None to
         use a temporary one.
 
@@ -129,29 +131,28 @@ def get_submission_results(contest_id=None, participation_id=None,
 
     if task_id is not None and contest_id is not None:
         raise ValueError("contest_id is superfluous if task_id is given")
-    if participation_id is not None and contest_id is not None:
-        raise ValueError(
-            "contest_id is superfluous if participation_id is given")
-    if submission_id is not None and contest_id is not None:
-        raise ValueError("contest_id is superfluous if submission_id is given")
-    if submission_id is not None and task_id is not None:
-        raise ValueError("task_id is superfluous if submission_id is given")
-    if submission_id is not None and participation_id is not None:
-        raise ValueError(
-            "participation_id is superfluous if submission_id is given")
-    if dataset_id is not None and task_id is not None:
-        raise ValueError("task_id is superfluous if dataset_id is given")
-    if dataset_id is not None and contest_id is not None:
-        raise ValueError("contest_id is superfluous if dataset_id is given")
+    if dataset_id is not None and {contest_id, task_id} != {None}:
+        raise ValueError("contest_id and task_id are superfluous "
+                         "if dataset_id is given")
+    if participation_id is not None and {contest_id, user_id} != {None}:
+        raise ValueError("contest_id and user_id are superfluous "
+                         "if participation_id is given")
+    if submission_id is not None and \
+            {contest_id, task_id, user_id, participation_id} != {None}:
+        raise ValueError("contest_id, task_id, user_id and participation_id "
+                         "are superfluous if submission_id is given")
 
     query = session.query(SubmissionResult).join(Submission)
     if submission_id is not None:
         query = query.filter(SubmissionResult.submission_id == submission_id)
-    if dataset_id is not None:
-        query = query.filter(SubmissionResult.dataset_id == dataset_id)
     if participation_id is not None:
         query = query.join(Participation) \
             .filter(Participation.id == participation_id)
+    if user_id is not None:
+        query = query.join(Participation) \
+            .filter(Participation.user_id == user_id)\
+    if dataset_id is not None:
+        query = query.filter(SubmissionResult.dataset_id == dataset_id)
     if task_id is not None:
         query = query.filter(Submission.task_id == task_id)
     if contest_id is not None:

@@ -110,7 +110,7 @@
   </td>
   <td>
     {% module ReevaluationButtons(
-           url_root,
+           url_root, "submission/%s/%s" % (s.id, dataset.id),
            submission_id=s.id,
            dataset_id=dataset.id) %}
   </td>

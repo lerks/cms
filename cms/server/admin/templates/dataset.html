@@ -18,11 +18,10 @@
   <p>
     Reevaluate all {{ submission_count }} submissions for this dataset
     {% module ReevaluationButtons(
-           url_root,
+           url_root, "dataset/%s" % shown_dataset.id,
            dataset_id=shown_dataset.id) %}
   </p>
 
-  {% set page_url = "/dataset/%s" % shown_dataset.id %}
   {% include fragments/submission_rows.html %}
 
   <div class="hr"></div>
