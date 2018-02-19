@@ -46,12 +46,21 @@ from sqlalchemy.orm import joinedload
 
 from cms import config, FEEDBACK_LEVEL_FULL
 from cms.db import Submission, SubmissionResult
+from cms import config
+from cms.db import File, Submission, SubmissionResult, Task, Token, \
+    ScopedSession
 from cms.grading.languagemanager import get_language
 from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
     UnacceptableSubmission, accept_submission
 from cms.server.contest.tokening import \
     UnacceptableToken, TokenAlreadyPlayed, accept_token, tokens_available
+from cms.grading.scoretypes import get_score_type
+from cms.grading.tasktypes import get_task_type
+from cms.server import actual_phase_required, multi_contest
+from cms.server.contest.handlers import contest_bp
+from cms.server.contest.handlers.base import authentication_required, templated
+from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
 
@@ -68,15 +77,13 @@ def N_(msgid):
     return msgid
 
 
-class SubmitHandler(ContestHandler):
-    """Handles the received submissions.
+@contest_bp.route("/tasks/<task_name>/submit", methods=["POST"])
+@authentication_required()
+@actual_phase_required(0, 3)
+def submit_handler(task_name):
+        """Handles the received submissions.
 
-    """
-
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def post(self, task_name):
+        """
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -112,21 +119,21 @@ class SubmitHandler(ContestHandler):
                                        **query_args))
 
 
-class TaskSubmissionsHandler(ContestHandler):
-    """Shows the data of a task in the contest.
+@contest_bp.route("/tasks/<task_name>/submissions", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0, 3)
+@templated("task_submissions.html")
+def task_submissions_handler(task_name):
+        """Shows the data of a task in the contest.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name):
-        participation = self.current_user
+        """
+        participation = g.participation
 
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
 
-        submissions = self.sql_session.query(Submission)\
+        submissions = ScopedSession().query(Submission)\
             .filter(Submission.participation == participation)\
             .filter(Submission.task == task)\
             .options(joinedload(Submission.token))\
@@ -139,7 +146,7 @@ class TaskSubmissionsHandler(ContestHandler):
                 get_submission_count(self.sql_session, participation,
                                      contest=self.contest)
             submissions_left_contest = \
-                self.contest.max_submission_number - submissions_c
+                g.contest.max_submission_number - submissions_c
 
         submissions_left_task = None
         if task.max_submission_number is not None:
@@ -168,14 +175,10 @@ class TaskSubmissionsHandler(ContestHandler):
                     **self.r_params)
 
 
-class SubmissionStatusHandler(ContestHandler):
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name, submission_num):
+@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>", methods=["POST"])
+@authentication_required(refresh_cookie=False)
+@actual_phase_required(0, 3)
+def submission_status_handler(task_name, submission_num):
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -229,14 +232,11 @@ class SubmissionStatusHandler(ContestHandler):
         self.write(data)
 
 
-class SubmissionDetailsHandler(ContestHandler):
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name, submission_num):
+@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>/details", methods=["GET"])
+@authentication_required(refresh_cookie=False)
+@actual_phase_required(0, 3)
+@templated("submission_details.html")
+def submission_details_handler(task_name, submission_num):
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -266,18 +266,16 @@ class SubmissionDetailsHandler(ContestHandler):
             else:
                 details = None
 
-        self.render("submission_details.html", sr=sr, details=details,
-                    **self.r_params)
+        return {"sr": sr, "details": details}
 
 
-class SubmissionFileHandler(FileHandler):
-    """Send back a submission file.
+@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>/files/<filename>", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0, 3)
+def submission_file_handler(task_name, submission_num, filename):
+        """Send back a submission file.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name, submission_num, filename):
+        """
         if not self.contest.submissions_download_allowed:
             raise tornado.web.HTTPError(404)
 
@@ -316,14 +314,13 @@ class SubmissionFileHandler(FileHandler):
         self.fetch(digest, mimetype, filename)
 
 
-class UseTokenHandler(ContestHandler):
-    """Called when the user try to use a token on a submission.
+@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>/token", methods=["POST"])
+@authentication_required()
+@actual_phase_required(0)
+def use_token_handler(task_name, submission_num):
+        """Called when the user try to use a token on a submission.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def post(self, task_name, submission_num):
+        """
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)

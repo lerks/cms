@@ -47,6 +47,11 @@ from cms.grading.languagemanager import get_language
 from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
     TestingNotAllowed, UnacceptableUserTest, accept_user_test
+from cms.grading.tasktypes import get_task_type
+from cms.server import actual_phase_required, multi_contest
+from cms.server.contest.handlers import contest_bp
+from cms.server.contest.handlers.base import authentication_required, templated
+from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
 
@@ -63,14 +68,14 @@ def N_(msgid):
     return msgid
 
 
-class UserTestInterfaceHandler(ContestHandler):
-    """Serve the interface to test programs.
+@contest_bp.route("/testing", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0)
+@templated("test_interface.html")
+def user_test_interface_handler():
+        """Serve the interface to test programs.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self):
+        """
         participation = self.current_user
 
         if not self.r_params["testing_enabled"]:
@@ -114,19 +119,16 @@ class UserTestInterfaceHandler(ContestHandler):
         if default_task is None and len(self.contest.tasks) > 0:
             default_task = self.contest.tasks[0]
 
-        self.render("test_interface.html", default_task=default_task,
-                    user_tests=user_tests, user_tests_left=user_tests_left,
-                    **self.r_params)
+        return {"default_task": default_task,
+                "user_tests": user_tests,
+                "user_tests_left": user_tests_left,
+                "UserTestResult": UserTestResult}
 
 
-class UserTestHandler(ContestHandler):
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def post(self, task_name):
+@contest_bp.route("/tasks/<task_name>/test", methods=["POST"])
+@authentication_required(refresh_cookie=False)
+@actual_phase_required(0)
+def user_test_handler(task_name):
         if not self.r_params["testing_enabled"]:
             raise tornado.web.HTTPError(404)
 
@@ -165,14 +167,10 @@ class UserTestHandler(ContestHandler):
                                        **query_args))
 
 
-class UserTestStatusHandler(ContestHandler):
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self, task_name, user_test_num):
+@contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>", methods=["GET"])
+@authentication_required(refresh_cookie=False)
+@actual_phase_required(0)
+def user_test_status_handler(task_name, user_test_num):
         if not self.r_params["testing_enabled"]:
             raise tornado.web.HTTPError(404)
 
@@ -220,14 +218,11 @@ class UserTestStatusHandler(ContestHandler):
         self.write(data)
 
 
-class UserTestDetailsHandler(ContestHandler):
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self, task_name, user_test_num):
+@contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>/details", methods=["GET"])
+@authentication_required(refresh_cookie=False)
+@actual_phase_required(0)
+@templated("user_test_details.html")
+def user_test_details_handler(task_name, user_test_num):
         if not self.r_params["testing_enabled"]:
             raise tornado.web.HTTPError(404)
 
@@ -241,18 +236,17 @@ class UserTestDetailsHandler(ContestHandler):
 
         tr = user_test.get_result(task.active_dataset)
 
-        self.render("user_test_details.html", task=task, tr=tr,
-                    **self.r_params)
+        return {"task": task,
+                "tr": tr}
 
 
-class UserTestIOHandler(FileHandler):
-    """Send back a submission file.
+@contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>/<any(input, output):io>", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0)
+def user_test_io_handler(task_name, user_test_num, io):
+        """Send back a submission file.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self, task_name, user_test_num, io):
+        """
         if not self.r_params["testing_enabled"]:
             raise tornado.web.HTTPError(404)
 
@@ -279,14 +273,13 @@ class UserTestIOHandler(FileHandler):
         self.fetch(digest, mimetype, io)
 
 
-class UserTestFileHandler(FileHandler):
-    """Send back a submission file.
+@contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>/files/<filename>", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0)
+def user_test_file_handler(task_name, user_test_num, filename):
+        """Send back a submission file.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self, task_name, user_test_num, filename):
+        """
         if not self.r_params["testing_enabled"]:
             raise tornado.web.HTTPError(404)
 

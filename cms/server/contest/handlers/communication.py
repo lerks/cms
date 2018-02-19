@@ -42,8 +42,11 @@ import tornado.web
 from cms.server import multi_contest
 from cms.server.contest.communication import accept_question, \
     UnacceptableQuestion, QuestionsNotAllowed
+from cms.server.contest.handlers import contest_bp
+from cms.server.contest.handlers.base import templated, authentication_required
 
 from .contest import ContestHandler
+from .contest import NOTIFICATION_ERROR, NOTIFICATION_SUCCESS
 
 
 logger = logging.getLogger(__name__)
@@ -54,24 +57,22 @@ def N_(msgid):
     return msgid
 
 
-class CommunicationHandler(ContestHandler):
-    """Displays the private conversations between the logged in user
-    and the contest managers..
+@contest_bp.route("/communication", methods=["GET"])
+@templated("communication.html")
+def communication_handler():
+        """Displays the private conversations between the logged in user
+        and the contest managers..
 
-    """
-    @tornado.web.authenticated
-    @multi_contest
-    def get(self):
-        self.render("communication.html", **self.r_params)
+        """
+        pass
 
 
-class QuestionHandler(ContestHandler):
-    """Called when the user submits a question.
+@contest_bp.route("/question", methods=["POST"])
+@authentication_required()
+def question_handler():
+        """Called when the user submits a question.
 
-    """
-    @tornado.web.authenticated
-    @multi_contest
-    def post(self):
+        """
         try:
             accept_question(self.sql_session, self.current_user, self.timestamp,
                             self.get_argument("question_subject", ""),

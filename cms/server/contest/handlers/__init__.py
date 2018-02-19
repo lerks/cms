@@ -31,82 +31,16 @@ from __future__ import unicode_literals
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 
-from .main import \
-    LoginHandler, \
-    LogoutHandler, \
-    StartHandler, \
-    NotificationsHandler, \
-    PrintingHandler, \
-    DocumentationHandler
-from .task import \
-    TaskDescriptionHandler, \
-    TaskStatementViewHandler, \
-    TaskAttachmentViewHandler
-from .tasksubmission import \
-    SubmitHandler, \
-    TaskSubmissionsHandler, \
-    SubmissionStatusHandler, \
-    SubmissionDetailsHandler, \
-    SubmissionFileHandler, \
-    UseTokenHandler
-from .taskusertest import \
-    UserTestInterfaceHandler, \
-    UserTestHandler, \
-    UserTestStatusHandler, \
-    UserTestDetailsHandler, \
-    UserTestIOHandler, \
-    UserTestFileHandler
-from .communication import \
-    CommunicationHandler, \
-    QuestionHandler
+from flask import Flask, Blueprint
 
 
-HANDLERS = [
-
-    # Main
-
-    (r"/login", LoginHandler),
-    (r"/logout", LogoutHandler),
-    (r"/start", StartHandler),
-    (r"/notifications", NotificationsHandler),
-    (r"/printing", PrintingHandler),
-    (r"/documentation", DocumentationHandler),
-
-    # Tasks
-
-    (r"/tasks/(.*)/description", TaskDescriptionHandler),
-    (r"/tasks/(.*)/statements/(.*)", TaskStatementViewHandler),
-    (r"/tasks/(.*)/attachments/(.*)", TaskAttachmentViewHandler),
-
-    # Task submissions
-
-    (r"/tasks/(.*)/submit", SubmitHandler),
-    (r"/tasks/(.*)/submissions", TaskSubmissionsHandler),
-    (r"/tasks/(.*)/submissions/([1-9][0-9]*)", SubmissionStatusHandler),
-    (r"/tasks/(.*)/submissions/([1-9][0-9]*)/details",
-     SubmissionDetailsHandler),
-    (r"/tasks/(.*)/submissions/([1-9][0-9]*)/files/(.*)",
-     SubmissionFileHandler),
-    (r"/tasks/(.*)/submissions/([1-9][0-9]*)/token", UseTokenHandler),
-
-    # Task usertests
-
-    (r"/testing", UserTestInterfaceHandler),
-    (r"/tasks/(.*)/test", UserTestHandler),
-    (r"/tasks/(.*)/tests/([1-9][0-9]*)", UserTestStatusHandler),
-    (r"/tasks/(.*)/tests/([1-9][0-9]*)/details", UserTestDetailsHandler),
-    (r"/tasks/(.*)/tests/([1-9][0-9]*)/(input|output)", UserTestIOHandler),
-    (r"/tasks/(.*)/tests/([1-9][0-9]*)/files/(.*)", UserTestFileHandler),
-
-    # Communications
-
-    (r"/communication", CommunicationHandler),
-    (r"/question", QuestionHandler),
-
-    # The following prefixes are handled by WSGI middlewares:
-    # * /static, defined in cms/io/web_service.py
-    # * /stl, defined in cms/server/contest/server.py
-]
+app = Flask('cms.server.contest')
+contest_bp = Blueprint('contest', 'cms.server.contest')
 
 
-__all__ = ["HANDLERS"]
+# The following prefixes are handled by WSGI middlewares:
+# * /static, defined in cms/io/web_service.py
+# * /stl, defined in cms/server/contest/server.py
+
+
+__all__ = ["app", "contest_bp"]

@@ -40,6 +40,7 @@ import json
 import logging
 
 import tornado.web
+from flask import g
 
 from cms import config
 from cms.db import PrintJob
@@ -49,11 +50,18 @@ from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
+from cms.db import Participation, PrintJob, User, ScopedSession
+from cms.grading import COMPILATION_MESSAGES, EVALUATION_MESSAGES
+from cms.server import actual_phase_required, filter_ascii
+from cms.server.contest.authentication import check_ip
+from cms.server.contest.handlers import contest_bp
+from cms.server.contest.handlers.base import templated, authentication_required
 from cmscommon.datetime import make_datetime, make_timestamp
 
 from ..phase_management import actual_phase_required
 
 from .contest import ContestHandler
+from .contest import NOTIFICATION_ERROR, NOTIFICATION_SUCCESS
 
 
 logger = logging.getLogger(__name__)
@@ -64,21 +72,20 @@ def N_(msgid):
     return msgid
 
 
-class MainHandler(ContestHandler):
+@contest_bp.route("/", methods=["GET"])
+@templated("overview.html")
+def main_handler(self):
     """Home page handler.
 
     """
-    @multi_contest
-    def get(self):
-        self.render("overview.html", **self.r_params)
+    pass
 
 
-class LoginHandler(ContestHandler):
-    """Login handler.
+@contest_bp.route("/login", methods=["POST"])
+def login_handler():
+        """Login handler.
 
-    """
-    @multi_contest
-    def post(self):
+        """
         error_args = {"login_error": "true"}
         next_page = self.get_argument("next", None)
         if next_page is not None:
@@ -119,46 +126,41 @@ class LoginHandler(ContestHandler):
             self.redirect(next_page)
 
 
-class StartHandler(ContestHandler):
-    """Start handler.
+@contest_bp.route("/start", methods=["POST"])
+@authentication_required()
+@actual_phase_required(-1)
+def start_handler():
+        """Start handler.
 
-    Used by a user who wants to start their per_user_time.
+        Used by a user who wants to start their per_user_time.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(-1)
-    @multi_contest
-    def post(self):
-        participation = self.current_user
+        """
+        participation = g.participation
 
         logger.info("Starting now for user %s", participation.user.username)
-        participation.starting_time = self.timestamp
-        self.sql_session.commit()
+        participation.starting_time = g.timestamp
+        ScopedSession().commit()
 
         self.redirect(self.contest_url())
 
 
-class LogoutHandler(ContestHandler):
-    """Logout handler.
+@contest_bp.route("/logout", method=["POST"])
+@authentication_required()
+def logout_handler():
+        """Logout handler.
 
-    """
-    @multi_contest
-    def post(self):
-        self.clear_cookie(self.contest.name + "_login")
+        """
+        self.clear_cookie(g.contest.name + "_login")
         self.redirect(self.contest_url())
 
 
-class NotificationsHandler(ContestHandler):
-    """Displays notifications.
+@contest_bp.route("/notifications", methods=["GET"])
+@authentication_required(refresh_cookie=False)
+def notifications_handler():
+        """Displays notifications.
 
-    """
-
-    refresh_cookie = False
-
-    @tornado.web.authenticated
-    @multi_contest
-    def get(self):
-        participation = self.current_user
+        """
+        participation = g.participation
 
         last_notification = self.get_argument("last_notification", None)
         if last_notification is not None:
@@ -182,36 +184,35 @@ class NotificationsHandler(ContestHandler):
         self.write(json.dumps(res))
 
 
-class PrintingHandler(ContestHandler):
-    """Serve the interface to print and handle submitted print jobs.
+@contest_bp.route("/printing", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0)
+@templated("printing.html")
+def printing_handler_get():
+        """Serve the interface to print and handle submitted print jobs.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def get(self):
-        participation = self.current_user
+        """
+        participation = g.participation
 
         if not self.r_params["printing_enabled"]:
             raise tornado.web.HTTPError(404)
 
-        printjobs = self.sql_session.query(PrintJob)\
+        printjobs = ScopedSession().query(PrintJob)\
             .filter(PrintJob.participation == participation)\
             .all()
 
         remaining_jobs = max(0, config.max_jobs_per_user - len(printjobs))
 
-        self.render("printing.html",
-                    printjobs=printjobs,
-                    remaining_jobs=remaining_jobs,
-                    max_pages=config.max_pages_per_job,
-                    pdf_printing_allowed=config.pdf_printing_allowed,
-                    **self.r_params)
+        return {"printjobs": printjobs,
+                "remaining_jobs": remaining_jobs,
+                "max_pages": config.max_pages_per_job,
+                "pdf_printing_allowed": config.pdf_printing_allowed}
 
-    @tornado.web.authenticated
-    @actual_phase_required(0)
-    @multi_contest
-    def post(self):
+
+@contest_bp.route("/printing", methods=["POST"])
+@authentication_required()
+@actual_phase_required(0)
+def printing_handler_post():
         try:
             printjob = accept_print_job(
                 self.sql_session, self.service.file_cacher, self.current_user,
@@ -229,15 +230,13 @@ class PrintingHandler(ContestHandler):
         self.redirect(self.contest_url("printing"))
 
 
-class DocumentationHandler(ContestHandler):
-    """Displays the instruction (compilation lines, documentation,
-    ...) of the contest.
+@contest_bp.route("/documentation", methods=["GET"])
+@authentication_required()
+@templated("documentation.html")
+def documentation_handler():
+        """Displays the instruction (compilation lines, documentation,
+        ...) of the contest.
 
-    """
-    @tornado.web.authenticated
-    @multi_contest
-    def get(self):
-        self.render("documentation.html",
-                    COMPILATION_MESSAGES=COMPILATION_MESSAGES,
-                    EVALUATION_MESSAGES=EVALUATION_MESSAGES,
-                    **self.r_params)
+        """
+        return {"COMPILATION_MESSAGES": COMPILATION_MESSAGES,
+                "EVALUATION_MESSAGES": EVALUATION_MESSAGES}

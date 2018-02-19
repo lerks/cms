@@ -40,7 +40,10 @@ import logging
 
 import tornado.web
 
+from cms.db import ScopedSession
 from cms.server import multi_contest
+from cms.server.contest.handlers import contest_bp
+from cms.server.contest.handlers.base import authentication_required, templated
 from cmscommon.mimetypes import get_type_for_file_name
 
 from ..phase_management import actual_phase_required
@@ -51,14 +54,14 @@ from .contest import ContestHandler, FileHandler
 logger = logging.getLogger(__name__)
 
 
-class TaskDescriptionHandler(ContestHandler):
-    """Shows the data of a task in the contest.
+@contest_bp.route("/tasks/<task_name>/description", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0, 3)
+@templated("task_description.html")
+def task_description_handler(task_name):
+        """Shows the data of a task in the contest.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name):
+        """
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -66,14 +69,13 @@ class TaskDescriptionHandler(ContestHandler):
         self.render("task_description.html", task=task, **self.r_params)
 
 
-class TaskStatementViewHandler(FileHandler):
-    """Shows the statement file of a task in the contest.
+@contest_bp.route("/tasks/<task_name>/statements/<lang_code>", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0, 3)
+def task_statement_view_handler(task_name, lang_code):
+        """Shows the statement file of a task in the contest.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name, lang_code):
+        """
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
@@ -82,7 +84,7 @@ class TaskStatementViewHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         statement = task.statements[lang_code].digest
-        self.sql_session.close()
+        ScopedSession().close()
 
         if len(lang_code) > 0:
             filename = "%s (%s).pdf" % (task.name, lang_code)
@@ -92,15 +94,14 @@ class TaskStatementViewHandler(FileHandler):
         self.fetch(statement, "application/pdf", filename)
 
 
-class TaskAttachmentViewHandler(FileHandler):
-    """Shows an attachment file of a task in the contest.
+@contest_bp.route("/tasks/<task_name>/attachments/<filename>", methods=["GET"])
+@authentication_required()
+@actual_phase_required(0, 3)
+def task_attachment_view_handler(task_name, filename):
+        """Shows an attachment file of a task in the contest.
 
-    """
-    @tornado.web.authenticated
-    @actual_phase_required(0, 3)
-    @multi_contest
-    def get(self, task_name, filename):
-        task = self.get_task(task_name)
+        """
+        task = g.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
 
@@ -108,7 +109,7 @@ class TaskAttachmentViewHandler(FileHandler):
             raise tornado.web.HTTPError(404)
 
         attachment = task.attachments[filename].digest
-        self.sql_session.close()
+        ScopedSession().close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:

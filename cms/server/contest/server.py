@@ -55,7 +55,7 @@ from cms import ConfigError, ServiceCoord, config
 from cms.io import WebService
 from cms.locale import get_translations
 
-from .handlers import HANDLERS
+from .handlers import app, contest_bp, HANDLERS
 from .handlers.base import ContestListHandler
 from .handlers.main import MainHandler
 
@@ -71,11 +71,18 @@ class ContestWebServer(WebService):
 
     """
     def __init__(self, shard, contest_id=None):
+
+        app.config['SECRET_KEY'] = hex_to_bin(config.secret_key)
+        app.config['DEBUG'] = config.tornado_debug
+        if contest_id is not None:
+            app.register_blueprint(contest_bp)
+            app.contest_id = contest_id
+        else:
+            app.register_blueprint(contest_bp, url_prefix='/<contest>')
+
         parameters = {
             "static_files": [("cms.server", "static"),
                              ("cms.server.contest", "static")],
-            "cookie_secret": hex_to_bin(config.secret_key),
-            "debug": config.tornado_debug,
             "is_proxy_used": config.is_proxy_used,
             "num_proxies_used": config.num_proxies_used,
             "xsrf_cookies": True,
@@ -90,7 +97,6 @@ class ContestWebServer(WebService):
                               "contest_listen_address and contest_listen_port "
                               "in cms.conf." % __name__)
 
-        self.contest_id = contest_id
 
         if self.contest_id is None:
             HANDLERS.append((r"", MainHandler))

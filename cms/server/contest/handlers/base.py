@@ -41,18 +41,173 @@ from six import iterkeys
 import logging
 import os
 import traceback
+from functools import wraps
 
 import tornado.web
 from werkzeug.datastructures import LanguageAccept
+from werkzeug.exceptions import HTTPException
 from werkzeug.http import parse_accept_header
+from jinja2 import TemplateNotFound
+from flask import Blueprint,  abort
+from flask import Flask, current_app
+from flask import g, redirect, url_for
+from flask import request, render_template
 
-from cms.db import Contest
+from cms import TOKEN_MODE_MIXED, config
+from cms.db import Contest, ScopedSession
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
+from cms.server import CommonRequestHandler, compute_actual_phase
+from cms.server.contest.authentication import get_current_user
+from cmscommon.datetime import utc as utc_tzinfo, local as local_tzinfo, \
+    get_timezone, make_datetime
+from cms.server.contest.handlers import app, contest_bp
 from cms.server import CommonRequestHandler
 from cmscommon.datetime import utc as utc_tzinfo
 
 
 logger = logging.getLogger(__name__)
+
+
+@contest_bp.route('/<page>')
+def show(page):
+    try:
+        return render_template('pages/%s.html' % page)
+    except TemplateNotFound:
+        abort(404)
+
+
+@contest_bp.url_defaults
+def add_contest_name(endpoint, values):
+    values.setdefault('contest', g.contest.name)
+
+
+@contest_bp.url_value_preprocessor
+def pull_contest_name(endpoint, values):
+    with ScopedSession() as session:
+        if hasattr(current_app, "contest_id"):
+            g.contest = Contest.get_from_id(current_app.contest_id, session)
+        else:
+            g.contest = Contest.by_name(values.pop('contest'))
+
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    with ScopedSession() as session:
+        session.remove()
+
+
+@app.before_request
+def inject_timestamp():
+    g.timestamp = make_datetime()
+
+
+def authentication_required(refresh_cookie=True):
+    def decorator(f):
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            with ScopedSession() as session:
+                participation, cookie = get_current_user(
+                    session, g.contest, g.timestamp, ip_address, cookie)
+
+            if cookie is None:
+                reset cookie
+            elif refresh_cookie:
+                set cookie
+
+            if participation is None:
+                return redirect(url_for('contest.login', next=request.url))
+
+            g.participation = participation
+
+            return f(*args, **kwargs)
+
+        return wrapped_f
+
+    return decorator
+
+
+def templated(template):
+    def decorator(f):
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            ctx = f(*args, **kwargs)
+            if ctx is None:
+                ctx = {}
+            elif not isinstance(ctx, dict):
+                return ctx
+            return render_template(template, **ctx)
+        return wrapped_f
+    return decorator
+
+
+@app.errorhandler(HTTPException)
+def page_not_found(error):
+    return 'This page does not exist', 404
+
+
+@app.context_processor
+def render_params():
+    ret = dict()
+    ret["now"] = g.timestamp
+    ret["tzinfo"] = local_tzinfo
+    ret["utc"] = utc_tzinfo
+    ret["url"] = g.url
+    ret["available_translations"] = g.available_translations
+    ret["cookie_translation"] = g.cookie_translation
+    ret["automatic_translation"] = g.automatic_translation
+    ret["translation"] = g.translation
+    ret["gettext"] = g._
+    ret["ngettext"] = g.n_
+    ret["xsrf_form_html"] = xsrf_form_html()
+    return ret
+
+
+@contest_bp.context_processor
+def contest_render_params():
+    ret = dict()
+
+    ret["contest"] = g.contest
+
+    ret["phase"] = g.contest.phase(g.timestamp)
+
+    ret["printing_enabled"] = (config.printer is not None)
+    ret["questions_enabled"] = g.contest.allow_questions
+    ret["testing_enabled"] = g.contest.allow_user_tests
+
+    if g.participation is not None:
+        ret["current_user"] = g.participation
+        g.participation = g.participation
+
+        res = compute_actual_phase(
+            self.timestamp, g.contest.start, g.contest.stop,
+            g.contest.analysis_start if g.contest.analysis_enabled
+            else None,
+            g.contest.analysis_stop if g.contest.analysis_enabled
+            else None,
+            g.contest.per_user_time, g.participation.starting_time,
+            g.participation.delay_time, g.participation.extra_time)
+
+        ret["actual_phase"], ret["current_phase_begin"], \
+            ret["current_phase_end"], ret["valid_phase_begin"], \
+            ret["valid_phase_end"] = res
+
+        if ret["actual_phase"] == 0:
+            ret["phase"] = 0
+
+        # set the timezone used to format timestamps
+        ret["timezone"] = get_timezone(g.user, g.contest)
+
+    # some information about token configuration
+    ret["tokens_contest"] = g.contest.token_mode
+
+    t_tokens = set(t.token_mode for t in g.contest.tasks)
+    if len(t_tokens) == 1:
+        ret["tokens_tasks"] = next(iter(t_tokens))
+    else:
+        ret["tokens_tasks"] = TOKEN_MODE_MIXED
+
+    return ret
+
 
 
 class BaseHandler(CommonRequestHandler):
@@ -76,11 +231,6 @@ class BaseHandler(CommonRequestHandler):
         self.translation = DEFAULT_TRANSLATION
         self._ = self.translation.gettext
         self.n_ = self.translation.ngettext
-
-    def render(self, template_name, **params):
-        t = self.service.jinja2_environment.get_template(template_name)
-        for chunk in t.generate(**params):
-            self.write(chunk)
 
     def prepare(self):
         """This method is executed at the beginning of each request.
@@ -117,34 +267,6 @@ class BaseHandler(CommonRequestHandler):
 
         self.set_header("Content-Language", chosen_lang)
 
-    def render_params(self):
-        """Return the default render params used by almost all handlers.
-
-        return (dict): default render params
-
-        """
-        ret = {}
-        ret["now"] = self.timestamp
-        ret["utc"] = utc_tzinfo
-        ret["url"] = self.url
-
-        ret["available_translations"] = self.available_translations
-
-        ret["cookie_translation"] = self.cookie_translation
-        ret["automatic_translation"] = self.automatic_translation
-
-        ret["translation"] = self.translation
-        ret["gettext"] = self._
-        ret["ngettext"] = self.n_
-
-        # FIXME The handler provides too broad an access: its usage
-        # should be extracted into with narrower-scoped parameters.
-        ret["handler"] = self
-
-        ret["xsrf_form_html"] = self.xsrf_form_html()
-
-        return ret
-
     def write_error(self, status_code, **kwargs):
         if "exc_info" in kwargs and \
                 kwargs["exc_info"][0] != tornado.web.HTTPError:
@@ -163,18 +285,14 @@ class BaseHandler(CommonRequestHandler):
             self.write("A critical error has occurred :-(")
             self.finish()
 
-    def is_multi_contest(self):
-        """Return whether CWS serves all contests."""
-        return self.service.contest_id is None
 
-
-class ContestListHandler(BaseHandler):
-    def get(self):
-        self.r_params = self.render_params()
-        # We need this to be computed for each request because we want to be
-        # able to import new contests without having to restart CWS.
-        contest_list = dict()
-        for contest in self.sql_session.query(Contest).all():
-            contest_list[contest.name] = contest
-        self.render("contest_list.html", contest_list=contest_list,
-                    **self.r_params)
+# TODO actually should be inserted dynamically if multi-contest
+@app.route("/", methods=["GET"])
+@templated("contest_list.html")
+def contest_list_handler(self):
+    # We need this to be computed for each request because we want to be
+    # able to import new contests without having to restart CWS.
+    contest_list = dict()
+    for contest in self.sql_session.query(Contest).all():
+        contest_list[contest.name] = contest
+    return {"contest_list": contest_list}
