@@ -436,10 +436,10 @@ class BaseHandler(CommonRequestHandler):
             try:
                 value = int(value)
             except:
-                raise ValueError("Can't cast %s to float." % value)
+                raise ValueError("Can't cast %s to int." % value)
             if not 0 < value:
                 raise ValueError("Invalid memory limit.")
-            dest["memory_limit"] = value
+            dest["memory_limit"] = value * 1000 * 1000
 
     def get_task_type(self, dest, name, params):
         """Parse the task type.
