@@ -11,7 +11,7 @@ $(document).on("click", "#submission_list tbody tr td.status .details", function
     modal_body.html('<div class="loading"><img src="{{ url("static", "loading.gif") }}"/>{% trans %}loading...{% endtrans %}</div>');
     modal_body.load(utils.contest_url("tasks", "{{ task.name }}", "submissions", submission_id, "details"), function() {
         $(".score_details .subtask .subtask-head").each(function () {
-            $(this).prepend("<i class=\"icon-chevron-right\"></i>");
+            $(this).prepend('<i class="icon-chevron-right"></i>');
         });
         $(".score_details .subtask .subtask-head").click(function () {
             $(this).parent().toggleClass("open");
@@ -23,16 +23,16 @@ $(document).on("click", "#submission_list tbody tr td.status .details", function
         });
         $(".score_details table.testcase-list").addClass("table table-bordered table-striped");
         $(".score_details table.testcase-list tbody tr:not(.undefined) td.outcome").each(function () {
-            $(this).html("<span class=\"outcome\">" + $(this).text() + "</span>");
+            $(this).html('<span class="outcome">' + $(this).text() + '</span>');
         });
     });
     modal.modal("show");
 });
 
 function get_score_class (score, max_score) {
-    if (score <= 0) {
+    if (score &lt;= 0) {
         return "score_0";
-    } else if (score >= max_score) {
+    } else if (score &gt;= max_score) {
         return "score_100";
     } else {
         return "score_0_100";

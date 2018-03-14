@@ -65,6 +65,7 @@ class TestCaseWithDatabase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestCaseWithDatabase, cls).setUpClass()
         assert "fortesting" in str(cms.db.engine), \
             "Monkey patching of DB connection string failed"
         drop_db()
@@ -77,6 +78,7 @@ class TestCaseWithDatabase(unittest.TestCase):
         drop_db()
         cls.connection.close()
         cms.db.engine.dispose()
+        super(TestCaseWithDatabase, cls).tearDownClass()
 
     def setUp(self):
         self.session = Session()

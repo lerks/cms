@@ -54,9 +54,9 @@ $(document).ready(function () {
 {% if available_translations|length > 1 %}
                     <p class="navbar-text pull-right">
                         <select id="lang" class="form-control btn btn-info" onchange="utils.switch_lang()">
-                            <option value=""{% if cookie_translation is none %} selected{% endif %}>{% trans lang=automatic_translation.name %}Automatic ({{ lang }}){% endtrans %}</option>
+                            <option value=""{% if cookie_translation is none %} selected="selected"{% endif %}>{% trans lang=automatic_translation.name %}Automatic ({{ lang }}){% endtrans %}</option>
                         {% for lang_code, t in available_translations|dictsort(by="key") %}
-                            <option value="{{ lang_code }}"{% if t == cookie_translation %} selected{% endif %}>{{ t.name }}</option>
+                            <option value="{{ lang_code }}"{% if t == cookie_translation %} selected="selected"{% endif %}>{{ t.name }}</option>
                         {% endfor %}
                         </select>
                     </p>
@@ -100,13 +100,13 @@ $(document).ready(function () {
                         <div class="control-group">
                             <label class="control-label" for="username">{% trans %}Username{% endtrans %}</label>
                             <div class="controls">
-                                <input type="text" class="input-xlarge" name="username" id="username">
+                                <input type="text" class="input-xlarge" name="username" id="username" />
                             </div>
                         </div>
                         <div class="control-group">
                             <label class="control-label" for="password">{% trans %}Password{% endtrans %}</label>
                             <div class="controls">
-                                <input type="password" class="input-xlarge" name="password" id="password">
+                                <input type="password" class="input-xlarge" name="password" id="password" />
                             </div>
                         </div>
                         <div class="control-group">
