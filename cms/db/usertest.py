@@ -38,52 +38,30 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from . import Base, Participation, Task, Dataset, FilenameConstraint, \
-    DigestConstraint
+    DigestConstraint, Submittable
 
 
-class UserTest(Base):
+class UserTest(Submittable):
     """Class to store a test requested by a user.
 
     """
     __tablename__ = 'user_tests'
 
-    # Auto increment primary key.
     id = Column(
         Integer,
+        ForeignKey('Submittable.id'),
         primary_key=True)
 
-    # User and Contest, thus Participation (id and object) that did the
+    # User and Contest, thus Participation (object only) that did the
     # submission.
-    participation_id = Column(
-        Integer,
-        ForeignKey(Participation.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
     participation = relationship(
         Participation,
         back_populates="user_tests")
 
-    # Task (id and object) of the test.
-    task_id = Column(
-        Integer,
-        ForeignKey(Task.id,
-                   onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-        index=True)
+    # Task (object only) of the test.
     task = relationship(
         Task,
         back_populates="user_tests")
-
-    # Time of the request.
-    timestamp = Column(
-        DateTime,
-        nullable=False)
-
-    # Language of test, or None if not applicable.
-    language = Column(
-        String,
-        nullable=True)
 
     # Input (provided by the user) file's digest for this test.
     input = Column(
@@ -156,6 +134,9 @@ class UserTest(Base):
                                               dataset=dataset)
 
         return user_test_result
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'user_test'}
 
 
 class UserTestFile(Base):

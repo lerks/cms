@@ -69,8 +69,8 @@ __all__ = [
     # task
     "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
     # submission
-    "Submission", "File", "Token", "SubmissionResult", "Executable",
-    "Evaluation",
+    "Submittable", "Submission", "File", "Token", "SubmissionResult",
+    "Executable", "Evaluation",
     # usertest
     "UserTest", "UserTestFile", "UserTestManager", "UserTestResult",
     "UserTestExecutable",
@@ -106,8 +106,8 @@ from .contest import Contest, Announcement
 from .user import User, Team, Participation, Message, Question
 from .admin import Admin
 from .task import Task, Statement, Attachment, Dataset, Manager, Testcase
-from .submission import Submission, File, Token, SubmissionResult, \
-    Executable, Evaluation
+from .submission import Submittable, Submission, File, Token, \
+    SubmissionResult, Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \
     UserTestResult, UserTestExecutable
 from .printjob import PrintJob

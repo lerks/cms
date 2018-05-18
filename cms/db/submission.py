@@ -48,49 +48,71 @@ from . import Base, Participation, Task, Dataset, Testcase, \
 from cmscommon.datetime import make_datetime
 
 
-class Submission(Base):
-    """Class to store a submission.
-
-    """
-    __tablename__ = 'submissions'
+class Submittable(Base):
+    __tablename__ = 'submittable'
 
     # Auto increment primary key.
     id = Column(
         Integer,
         primary_key=True)
 
-    # User and Contest, thus Participation (id and object) that did the
-    # submission.
+    kind = Column(
+        Enum("submission", "user_test", name="submittable_kind"),
+        nullable=True)
+
+    # User and Contest, thus Participation (id only) that sent in the
+    # submittable.
     participation_id = Column(
         Integer,
         ForeignKey(Participation.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
-    participation = relationship(
-        Participation,
-        back_populates="submissions")
 
-    # Task (id and object) of the submission.
+    # Task (id only) of the submittable.
     task_id = Column(
         Integer,
         ForeignKey(Task.id,
                    onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
         index=True)
-    task = relationship(
-        Task,
-        back_populates="submissions")
 
-    # Time of the submission.
+    # Moment in time the submittable was handed in at.
     timestamp = Column(
         DateTime,
         nullable=False)
 
-    # Language of submission, or None if not applicable.
+    # Language of the submittable, or None if not applicable.
     language = Column(
         String,
         nullable=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'submittable',
+        'polymorphic_on': kind}
+
+
+class Submission(Submittable):
+    """Class to store a submission.
+
+    """
+    __tablename__ = 'submissions'
+
+    id = Column(
+        Integer,
+        ForeignKey('Submittable.id'),
+        primary_key=True)
+
+    # User and Contest, thus Participation (object only) that did the
+    # submission.
+    participation = relationship(
+        Participation,
+        back_populates="submissions")
+
+    # Task (object only) of the submission.
+    task = relationship(
+        Task,
+        back_populates="submissions")
 
     # Comment from the administrator on the submission.
     comment = Column(
@@ -183,6 +205,9 @@ class Submission(Base):
 
         """
         return self.token is not None
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'submission'}
 
 
 class File(Base):
