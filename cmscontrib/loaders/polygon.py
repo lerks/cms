@@ -198,9 +198,6 @@ class PolygonTaskLoader(TaskLoader):
                 checker_exe = os.path.join(
                     os.path.dirname(checker_src), "checker")
                 testlib_path = "/usr/local/include/cms/testlib.h"
-                if not config.installed:
-                    testlib_path = os.path.join(os.path.dirname(__file__),
-                                                "polygon", "testlib.h")
                 os.system("cat %s | \
                     sed 's$testlib.h$%s$' | \
                     g++ -x c++ -O2 -static -o %s -" %
