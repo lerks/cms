@@ -66,11 +66,6 @@ class TestRunner(object):
         self.num_users = 0
         self.workers = workers
 
-        if CONFIG["TEST_DIR"] is not None:
-            # Set up our expected environment.
-            os.chdir("%(TEST_DIR)s" % CONFIG)
-            os.environ["PYTHONPATH"] = "%(TEST_DIR)s" % CONFIG
-
         self.start_generic_services()
         self.suffix = self.framework.initialize_aws()
 
@@ -96,10 +91,7 @@ class TestRunner(object):
                 stderr=io.open(os.devnull, "wb")).decode('utf-8').strip()
         except subprocess.CalledProcessError:
             git_root = None
-        CONFIG["TEST_DIR"] = git_root
-        CONFIG["CONFIG_PATH"] = "%s/config/cms.conf" % CONFIG["TEST_DIR"]
-        if CONFIG["TEST_DIR"] is None:
-            CONFIG["CONFIG_PATH"] = "/usr/local/etc/cms.conf"
+        CONFIG["CONFIG_PATH"] = "/usr/local/etc/cms.conf"
         return self.framework.get_cms_config()
 
     def log_elapsed_time(self):

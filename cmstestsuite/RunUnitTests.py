@@ -214,15 +214,7 @@ def main():
                     len(test_list))
 
     # Load config from cms.conf.
-    CONFIG["TEST_DIR"] = git_root
-    CONFIG["CONFIG_PATH"] = "%s/config/cms.conf" % CONFIG["TEST_DIR"]
-    if CONFIG["TEST_DIR"] is None:
-        CONFIG["CONFIG_PATH"] = "/usr/local/etc/cms.conf"
-
-    if CONFIG["TEST_DIR"] is not None:
-        # Set up our expected environment.
-        os.chdir("%(TEST_DIR)s" % CONFIG)
-        os.environ["PYTHONPATH"] = "%(TEST_DIR)s" % CONFIG
+    CONFIG["CONFIG_PATH"] = "/usr/local/etc/cms.conf"
 
     clear_coverage()
 

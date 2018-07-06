@@ -33,7 +33,7 @@ from cmstestsuite import TestException, sh
 
 UNITTESTS = "unittests"
 FUNCTIONALTESTS = "functionaltests"
-TESTS = set([UNITTESTS, FUNCTIONALTESTS])
+TESTS = {UNITTESTS, FUNCTIONALTESTS}
 
 
 def get_test_suite():
@@ -56,12 +56,16 @@ def main():
     test_suite = get_test_suite()
     try:
         if test_suite == UNITTESTS or len(test_suite) == 0:
-            sh(["./cmstestsuite/RunUnitTests.py"] + sys.argv[1:])
+            sh([sys.executable, "-m", "cmstestsuite.RunUnitTests"]
+               + sys.argv[1:])
         if test_suite == FUNCTIONALTESTS or len(test_suite) == 0:
-            sh(["./cmstestsuite/RunFunctionalTests.py"] + sys.argv[1:])
+            sh([sys.executable, "-m", "cmstestsuite.RunFunctionalTests"]
+               + sys.argv[1:])
     except TestException:
+        # UHM
         if os.path.exists("./log/cms/last.log"):
             print("\n\n===== START OF LOG DUMP =====\n\n")
+            # UHM
             with io.open("./log/cms/last.log", "rt", encoding="utf-8") as f:
                 print(f.read())
             print("\n\n===== END OF LOG DUMP =====\n\n")

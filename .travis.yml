@@ -54,8 +54,7 @@ before_script:
   - psql --username=postgres --dbname=cmsdbfortesting --command='ALTER SCHEMA public OWNER TO cmsuser'
   - psql --username=postgres --dbname=cmsdbfortesting --command='GRANT SELECT ON pg_largeobject TO cmsuser'
 
-  - cp ./config/cms.conf.sample ./config/cms.conf
-  - 'sed -e "s/\"cmsuser\": \"cmsuser\"/\"cmsuser\": \"$USER\"/" -i ./config/cms.conf'
+  - 'sudo sed -e "s/\"cmsuser\": \"cmsuser\"/\"cmsuser\": \"$USER\"/" -i /usr/local/etc/cms.conf'
 
   - cmsInitDB
 
