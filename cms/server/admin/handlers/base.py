@@ -99,7 +99,7 @@ def parse_int(value):
     """Parse and validate an integer."""
     try:
         return int(value)
-    except:
+    except ValueError:
         raise ValueError("Can't cast %s to int." % value)
 
 
@@ -107,7 +107,7 @@ def parse_timedelta_sec(value):
     """Parse and validate a timedelta (as number of seconds)."""
     try:
         return timedelta(seconds=float(value))
-    except:
+    except ValueError:
         raise ValueError("Can't cast %s to timedelta." % value)
 
 
@@ -115,7 +115,7 @@ def parse_timedelta_min(value):
     """Parse and validate a timedelta (as number of minutes)."""
     try:
         return timedelta(minutes=float(value))
-    except:
+    except ValueError:
         raise ValueError("Can't cast %s to timedelta." % value)
 
 
@@ -125,7 +125,7 @@ def parse_datetime(value):
         value += ".0"
     try:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-    except:
+    except ValueError:
         raise ValueError("Can't cast %s to datetime." % value)
 
 
@@ -339,7 +339,7 @@ class BaseHandler(CommonRequestHandler):
         if self.r_params is None:
             try:
                 self.r_params = self.render_params()
-            except:
+            except Exception:
                 self.write("A critical error has occurred :-(")
                 self.finish()
                 return
@@ -361,7 +361,7 @@ class BaseHandler(CommonRequestHandler):
         value = self.get_argument(name, False)
         try:
             dest[name] = bool(value)
-        except:
+        except ValueError:
             raise ValueError("Can't cast %s to bool." % value)
 
     get_int = argument_reader(parse_int)
@@ -415,7 +415,7 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = float(value)
-            except:
+            except ValueError:
                 raise ValueError("Can't cast %s to float." % value)
             if not 0 <= value < float("+inf"):
                 raise ValueError("Time limit out of range.")
@@ -439,7 +439,7 @@ class BaseHandler(CommonRequestHandler):
         else:
             try:
                 value = int(value)
-            except:
+            except ValueError:
                 raise ValueError("Can't cast %s to float." % value)
             if not 0 < value:
                 raise ValueError("Invalid memory limit.")

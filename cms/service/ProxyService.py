@@ -217,7 +217,7 @@ class ProxyExecutor(Executor):
         except CannotSendError:
             # A log message has already been produced.
             gevent.sleep(self.FAILURE_WAIT)
-        except:
+        except Exception:
             # Whoa! That's unexpected!
             logger.error("Unexpected error.", exc_info=True)
             gevent.sleep(self.FAILURE_WAIT)

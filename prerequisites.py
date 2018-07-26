@@ -248,7 +248,7 @@ def install_isolate():
     root = pwd.getpwnam("root")
     try:
         cmsuser_grp = grp.getgrnam(CMSUSER)
-    except:
+    except KeyError:
         raise SetupError("The user %s doesn't exist yet; "
                          "you need to run the install command at least once"
                          % CMSUSER)

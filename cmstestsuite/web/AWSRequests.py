@@ -67,7 +67,7 @@ class AWSSubmissionViewRequest(GenericRequest):
         try:
             self.get_submission_info()
             return True
-        except:
+        except Exception:
             return False
 
     def get_submission_info(self):
@@ -124,7 +124,7 @@ class AWSUserTestViewRequest(GenericRequest):
         try:
             self.get_user_test_info()
             return True
-        except:
+        except Exception:
             return False
 
     def get_user_test_info(self):

@@ -236,7 +236,7 @@ def test_testcases(base_dir, solution, language, assume=None):
                     worst[1] = info[pos][1]
                 pos += 1
             sts.append((scoreFun(stscores) * i[0], i[0], stsdata, worst))
-        except:
+        except Exception:
             sts.append((0, i[0], stsdata, [0, 0]))
 
     # Result pretty printing

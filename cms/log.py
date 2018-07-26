@@ -145,7 +145,7 @@ class LogServiceHandler(logging.Handler):
             self._log_service.Log(**d)
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:
+        except Exception:
             self.handleError(record)
 
 
