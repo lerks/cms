@@ -99,16 +99,16 @@ var Chart = new function () {
             context.fillText(marks[i].toString(), 18, get_y(marks[i]));
         });
 
-        var i = 0  // index of current interval
-        var x_cum = 0  // cumulated x value (sum of the size of the first i-1 intervals)
-        var x_pos = 0  // current x value
-        var y_pos = y_def  // current y value
-        var h_pos = h_def  // current h value
-        var x_b = 0  // the 'begin' value of the current interval
-        var x_e = 0  // the 'end' value of the current interval
+        var i = 0;  // index of current interval
+        var x_cum = 0;  // cumulated x value (sum of the size of the first i-1 intervals)
+        var x_pos = 0;  // current x value
+        var y_pos = y_def;  // current y value
+        var h_pos = h_def;  // current h value
+        var x_b = 0;  // the 'begin' value of the current interval
+        var x_e = 0;  // the 'end' value of the current interval
 
-        var tops = [[x_pos, y_pos]]  // points of the line marking the top of the area
-        var bots = [[x_pos, y_pos + h_pos]]  // points of the line marking the bottom
+        var tops = [[x_pos, y_pos]];  // points of the line marking the top of the area
+        var bots = [[x_pos, y_pos + h_pos]];  // points of the line marking the bottom
 
         // helper method to open an interval
         var open_group = function () {
@@ -118,7 +118,7 @@ var Chart = new function () {
             x_b = x_int[i][0];
             x_e = x_int[i][1];
             context.moveTo(get_x(x_pos), get_y(y_pos));
-        }
+        };
 
         // helper method to close an interval
         var close_group = function () {
@@ -126,9 +126,9 @@ var Chart = new function () {
             x_pos = x_cum;
             context.lineTo(get_x(x_pos), get_y(y_pos));
             tops.push([x_pos, y_pos]);
-            bots.push([x_pos, y_pos + h_pos])
+            bots.push([x_pos, y_pos + h_pos]);
             context.stroke();
-        }
+        };
 
         // helper method to draw a separator
         var draw_separator = function () {
@@ -138,7 +138,7 @@ var Chart = new function () {
             context.moveTo(get_x(x_pos), get_y(y_min));
             context.lineTo(get_x(x_pos), get_y(y_max));
             context.stroke();
-        }
+        };
 
         open_group();
 

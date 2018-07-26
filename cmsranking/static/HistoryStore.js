@@ -70,7 +70,7 @@ var HistoryStore = new function () {
                     }
                     return sum;
                 }, 0.0);
-                self.history_c.push([user, contest_id, time, contest_score])
+                self.history_c.push([user, contest_id, time, contest_score]);
 
                 var global_score = d[user].keys().reduce(function(sum, t_id) {
                     sum += d[user][t_id];

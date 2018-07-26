@@ -23,7 +23,7 @@ function format_time(time, full) {
     m = m < 10 ? "0" + m : "" + m;
     s = s < 10 ? "0" + s : "" + s;
     return (h + ":" + m + ":" + s);
-};
+}
 
 function _get_time() {
     // Return the seconds since January 1, 1970 00:00:00 UTC

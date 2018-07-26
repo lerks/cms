@@ -103,7 +103,7 @@ var UserDetail = new function () {
 
         self.data_fetched += 1;
         self.do_show();
-    }
+    };
 
     self.submissions_callback = function (data) {
         self.submissions = {};
@@ -149,7 +149,7 @@ var UserDetail = new function () {
                          <td class=\"score\">" + (self.contest_s[c_id].length > 0 ? round_to_str(self.contest_s[c_id][self.contest_s[c_id].length-1][1], contest["score_precision"]) : 0) + "</td> \
                          <td class=\"rank\">" + (self.contest_r[c_id].length > 0 ? self.contest_r[c_id][self.contest_r[c_id].length-1][1] : 1) + "</td> \
                          <td class=\"btn\"><a>Show</a></td> \
-                      </tr>"
+                      </tr>";
 
                 var tasks = contest["tasks"];
                 tasks.forEach(function(task) {

@@ -76,7 +76,7 @@ var DataStore = new function () {
                 self.update_network_status(4);
             }
         });
-    }
+    };
 
     self.contest_listener = function (event) {
         var cmd = event.data.split(" ");
@@ -173,7 +173,7 @@ var DataStore = new function () {
                 self.update_network_status(4);
             }
         });
-    }
+    };
 
     self.task_listener = function (event) {
         var cmd = event.data.split(" ");
@@ -277,7 +277,7 @@ var DataStore = new function () {
                 self.update_network_status(4);
             }
         });
-    }
+    };
 
     self.team_listener = function (event) {
         var cmd = event.data.split(" ");
@@ -374,7 +374,7 @@ var DataStore = new function () {
                 self.update_network_status(4);
             }
         });
-    }
+    };
 
     self.user_listener = function (event) {
         var cmd = event.data.split(" ");
@@ -1031,7 +1031,7 @@ var DataStore = new function () {
                 return true;
             }
         });
-    }
+    };
 
     self.team_create.add(function (key, data) {
         data["users"] = [];
@@ -1107,7 +1107,7 @@ var DataStore = new function () {
        choose the one that has been used less times.
      */
 
-    self.colors = [0,0,0,0,0,0,0,0]
+    self.colors = [0,0,0,0,0,0,0,0];
 
     self.choose_color = function () {
         var min_idx = 0;
@@ -1120,7 +1120,7 @@ var DataStore = new function () {
         }
         // Color indexes will be 1-based, so we add 1 to the result
         return min_idx+1;
-    }
+    };
 
     self.init_selections = function () {
         $.each(self.users, function (u_id) {
