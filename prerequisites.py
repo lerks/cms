@@ -205,18 +205,25 @@ def get_real_user():
 
     """
     if AS_ROOT:
-        return "root"
+        return pwd.getpwnam("root")
 
-    name = os.getenv("SUDO_USER")
-    if name is None:
-        name = os.popen("logname").read().strip()
+    if "SUDO_USER" in os.environ:
+        name = os.environ["SUDO_USER"]
+    else:
+        name = os.getlogin()
 
     if name == "root":
         raise SetupError("You are logged in as root; "
                          "log in as a normal user instead, "
                          "and use 'sudo' or 'su'")
 
-    return name
+    try:
+        pw = pwd.getpwnam(name)
+    except KeyError:
+        raise SetupError("Cannot find the unprivileged user "
+                         "you logged in as: %s" % name)
+
+    return pw
 
 
 def build_isolate():
@@ -330,14 +337,18 @@ def install():
 
     root = pwd.getpwnam("root")
 
-    if real_user == "root":
+    if real_user == root:
         # Run build() command as root
         build()
     else:
         # Run build() command as not root
-        if subprocess.call(["sudo", "-E", "-u", real_user,
-                            sys.executable, sys.argv[0], "build"]):
-            exit(1)
+        os.setegid(real_user.gid)
+        os.seteuid(real_user.uid)
+        try:
+            build()
+        finally:
+            os.seteuid(root.uid)
+            os.setegid(root.gid)
 
     install_isolate()
 
