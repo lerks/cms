@@ -46,9 +46,9 @@ var Chart = new function () {
 
         // the intervals of allowed x values
         var x_size = 0;
-        for (var i in x_int) {
+        x_int.forEach(function(_, i) {
             x_size += x_int[i][1] - x_int[i][0];
-        }
+        });
 
         // convert values to canvas coordinates
         var get_x = function (x) {
@@ -81,12 +81,12 @@ var Chart = new function () {
         context.moveTo(pad_l, pad_t);
         context.lineTo(wid - pad_r, pad_t);
         context.stroke();
-        for (var i in marks) {
+        marks.forEach(function(_, i) {
             context.beginPath();
             context.moveTo(get_x(0), get_y(marks[i]));
             context.lineTo(get_x(x_size), get_y(marks[i]));
             context.stroke();
-        }
+        });
 
         // draw labels on the axes
         context.fillStyle = "#000000";
@@ -95,9 +95,9 @@ var Chart = new function () {
         if (y_min !== y_max)
             context.fillText(y_min.toString(), 18, hei - pad_b);
         context.fillText(y_max.toString(), 18, pad_t);
-        for (var i in marks) {
+        marks.forEach(function(_, i) {
             context.fillText(marks[i].toString(), 18, get_y(marks[i]));
-        }
+        });
 
         var i = 0  // index of current interval
         var x_cum = 0  // cumulated x value (sum of the size of the first i-1 intervals)
@@ -142,7 +142,7 @@ var Chart = new function () {
 
         open_group();
 
-        for (var idx in data) {
+        data.forEach(function(_, idx) {
             var x = data[idx][0];
             var y = data[idx][1];
             var h = data[idx][2];
@@ -175,7 +175,7 @@ var Chart = new function () {
                 tops.push([x_pos, y_pos]);
                 bots.push([x_pos, y_pos + h_pos]);
             }
-        }
+        });
         if (i < x_int.length) {
             close_group();
             i += 1;
@@ -190,12 +190,12 @@ var Chart = new function () {
         context.fillStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + ",0.3)";
         context.beginPath();
         context.moveTo(get_x(tops[0][0]), get_y(tops[0][1]));
-        for (var i = 0; i < tops.length; i += 1) {
-            context.lineTo(get_x(tops[i][0]), get_y(tops[i][1]));
-        }
-        for (var i = bots.length - 1; i >= 0; i -= 1) {
-            context.lineTo(get_x(bots[i][0]), get_y(bots[i][1]));
-        }
+        tops.forEach(function (top) {
+            context.lineTo(get_x(top[0]), get_y(top[1]));
+        });
+        bots.reverse().forEach(function (bot) {
+            context.lineTo(get_x(bot[0]), get_y(bot[1]));
+        });
         context.closePath();
         context.fill();
     };

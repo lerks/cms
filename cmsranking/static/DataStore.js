@@ -595,10 +595,10 @@ var DataStore = new function () {
 
     self.score_listener = function (event) {
         var data = event.data.split("\n");
-        for (var idx in data) {
+        data.forEach(function(_, idx) {
             var line = data[idx].split(" ");
             self.set_score(line[0], line[1], parseFloat(line[2]));
-        }
+        });
     };
 
     self.set_score = function (u_id, t_id, new_t_score) {
@@ -618,18 +618,18 @@ var DataStore = new function () {
 
         // Contest
         var new_c_score = 0.0;  // = max(user's score on t for t in contest.tasks)
-        for (var i = 0; i < contest.tasks.length; i += 1) {
-            new_c_score += user["t_" + contest.tasks[i].key];
-        }
+        contest.tasks.forEach(function (task) {
+            new_c_score += user["t_" + task.key];
+        });
         new_c_score = round(new_c_score, contest["score_precision"]);
         var old_c_score = user["c_" + c_id];
         user["c_" + c_id] = new_c_score;
 
         // Global
         var new_g_score = 0.0;  // = max(user's score on c for c in self.contest_list)
-        for (var i = 0; i < self.contest_list.length; i += 1) {
-            new_g_score += user["c_" + self.contest_list[i].key];
-        }
+        self.contest_list.forEach(function (contest) {
+            new_g_score += user["c_" + contest.key];
+        });
         new_g_score = round(new_g_score, self.global_score_precision);
         var old_g_score = user["global"];
         user["global"] = new_g_score;
@@ -672,8 +672,7 @@ var DataStore = new function () {
         var rank = 0;
         var equal = 1;
 
-        for (var i in list) {
-            user = list[i];
+        list.forEach(function(user) {
             score = user["global"];
 
             if (score === prev_score) {
@@ -685,7 +684,7 @@ var DataStore = new function () {
             }
 
             user["rank"] = rank;
-        }
+        });
 
         self.score_events.add(self.update_rank);
 
@@ -922,29 +921,29 @@ var DataStore = new function () {
     self.contest_list_insert = function (key, data) {
         // Insert data in the sorted contest list
         var a = data;
-        for (var i = 0; i < self.contest_list.length; i += 1) {
-            var b = self.contest_list[i];
+        var found = self.contest_list.some(function(b, i) {
             if ((a["begin"] < b["begin"]) || ((a["begin"] === b["begin"]) &&
                ((a["end"]   < b["end"]  ) || ((a["end"]   === b["end"]  ) &&
                ((a["name"]  < b["name"] ) || ((a["name"]  === b["name"] ) &&
                (key < b["key"]))))))) {
                 // We found the first element which is greater than a
                 self.contest_list.splice(i, 0, a);
-                return;
+                return true;
             }
+        });
+        if (!found) {
+            self.contest_list.push(a);
         }
-        self.contest_list.push(a);
     };
 
-    self.contest_list_remove = function (key, old_data) {
+    self.contest_list_remove = function (key) {
         // Remove data from the sorted contest list
-        for (var i = 0; i < self.contest_list.length; i += 1) {
-            var b = self.contest_list[i];
+        self.contest_list.some(function(b, i) {
             if (key === b["key"]) {
                 self.contest_list.splice(i, 1);
-                return;
+                return true;
             }
-        }
+        });
     };
 
     self.contest_create.add(function (key, data) {
@@ -970,30 +969,30 @@ var DataStore = new function () {
 
         // Insert data in the sorted task list of the contest
         var a = data;
-        for (var i = 0; i < task_list.length; i += 1) {
-            var b = task_list[i];
+        var found = task_list.some(function(b, i) {
             if ((a["order"] < b["order"]) || ((a["order"] === b["order"]) &&
                ((a["name"]  < b["name"] ) || ((a["name"]  === b["name"] ) &&
                (key < b["key"]))))) {
                 // We found the first element which is greater than a
                 task_list.splice(i, 0, a);
-                return;
+                return true;
             }
+        });
+        if (!found) {
+            task_list.push(a);
         }
-        task_list.push(a);
     };
 
     self.task_list_remove = function (key, old_data) {
         var task_list = self.contests[old_data["contest"]]["tasks"];
 
         // Remove data from the sorted task list of the contest
-        for (var i = 0; i < task_list.length; i += 1) {
-            var b = task_list[i];
+        task_list.some(function(b, i) {
             if (key === b["key"]) {
                 task_list.splice(i, 1);
-                break;
+                return true;
             }
-        }
+        });
     };
 
     self.task_create.add(self.task_list_insert);
@@ -1011,27 +1010,27 @@ var DataStore = new function () {
     self.team_list_insert = function (key, data) {
         // Insert data in the sorted team list
         var a = data;
-        for (var i = 0; i < self.team_list.length; i += 1) {
-            var b = self.team_list[i];
+        var found = self.team_list.some(function(b, i) {
             if ((a["name"] < b["name"]) || ((a["name"] === b["name"]) &&
                 (key < b["key"]))) {
                 // We found the first element which is greater than a
                 self.team_list.splice(i, 0, a);
-                return;
+                return true;
             }
+        });
+        if (!found) {
+            self.team_list.push(a);
         }
-        self.team_list.push(a);
     };
 
-    self.team_list_remove = function (key, old_data) {
+    self.team_list_remove = function (key) {
         // Remove data from the sorted team list
-        for (var i = 0; i < self.team_list.length; i += 1) {
-            var b = self.team_list[i];
+        self.team_list.some(function(b, i) {
             if (key === b["key"]) {
                 self.team_list.splice(i, 1);
-                break;
+                return true;
             }
-        }
+        });
     }
 
     self.team_create.add(function (key, data) {
@@ -1061,17 +1060,18 @@ var DataStore = new function () {
 
         // Insert data in the sorted user list of the team
         var a = data;
-        for (var i = 0; i < user_list.length; i += 1) {
-            var b = user_list[i];
+        var found = user_list.some(function(b, i) {
             if ((a["l_name"] < b["l_name"]) || ((a["l_name"] === b["l_name"]) &&
                ((a["f_name"] < b["f_name"]) || ((a["f_name"] === b["f_name"]) &&
                (key < b["key"]))))) {
                 // We found the first element which is greater than a
                 user_list.splice(i, 0, a);
-                return;
+                return true;
             }
+        });
+        if (!found) {
+            user_list.push(a);
         }
-        user_list.push(a);
     };
 
     self.user_list_remove = function (key, old_data) {
@@ -1082,13 +1082,12 @@ var DataStore = new function () {
         var user_list = self.teams[old_data["team"]]["users"];
 
         // Remove data from the sorted user list of the team
-        for (var i = 0; i < user_list.length; i += 1) {
-            var b = user_list[i];
+        user_list.some(function(b, i) {
             if (key === b["key"]) {
                 user_list.splice(i, 1);
-                break;
+                return true;
             }
-        }
+        });
     };
 
     self.user_create.add(self.user_list_insert);

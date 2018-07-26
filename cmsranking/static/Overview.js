@@ -466,8 +466,7 @@ var Overview = new function () {
         var cs = [];
         var n = 0;
 
-        for (var i in self.user_list) {
-            var user = self.user_list[i];
+        self.user_list.forEach(function(user) {
             var r_height = self.get_rank_height(user["rank"], DataStore.user_count);
 
             // 'b' (for begin) is the y coordinate of the top of the cluster
@@ -488,7 +487,7 @@ var Overview = new function () {
                 cs[n-1].e += (self.PAD_T - h/2) - cs[n-1].b;
                 cs[n-1].b = self.PAD_T - h/2;
             }
-        }
+        });
 
         // Check if it overflows at the bottom of the visible area
         while (n > 0 && cs[n-1].e > self.height - self.PAD_B + h/2) {
@@ -510,14 +509,11 @@ var Overview = new function () {
         }
 
         // Proceed with the actual drawing
-        for (var i in cs) {
-            var c = cs[i];
+        cs.forEach(function(c) {
             var begin = c.b;
             var step = (c.e - begin - h) / (c.n - 1);  // NaN if c.n == 1
 
-            for (var j in c.list) {
-                var user = c.list[j];
-
+            c.list.forEach(function(user) {
                 var s_height = self.get_score_height(user["global"], DataStore.global_max_score);
                 var r_height = self.get_rank_height(user["rank"], DataStore.user_count);
 
@@ -531,8 +527,8 @@ var Overview = new function () {
 
                 begin += step;  // begin is NaN if step is NaN: no problem
                                 // because if c.n == 1 begin won't be used again
-            }
-        }
+            });
+        });
     };
 
 

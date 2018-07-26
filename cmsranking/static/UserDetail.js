@@ -110,10 +110,9 @@ var UserDetail = new function () {
         DataStore.tasks.keys().forEach(function(t_id) {
             self.submissions[t_id] = [];
         });
-        for (var i = 0; i < data.length; i += 1) {
-            var submission = data[i];
+        data.forEach(function(submission, i) {
             self.submissions[submission['task']].push(submission);
-        }
+        });
 
         self.data_fetched += 1;
         self.do_show();
@@ -142,8 +141,7 @@ var UserDetail = new function () {
                     </tr>";
 
             var contests = DataStore.contest_list;
-            for (var i in contests) {
-                var contest = contests[i];
+            contests.forEach(function(contest) {
                 var c_id = contest["key"];
 
                 s += "<tr class=\"contest\" data-contest=\"" + c_id +"\"> \
@@ -154,8 +152,7 @@ var UserDetail = new function () {
                       </tr>"
 
                 var tasks = contest["tasks"];
-                for (var j in tasks) {
-                    var task = tasks[j];
+                tasks.forEach(function(task) {
                     var t_id = task["key"];
 
                     s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
@@ -164,8 +161,8 @@ var UserDetail = new function () {
                              <td class=\"rank\">" + (self.task_r[t_id].length > 0 ? self.task_r[t_id][self.task_r[t_id].length-1][1] : 1) + "</td> \
                              <td class=\"btn\"><a>Show</a></td> \
                           </tr>"
-                }
-            }
+                });
+            });
 
             self.navigator.html(s);
 
@@ -260,8 +257,7 @@ var UserDetail = new function () {
             <td colspan=\"" + (3 + DataStore.tasks[task_id]['extra_headers'].length) + "\">no submissions</td> \
         </tr>";
         } else {
-            for (var i in self.submissions[task_id]) {
-                var submission = self.submissions[task_id][i];
+            self.submissions[task_id].forEach(function(submission) {
                 time = submission["time"] - DataStore.contests[DataStore.tasks[task_id]["contest"]]["begin"];
                 time = format_time(time);
                 res += " \
@@ -271,7 +267,7 @@ var UserDetail = new function () {
             <td>" + (submission["token"] ? 'Yes' : 'No') + "</td> \
             " + (submission["extra"].length > 0 ? "<td>" + submission["extra"].join("</td><td>") + "</td>" : "") + " \
         </tr>";
-            }
+            });
         }
         res += " \
     </tbody> \

@@ -113,8 +113,7 @@ var TeamSearch = new function () {
 
         // We're iterating on the team_list (instead of teams) to get the teams
         // in lexicographic order of name
-        for (var i in DataStore.team_list) {
-            var team = DataStore.team_list[i];
+        DataStore.team_list.forEach(function(team) {
             var t_id = team["key"];
             inner_html += " \
 <div class=\"item\" data-team=\"" + t_id + "\"> \
@@ -123,7 +122,7 @@ var TeamSearch = new function () {
         <img class=\"flag\" src=\"" + Config.get_flag_url(t_id) + "\" /> " + team['name'] + " \
     </label> \
 </div>";
-        }
+        });
 
         self.body.html(inner_html);
 
@@ -133,9 +132,9 @@ var TeamSearch = new function () {
             var users = DataStore.teams[$this.parent().parent().data("team")]["users"];
             var status = $this.prop("checked");
 
-            for (var i in users) {
+            users.forEach(function(_, i) {
                 DataStore.set_selected(users[i]["key"], status);
-            }
+            });
         });
     };
 

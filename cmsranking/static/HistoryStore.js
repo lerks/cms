@@ -52,7 +52,7 @@ var HistoryStore = new function () {
         self.history_c = [];
         self.history_g = [];
 
-        for (var i in data) {
+        data.forEach(function(_, i) {
             var user = data[i][0];
             var task = data[i][1];
             var time = data[i][2];
@@ -78,7 +78,7 @@ var HistoryStore = new function () {
                 }, 0.0);
                 self.history_g.push([user, time, global_score]);
             }
-        }
+        });
 
         callback();
     };
@@ -86,7 +86,7 @@ var HistoryStore = new function () {
     self.get_score_history_for_task = function (user_id, task_id) {
         var result = [];
 
-        for (var i in self.history_t) {
+        self.history_t.forEach(function(_, i) {
             var user = self.history_t[i][0];
             var task = self.history_t[i][1];
             var time = self.history_t[i][2];
@@ -94,7 +94,7 @@ var HistoryStore = new function () {
             if (user === user_id && task === task_id) {
                 result.push([time, score, 0]);
             }
-        }
+        });
 
         return result;
     };
@@ -102,7 +102,7 @@ var HistoryStore = new function () {
     self.get_score_history_for_contest = function (user_id, contest_id) {
         var result = [];
 
-        for (var i in self.history_c) {
+        self.history_c.forEach(function(_, i) {
             var user = self.history_c[i][0];
             var contest = self.history_c[i][1];
             var time = self.history_c[i][2];
@@ -110,7 +110,7 @@ var HistoryStore = new function () {
             if (user === user_id && contest === contest_id) {
                 result.push([time, score, 0]);
             }
-        }
+        });
 
         return result;
     };
@@ -118,14 +118,14 @@ var HistoryStore = new function () {
     self.get_score_history = function (user_id) {
         var result = [];
 
-        for (var i in self.history_g) {
+        self.history_g.forEach(function(_, i) {
             var user = self.history_g[i][0];
             var time = self.history_g[i][1];
             var score = self.history_g[i][2];
             if (user === user_id) {
                 result.push([time, score, 0]);
             }
-        }
+        });
 
         return result;
     };
@@ -141,7 +141,7 @@ var HistoryStore = new function () {
         var result = [];
 
         // TODO consider together changes with the same time
-        for (var i in self.history_t) {
+        self.history_t.forEach(function(_, i) {
             var user = self.history_t[i][0];
             var task = self.history_t[i][1];
             var time = self.history_t[i][2];
@@ -186,7 +186,7 @@ var HistoryStore = new function () {
                     d[user] = score;
                 }
             }
-        }
+        });
 
         return result;
     };
@@ -202,7 +202,7 @@ var HistoryStore = new function () {
         var result = [];
 
         // TODO consider together changes with the same time
-        for (var i in self.history_c) {
+        self.history_c.forEach(function(_, i) {
             var user = self.history_c[i][0];
             var contest = self.history_c[i][1];
             var time = self.history_c[i][2];
@@ -247,7 +247,7 @@ var HistoryStore = new function () {
                     d[user] = score;
                 }
             }
-        }
+        });
 
         return result;
     };
@@ -263,7 +263,7 @@ var HistoryStore = new function () {
         var result = [];
 
         // TODO consider together changes with the same time
-        for (var i in self.history_g) {
+        self.history_g.forEach(function(_, i) {
             var user = self.history_g[i][0];
             var time = self.history_g[i][1];
             var score = self.history_g[i][2];
@@ -305,7 +305,7 @@ var HistoryStore = new function () {
                 }
                 d[user] = score;
             }
-        }
+        });
 
         return result;
     };

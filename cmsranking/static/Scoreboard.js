@@ -158,22 +158,20 @@ var Scoreboard = new function () {
 <col class=\"team\"/>";
 
         var contests = DataStore.contest_list;
-        for (var i in contests) {
-            var contest = contests[i];
+        contests.forEach(function(contest) {
             var c_id = contest["key"];
 
             var tasks = contest["tasks"];
-            for (var j in tasks) {
-                var task = tasks[j];
+            tasks.forEach(function(task) {
                 var t_id = task["key"];
 
                 result += " \
 <col class=\"score task\" data-task=\"" + t_id + "\" data-sort_key=\"t_" + t_id + "\"/> <col/><col/>";
-            }
+            });
 
             result += " \
 <col class=\"score contest\" data-contest=\"" + c_id + "\" data-sort_key=\"c_" + c_id + "\"/> <col/><col/><col/>";
-        }
+        });
 
         result += " \
 <col class=\"score global\" data-sort_key=\"global\"/> <col/><col/><col/><col/>";
@@ -193,22 +191,20 @@ var Scoreboard = new function () {
     <th class=\"team\">Team</th>";
 
         var contests = DataStore.contest_list;
-        for (var i in contests) {
-            var contest = contests[i];
+        contests.forEach(function(contest) {
             var c_id = contest["key"];
 
             var tasks = contest["tasks"];
-            for (var j in tasks) {
-                var task = tasks[j];
+            tasks.forEach(function(task) {
                 var t_id = task["key"];
 
                 result += " \
     <th colspan=\"3\" class=\"score task\" data-task=\"" + t_id + "\" data-sort_key=\"t_" + t_id + "\"><abbr title=\"" + escapeHTML(task["name"]) + "\">" + escapeHTML(task["short_name"]) + "</abbr></th>";
-            }
+            });
 
             result += " \
     <th colspan=\"4\" class=\"score contest\" data-contest=\"" + c_id + "\" data-sort_key=\"c_" + c_id + "\"><abbr title=\"" + escapeHTML(contest["name"]) + "\">" + escapeHTML(contest["name"]) + "</abbr></th>";
-        }
+        });
 
         result += " \
     <th colspan=\"5\" class=\"score global\" data-sort_key=\"global\">Global</th> \
@@ -247,24 +243,22 @@ var Scoreboard = new function () {
         }
 
         var contests = DataStore.contest_list;
-        for (var i in contests) {
-            var contest = contests[i];
+        contests.forEach(function(contest) {
             var c_id = contest["key"];
 
             var tasks = contest["tasks"];
-            for (var j in tasks) {
-                var task = tasks[j];
+            tasks.forEach(function(task) {
                 var t_id = task["key"];
 
                 var score_class = self.get_score_class(user["t_" + t_id], task["max_score"]);
                 result += " \
     <td colspan=\"3\" class=\"score task " + score_class + "\" data-task=\"" + t_id + "\" data-sort_key=\"t_" + t_id + "\">" + round_to_str(user["t_" + t_id], task["score_precision"]) + "</td>";
-            }
+            });
 
             var score_class = self.get_score_class(user["c_" + c_id], contest["max_score"]);
             result += " \
     <td colspan=\"4\" class=\"score contest " + score_class + "\" data-contest=\"" + c_id + "\" data-sort_key=\"c_" + c_id + "\">" + round_to_str(user["c_" + c_id], contest["score_precision"]) + "</td>";
-        }
+        });
 
         var score_class = self.get_score_class(user["global"], DataStore.global_max_score);
         result += " \
@@ -365,11 +359,10 @@ var Scoreboard = new function () {
         list.sort(self.compare_users);
 
         var fragment = document.createDocumentFragment();
-        for (var idx in list)
-        {
+        list.forEach(function(_, idx) {
             list[idx]["index"] = idx;
             fragment.appendChild(list[idx]["row"]);
-        }
+        });
 
         self.tbody_el.append(fragment);
     };
