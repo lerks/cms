@@ -656,7 +656,7 @@ var DataStore = new function () {
 
     self.init_ranks = function () {
         // Make a list of all users
-        var list = new Array();
+        var list = [];
 
         for (var u_id in self.users) {
             list.push(self.users[u_id]);
@@ -917,7 +917,7 @@ var DataStore = new function () {
 
     ////// Sorted contest list
 
-    self.contest_list = new Array();
+    self.contest_list = [];
 
     self.contest_list_insert = function (key, data) {
         // Insert data in the sorted contest list
@@ -948,7 +948,7 @@ var DataStore = new function () {
     };
 
     self.contest_create.add(function (key, data) {
-        data["tasks"] = new Array();
+        data["tasks"] = [];
         self.contest_list_insert(key, data);
     });
     self.contest_update.add(function (key, old_data, data) {
@@ -1006,7 +1006,7 @@ var DataStore = new function () {
 
     ////// Sorted team list
 
-    self.team_list = new Array();
+    self.team_list = [];
 
     self.team_list_insert = function (key, data) {
         // Insert data in the sorted team list
@@ -1035,7 +1035,7 @@ var DataStore = new function () {
     }
 
     self.team_create.add(function (key, data) {
-        data["users"] = new Array();
+        data["users"] = [];
         self.team_list_insert(key, data);
     });
     self.team_update.add(function (key, old_data, data) {

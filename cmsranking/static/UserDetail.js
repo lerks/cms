@@ -108,7 +108,7 @@ var UserDetail = new function () {
     self.submissions_callback = function (data) {
         self.submissions = {};
         for (var t_id in DataStore.tasks) {
-            self.submissions[t_id] = new Array();
+            self.submissions[t_id] = [];
         }
         for (var i = 0; i < data.length; i += 1) {
             var submission = data[i];
@@ -181,7 +181,7 @@ var UserDetail = new function () {
         self.title_label.text("Global");
         self.submission_table.html("");
 
-        var intervals = new Array();
+        var intervals = [];
         var b = 0;
         var e = 0;
 

@@ -294,7 +294,7 @@ var Scoreboard = new function () {
     // - the last name
     // - the first name
     // - the key
-    self.user_list = new Array();
+    self.user_list = [];
 
 
     // Compare two users. Returns -1 if "a < b" or +1 if "a >= b"

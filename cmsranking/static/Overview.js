@@ -155,7 +155,7 @@ var Overview = new function () {
     //     (i+1) * (max_score / SCORE_STEPS)). for i == 0 the interval is open
     // scores[SCORE_STEPS+1] contins the number of user with the max_score
     // see also self.get_score_class()
-    self.scores = new Array();
+    self.scores = [];
 
     for (var i = 0; i <= self.SCORE_STEPS + 1; i += 1) {
         self.scores.push(0);
@@ -245,7 +245,7 @@ var Overview = new function () {
     // - the last name
     // - the first name
     // - the key
-    self.user_list = new Array();
+    self.user_list = [];
 
 
     // Compare two users. Returns -1 if "a < b" or +1 if "a >= b"
@@ -463,7 +463,7 @@ var Overview = new function () {
         // visible area, either above or below.
 
         // The list of clusters and its size (n == cs.length)
-        var cs = new Array();
+        var cs = [];
         var n = 0;
 
         for (var i in self.user_list) {

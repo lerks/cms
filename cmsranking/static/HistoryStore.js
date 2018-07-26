@@ -21,9 +21,9 @@ var HistoryStore = new function () {
     self.init = function () {
         // List of score-change events divided by scope
         // _t contains all the tasks together, and _c does the same
-        self.history_t = new Array();  // per task
-        self.history_c = new Array();  // per contest
-        self.history_g = new Array();  // global
+        self.history_t = [];  // per task
+        self.history_c = [];  // per contest
+        self.history_g = [];  // global
     };
 
     self.request_update = function (callback) {
@@ -48,9 +48,9 @@ var HistoryStore = new function () {
             }
         }
 
-        self.history_t = new Array();
-        self.history_c = new Array();
-        self.history_g = new Array();
+        self.history_t = [];
+        self.history_c = [];
+        self.history_g = [];
 
         for (var i in data) {
             var user = data[i][0];
@@ -84,7 +84,7 @@ var HistoryStore = new function () {
     };
 
     self.get_score_history_for_task = function (user_id, task_id) {
-        var result = new Array();
+        var result = [];
 
         for (var i in self.history_t) {
             var user = self.history_t[i][0];
@@ -100,7 +100,7 @@ var HistoryStore = new function () {
     };
 
     self.get_score_history_for_contest = function (user_id, contest_id) {
-        var result = new Array();
+        var result = [];
 
         for (var i in self.history_c) {
             var user = self.history_c[i][0];
@@ -116,7 +116,7 @@ var HistoryStore = new function () {
     };
 
     self.get_score_history = function (user_id) {
-        var result = new Array();
+        var result = [];
 
         for (var i in self.history_g) {
             var user = self.history_g[i][0];
@@ -138,7 +138,7 @@ var HistoryStore = new function () {
         var above = 0;
         var equal = DataStore.user_count;
 
-        var result = new Array();
+        var result = [];
 
         // TODO consider together changes with the same time
         for (var i in self.history_t) {
@@ -199,7 +199,7 @@ var HistoryStore = new function () {
         var above = 0;
         var equal = DataStore.user_count;
 
-        var result = new Array();
+        var result = [];
 
         // TODO consider together changes with the same time
         for (var i in self.history_c) {
@@ -260,7 +260,7 @@ var HistoryStore = new function () {
         var above = 0;
         var equal = DataStore.user_count;
 
-        var result = new Array();
+        var result = [];
 
         // TODO consider together changes with the same time
         for (var i in self.history_g) {
