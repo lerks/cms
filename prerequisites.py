@@ -342,13 +342,13 @@ def install():
             os.path.join(VAR_ROOT, "run"),
             os.path.join(USR_ROOT, "include"),
             os.path.join(USR_ROOT, "share")]
-    for _dir in dirs:
+    for dir_ in dirs:
         # Skip if destination is a symlink
-        if os.path.islink(os.path.join(_dir, "cms")):
+        if os.path.islink(os.path.join(dir_, "cms")):
             continue
-        makedir(_dir, root_pw, 0o755)
-        _dir = os.path.join(_dir, "cms")
-        makedir(_dir, cmsuser_pw, 0o770)
+        makedir(dir_, root_pw, 0o755)
+        dir_ = os.path.join(dir_, "cms")
+        makedir(dir_, cmsuser_pw, 0o770)
 
     print("===== Copying Polygon testlib")
     path = os.path.join("cmscontrib", "loaders", "polygon", "testlib.h")
@@ -410,9 +410,9 @@ def uninstall():
             os.path.join(VAR_ROOT, "run"),
             os.path.join(USR_ROOT, "include"),
             os.path.join(USR_ROOT, "share")]
-    for _dir in dirs:
-        if os.listdir(_dir) == []:
-            try_delete(_dir)
+    for dir_ in dirs:
+        if os.listdir(dir_) == []:
+            try_delete(dir_)
 
     print("===== Deleting Polygon testlib")
     try_delete(os.path.join(USR_ROOT, "include", "cms", "testlib.h"))
