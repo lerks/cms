@@ -73,6 +73,13 @@ NO_CONF = False
 CMSUSER = "cmsuser"
 
 
+class SetupError(Exception):
+
+    def __init__(self, message):
+        super(SetupError, self).__init__(message)
+        self.message = message
+
+
 def copyfile(src, dest, owner, perm, group=None):
     """Copy the file src to dest, and assign owner and permissions.
 
@@ -174,8 +181,7 @@ def assert_root():
 
     """
     if os.geteuid() != 0:
-        print("[Error] You must be root to do this, try using 'sudo'")
-        exit(1)
+        raise SetupError("You must be root to do this, try using 'sudo'")
 
 
 def assert_not_root():
@@ -187,8 +193,8 @@ def assert_not_root():
         return
 
     if os.geteuid() == 0:
-        print("[Error] You must *not* be root to do this, try avoiding 'sudo'")
-        exit(1)
+        raise SetupError("You must *not* be root to do this, "
+                         "try avoiding 'sudo'")
 
 
 def get_real_user():
@@ -206,10 +212,9 @@ def get_real_user():
         name = os.popen("logname").read().strip()
 
     if name == "root":
-        print("[Error] You are logged in as root")
-        print(
-            "[Error] Log in as a normal user instead, and use 'sudo' or 'su'")
-        exit(1)
+        raise SetupError("You are logged in as root; "
+                         "log in as a normal user instead, "
+                         "and use 'sudo' or 'su'")
 
     return name
 
@@ -237,14 +242,13 @@ def install_isolate():
     try:
         cmsuser_grp = grp.getgrnam(CMSUSER)
     except:
-        print("[Error] The user %s doesn't exist yet" % CMSUSER)
-        print("[Error] You need to run the install command at least once")
-        exit(1)
+        raise SetupError("The user %s doesn't exist yet; "
+                         "you need to run the install command at least once"
+                         % CMSUSER)
 
     # Check if build_isolate() has been called
     if not os.path.exists(os.path.join("isolate", "isolate")):
-        print("[Error] You must run the build_isolate command first")
-        exit(1)
+        raise SetupError("You must run the build_isolate command first")
 
     print("===== Copying isolate to /usr/local/bin/")
     makedir(os.path.join(USR_ROOT, "bin"), root, 0o755)
@@ -498,4 +502,8 @@ if __name__ == '__main__':
         parser.error("Please specify a command to run. "
                      "Use \"--help\" for more information.")
 
-    args.func()
+    try:
+        args.func()
+    except SetupError as err:
+        print("[Error] %s" % err.message)
+        sys.exit(1)
