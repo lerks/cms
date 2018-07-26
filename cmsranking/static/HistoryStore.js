@@ -165,7 +165,7 @@ var HistoryStore = new function () {
                         result.push([time, above+1, equal-1]);
                     }
                 } else {
-                    changed = false;
+                    var changed = false;
                     if (d[user] <= d[user_id] && score > d[user_id]) {
                         above += 1;
                         changed = true;
@@ -226,7 +226,7 @@ var HistoryStore = new function () {
                         result.push([time, above+1, equal-1]);
                     }
                 } else {
-                    changed = false;
+                    var changed = false;
                     if (d[user] <= d[user_id] && score > d[user_id]) {
                         above += 1;
                         changed = true;
@@ -285,7 +285,7 @@ var HistoryStore = new function () {
                     result.push([time, above+1, equal-1]);
                 }
             } else {
-                changed = false;
+                var changed = false;
                 if (d[user] <= d[user_id] && score > d[user_id]) {
                     above += 1;
                     changed = true;

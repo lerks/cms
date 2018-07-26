@@ -258,7 +258,7 @@ var UserDetail = new function () {
         </tr>";
         } else {
             self.submissions[task_id].forEach(function(submission) {
-                time = submission["time"] - DataStore.contests[DataStore.tasks[task_id]["contest"]]["begin"];
+                var time = submission["time"] - DataStore.contests[DataStore.tasks[task_id]["contest"]]["begin"];
                 time = format_time(time);
                 res += " \
         <tr> \
