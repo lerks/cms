@@ -84,15 +84,15 @@ var UserDetail = new function () {
     };
 
     self.history_callback = function () {
-        self.task_s = new Object();
-        self.task_r = new Object();
+        self.task_s = {};
+        self.task_r = {};
         for (var t_id in DataStore.tasks) {
             self.task_s[t_id] = HistoryStore.get_score_history_for_task(self.user_id, t_id);
             self.task_r[t_id] = HistoryStore.get_rank_history_for_task(self.user_id, t_id);
         }
 
-        self.contest_s = new Object();
-        self.contest_r = new Object();
+        self.contest_s = {};
+        self.contest_r = {};
         for (var c_id in DataStore.contests) {
             self.contest_s[c_id] = HistoryStore.get_score_history_for_contest(self.user_id, c_id);
             self.contest_r[c_id] = HistoryStore.get_rank_history_for_contest(self.user_id, c_id);
@@ -106,7 +106,7 @@ var UserDetail = new function () {
     }
 
     self.submissions_callback = function (data) {
-        self.submissions = new Object();
+        self.submissions = {};
         for (var t_id in DataStore.tasks) {
             self.submissions[t_id] = new Array();
         }

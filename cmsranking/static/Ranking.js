@@ -16,7 +16,7 @@
  */
 
 if (!window.console) {
-    window.console = new Object();
+    window.console = {};
 }
 
 if (!window.console.log) {

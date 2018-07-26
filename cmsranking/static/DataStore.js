@@ -34,10 +34,10 @@ function round_to_str(value, ndigits) {
 var DataStore = new function () {
     var self = this;
 
-    self.contests = new Object();
-    self.tasks = new Object();
-    self.teams = new Object();
-    self.users = new Object();
+    self.contests = {};
+    self.tasks = {};
+    self.teams = {};
+    self.users = {};
 
     self.contest_create = $.Callbacks();
     self.contest_update = $.Callbacks();

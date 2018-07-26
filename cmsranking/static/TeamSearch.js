@@ -101,8 +101,8 @@ var TeamSearch = new function () {
     };
 
     self.generate = function () {
-        self.sel = new Object();
-        self.cnt = new Object();
+        self.sel = {};
+        self.cnt = {};
 
         for (var t_id in DataStore.teams) {
             self.sel[t_id] = 0;
