@@ -112,23 +112,29 @@ def try_delete(path):
             print("[Warning] File not found: ", path)
 
 
-def makedir(dir_path, owner=None, perm=None):
+def makedir(dir_path, owner, perm, group=None):
     """Create a directory with given owner and permission.
 
     dir_path (string): the new directory to create.
     owner (as given by pwd.getpwnam): the owner we want for dest.
     perm (integer): the permission for dest (example: 0o660).
+    group (as given by grp.getgrnam): the group we want for dest; if
+                                      not specified, use owner's
+                                      group.
 
     """
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    if perm is not None:
-        os.chmod(dir_path, perm)
-    if owner is not None:
-        os.chown(dir_path, owner.pw_uid, owner.pw_gid)
+    os.chmod(dir_path, perm)
+    owner_id = owner.pw_uid
+    if group is not None:
+        group_id = group.gr_gid
+    else:
+        group_id = owner.pw_gid
+    os.chown(dir_path, owner_id, group_id)
 
 
-def copytree(src_path, dest_path, owner, perm_files, perm_dirs):
+def copytree(src_path, dest_path, owner, perm_files, perm_dirs, group=None):
     """Copy the *content* of src_path in dest_path, assigning the
     given owner and permissions.
 
@@ -137,12 +143,15 @@ def copytree(src_path, dest_path, owner, perm_files, perm_dirs):
     owner (as given by pwd.getpwnam): the owner we want for dest.
     perm_files (integer): the permission for copied not-directories.
     perm_dirs (integer): the permission for copied directories.
+    group (as given by grp.getgrnam): the group we want for dest; if
+                                      not specified, use owner's
+                                      group.
 
     """
     for path in glob(os.path.join(src_path, "*")):
         sub_dest = os.path.join(dest_path, os.path.basename(path))
         if os.path.isdir(path):
-            makedir(sub_dest, owner, perm_dirs)
+            makedir(sub_dest, owner, perm_dirs, group=group)
             copytree(path, sub_dest, owner, perm_files, perm_dirs)
         elif os.path.isfile(path):
             copyfile(path, sub_dest, owner, perm_files)
@@ -315,7 +324,7 @@ def install():
                                "--no-user-group", "--gid", CMSUSER])
         cmsuser_pw = pwd.getpwnam(CMSUSER)
 
-    root_pw = pwd.getpwnam("root")
+    root = pwd.getpwnam("root")
 
     if real_user == "root":
         # Run build() command as root
@@ -346,14 +355,14 @@ def install():
         # Skip if destination is a symlink
         if os.path.islink(os.path.join(dir_, "cms")):
             continue
-        makedir(dir_, root_pw, 0o755)
+        makedir(dir_, root, 0o755)
         dir_ = os.path.join(dir_, "cms")
-        makedir(dir_, cmsuser_pw, 0o770)
+        makedir(dir_, cmsuser_pw, 0o770, group=cmsuser_gr)
 
     print("===== Copying Polygon testlib")
     path = os.path.join("cmscontrib", "loaders", "polygon", "testlib.h")
     dest_path = os.path.join(USR_ROOT, "include", "cms", "testlib.h")
-    copyfile(path, dest_path, root_pw, 0o644)
+    copyfile(path, dest_path, root, 0o644)
 
     os.umask(old_umask)
 
