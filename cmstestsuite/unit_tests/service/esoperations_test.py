@@ -248,8 +248,8 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             set(get_submissions_operations(self.session, self.contest.id)),
             expected_operations)
 
-    def submission_compilation_operation(
-            self, submission, dataset, result=None):
+    @staticmethod
+    def submission_compilation_operation(submission, dataset, result=None):
         active_priority = PriorityQueue.PRIORITY_HIGH \
             if result is None or result.compilation_tries == 0 \
             else PriorityQueue.PRIORITY_MEDIUM
@@ -259,7 +259,8 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
                 else PriorityQueue.PRIORITY_EXTRA_LOW,
                 submission.timestamp)
 
-    def submission_evaluation_operation(self, result, codename):
+    @staticmethod
+    def submission_evaluation_operation(result, codename):
         active_priority = PriorityQueue.PRIORITY_MEDIUM \
             if result.evaluation_tries == 0 else PriorityQueue.PRIORITY_LOW
         return (ESOperation(ESOperation.EVALUATION,
@@ -403,7 +404,8 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             set(get_user_tests_operations(self.session, self.contest.id)),
             expected_operations)
 
-    def user_test_compilation_operation(self, user_test, dataset, result=None):
+    @staticmethod
+    def user_test_compilation_operation(user_test, dataset, result=None):
         active_priority = PriorityQueue.PRIORITY_HIGH \
             if result is None or result.compilation_tries == 0 \
             else PriorityQueue.PRIORITY_MEDIUM
@@ -413,7 +415,8 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
                 else PriorityQueue.PRIORITY_EXTRA_LOW,
                 user_test.timestamp)
 
-    def user_test_evaluation_operation(self, result):
+    @staticmethod
+    def user_test_evaluation_operation(result):
         active_priority = PriorityQueue.PRIORITY_MEDIUM \
             if result.evaluation_tries == 0 else PriorityQueue.PRIORITY_LOW
         return (ESOperation(ESOperation.USER_TEST_EVALUATION,

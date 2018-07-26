@@ -144,7 +144,8 @@ class TestScoringOperations(DatabaseMixin, unittest.TestCase):
             set(get_operations(self.session)),
             expected_operations)
 
-    def _scoring_operation(self, submission, dataset):
+    @staticmethod
+    def _scoring_operation(submission, dataset):
         return (ScoringOperation(submission.id, dataset.id),
                 submission.timestamp)
 

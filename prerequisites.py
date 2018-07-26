@@ -163,7 +163,8 @@ def copytree(src_path, dest_path, owner, perm_files, perm_dirs, group=None):
         elif os.path.isfile(path):
             copyfile(path, sub_dest, owner, perm_files)
         else:
-            print("Error: unexpected filetype for file %s. Not copied" % path)
+            print("[Warning] unexpected filetype for file %s. Not copied"
+                  % path)
 
 
 def ask(message):
@@ -210,7 +211,10 @@ def get_real_user():
     if "SUDO_USER" in os.environ:
         name = os.environ["SUDO_USER"]
     else:
-        name = os.getlogin()
+        try:
+            name = os.getlogin()
+        except OSError:
+            ...
 
     if name == "root":
         raise SetupError("You are logged in as root; "
@@ -294,7 +298,7 @@ def install_conf():
         # If the config exists, check if the user wants to overwrite it
         if os.path.exists(conf_file):
             if not ask("The %s file is already installed, "
-                       "type Y to overwrite it: " % (conf_file_name)):
+                       "type Y to overwrite it: " % conf_file_name):
                 continue
         if os.path.exists(os.path.join(".", "config", conf_file_name)):
             copyfile(os.path.join(".", "config", conf_file_name),
@@ -435,7 +439,7 @@ def uninstall():
             os.path.join(USR_ROOT, "include"),
             os.path.join(USR_ROOT, "share")]
     for dir_ in dirs:
-        if os.listdir(dir_) == []:
+        if len(os.listdir(dir_)) == 0:
             try_delete(dir_)
 
     print("===== Deleting Polygon testlib")
