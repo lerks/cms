@@ -80,7 +80,7 @@ var DataStore = new function () {
 
     self.contest_listener = function (event) {
         var cmd = event.data.split(" ");
-        if (cmd[0] == "create") {
+        if (cmd[0] === "create") {
             $.ajax({
                 url: Config.get_contest_read_url(cmd[1]),
                 dataType: "json",
@@ -93,7 +93,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "update") {
+        } else if (cmd[0] === "update") {
             $.ajax({
                 url: Config.get_contest_read_url(cmd[1]),
                 dataType: "json",
@@ -106,7 +106,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "delete") {
+        } else if (cmd[0] === "delete") {
             self.delete_contest(cmd[1]);
         }
     };
@@ -164,7 +164,7 @@ var DataStore = new function () {
                     self.create_task(key, data[key]);
                 }
                 self.inits_todo -= 1;
-                if (self.inits_todo == 0) {
+                if (self.inits_todo === 0) {
                     self.init_scores();
                 }
             },
@@ -177,7 +177,7 @@ var DataStore = new function () {
 
     self.task_listener = function (event) {
         var cmd = event.data.split(" ");
-        if (cmd[0] == "create") {
+        if (cmd[0] === "create") {
             $.ajax({
                 url: Config.get_task_read_url(cmd[1]),
                 dataType: "json",
@@ -190,7 +190,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "update") {
+        } else if (cmd[0] === "update") {
             $.ajax({
                 url: Config.get_task_read_url(cmd[1]),
                 dataType: "json",
@@ -203,7 +203,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "delete") {
+        } else if (cmd[0] === "delete") {
             self.delete_task(cmd[1]);
         }
     };
@@ -281,7 +281,7 @@ var DataStore = new function () {
 
     self.team_listener = function (event) {
         var cmd = event.data.split(" ");
-        if (cmd[0] == "create") {
+        if (cmd[0] === "create") {
             $.ajax({
                 url: Config.get_team_read_url(cmd[1]),
                 dataType: "json",
@@ -294,7 +294,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "update") {
+        } else if (cmd[0] === "update") {
             $.ajax({
                 url: Config.get_team_read_url(cmd[1]),
                 dataType: "json",
@@ -307,7 +307,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "delete") {
+        } else if (cmd[0] === "delete") {
             self.delete_team(cmd[1]);
         }
     };
@@ -365,7 +365,7 @@ var DataStore = new function () {
                     self.create_user(key, data[key]);
                 }
                 self.inits_todo -= 1;
-                if (self.inits_todo == 0) {
+                if (self.inits_todo === 0) {
                     self.init_scores();
                 }
             },
@@ -378,7 +378,7 @@ var DataStore = new function () {
 
     self.user_listener = function (event) {
         var cmd = event.data.split(" ");
-        if (cmd[0] == "create") {
+        if (cmd[0] === "create") {
             $.ajax({
                 url: Config.get_user_read_url(cmd[1]),
                 dataType: "json",
@@ -391,7 +391,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "update") {
+        } else if (cmd[0] === "update") {
             $.ajax({
                 url: Config.get_user_read_url(cmd[1]),
                 dataType: "json",
@@ -404,7 +404,7 @@ var DataStore = new function () {
                     self.update_network_status(4);
                 }
             });
-        } else if (cmd[0] == "delete") {
+        } else if (cmd[0] === "delete") {
             self.delete_user(cmd[1]);
         }
     };
@@ -768,7 +768,7 @@ var DataStore = new function () {
 
         user["rank"] = new_rank;
 
-        if (old_rank != new_rank) {
+        if (old_rank !== new_rank) {
             console.info("Changed rank for user " + u_id + ": " + old_rank + " -> " + new_rank);
 
             self.rank_events.fire(u_id, user, new_rank - old_rank);
@@ -861,26 +861,26 @@ var DataStore = new function () {
     };
 
     self.update_network_status = function (state) {
-        if (state == 0) { // self.es.CONNECTING
+        if (state === 0) { // self.es.CONNECTING
             $("#ConnectionStatus_box").attr("data-status", "reconnecting");
             $("#ConnectionStatus_text").text("You are disconnected from the server but your browser is trying to connect.");
-        } else if (state == 1) { // self.es.OPEN
+        } else if (state === 1) { // self.es.OPEN
             $("#ConnectionStatus_box").attr("data-status", "connected");
             $("#ConnectionStatus_text").text("You are connected to the server and are receiving live updates.");
-        } else if (state == 2) { // self.es.CLOSED
+        } else if (state === 2) { // self.es.CLOSED
             $("#ConnectionStatus_box").attr("data-status", "disconnected");
             $("#ConnectionStatus_text").html("You are disconnected from the server but you can <a onclick=\"DataStore.create_event_source();\">try to connect</a>.");
-        } else if (state == 3) { // "reload" event received
+        } else if (state === 3) { // "reload" event received
             $("#ConnectionStatus_box").attr("data-status", "outdated");
             $("#ConnectionStatus_text").html("Your local data cannot be updated. Please <a onclick=\"window.location.reload();\">reload the page</a>.");
-        } else if (state == 4) { // an init failed
+        } else if (state === 4) { // an init failed
             $("#ConnectionStatus_box").attr("data-status", "init_error");
             $("#ConnectionStatus_text").html("An error occurred while loading the data. Check your connection and <a onclick=\"window.location.reload();\">reload the page</a>.");
         }
     };
 
     self.es_open_handler = function () {
-        if (self.es.readyState == self.es.OPEN) {
+        if (self.es.readyState === self.es.OPEN) {
             console.info("EventSource connected");
             self.update_network_status(self.es.readyState);
         } else {
@@ -889,10 +889,10 @@ var DataStore = new function () {
     };
 
     self.es_error_handler = function () {
-        if (self.es.readyState == self.es.CONNECTING) {
+        if (self.es.readyState === self.es.CONNECTING) {
             console.info("EventSource reconnecting");
             self.update_network_status(self.es.readyState);
-        } else if (self.es.readyState == self.es.CLOSED) {
+        } else if (self.es.readyState === self.es.CLOSED) {
             console.info("EventSource disconnected");
             self.update_network_status(self.es.readyState);
         } else {
@@ -901,7 +901,7 @@ var DataStore = new function () {
     };
 
     self.es_reload_handler = function () {
-        if (self.es.readyState == self.es.OPEN) {
+        if (self.es.readyState === self.es.OPEN) {
             console.info("Received a 'reload' event");
             self.es.close();
             self.update_network_status(3);
@@ -924,9 +924,9 @@ var DataStore = new function () {
         var a = data;
         for (var i = 0; i < self.contest_list.length; i += 1) {
             var b = self.contest_list[i];
-            if ((a["begin"] < b["begin"]) || ((a["begin"] == b["begin"]) &&
-               ((a["end"]   < b["end"]  ) || ((a["end"]   == b["end"]  ) &&
-               ((a["name"]  < b["name"] ) || ((a["name"]  == b["name"] ) &&
+            if ((a["begin"] < b["begin"]) || ((a["begin"] === b["begin"]) &&
+               ((a["end"]   < b["end"]  ) || ((a["end"]   === b["end"]  ) &&
+               ((a["name"]  < b["name"] ) || ((a["name"]  === b["name"] ) &&
                (key < b["key"]))))))) {
                 // We found the first element which is greater than a
                 self.contest_list.splice(i, 0, a);
@@ -940,7 +940,7 @@ var DataStore = new function () {
         // Remove data from the sorted contest list
         for (var i = 0; i < self.contest_list.length; i += 1) {
             var b = self.contest_list[i];
-            if (key == b["key"]) {
+            if (key === b["key"]) {
                 self.contest_list.splice(i, 1);
                 return;
             }
@@ -972,8 +972,8 @@ var DataStore = new function () {
         var a = data;
         for (var i = 0; i < task_list.length; i += 1) {
             var b = task_list[i];
-            if ((a["order"] < b["order"]) || ((a["order"] == b["order"]) &&
-               ((a["name"]  < b["name"] ) || ((a["name"]  == b["name"] ) &&
+            if ((a["order"] < b["order"]) || ((a["order"] === b["order"]) &&
+               ((a["name"]  < b["name"] ) || ((a["name"]  === b["name"] ) &&
                (key < b["key"]))))) {
                 // We found the first element which is greater than a
                 task_list.splice(i, 0, a);
@@ -989,7 +989,7 @@ var DataStore = new function () {
         // Remove data from the sorted task list of the contest
         for (var i = 0; i < task_list.length; i += 1) {
             var b = task_list[i];
-            if (key == b["key"]) {
+            if (key === b["key"]) {
                 task_list.splice(i, 1);
                 break;
             }
@@ -1013,7 +1013,7 @@ var DataStore = new function () {
         var a = data;
         for (var i = 0; i < self.team_list.length; i += 1) {
             var b = self.team_list[i];
-            if ((a["name"] < b["name"]) || ((a["name"] == b["name"]) &&
+            if ((a["name"] < b["name"]) || ((a["name"] === b["name"]) &&
                 (key < b["key"]))) {
                 // We found the first element which is greater than a
                 self.team_list.splice(i, 0, a);
@@ -1027,7 +1027,7 @@ var DataStore = new function () {
         // Remove data from the sorted team list
         for (var i = 0; i < self.team_list.length; i += 1) {
             var b = self.team_list[i];
-            if (key == b["key"]) {
+            if (key === b["key"]) {
                 self.team_list.splice(i, 1);
                 break;
             }
@@ -1063,8 +1063,8 @@ var DataStore = new function () {
         var a = data;
         for (var i = 0; i < user_list.length; i += 1) {
             var b = user_list[i];
-            if ((a["l_name"] < b["l_name"]) || ((a["l_name"] == b["l_name"]) &&
-               ((a["f_name"] < b["f_name"]) || ((a["f_name"] == b["f_name"]) &&
+            if ((a["l_name"] < b["l_name"]) || ((a["l_name"] === b["l_name"]) &&
+               ((a["f_name"] < b["f_name"]) || ((a["f_name"] === b["f_name"]) &&
                (key < b["key"]))))) {
                 // We found the first element which is greater than a
                 user_list.splice(i, 0, a);
@@ -1084,7 +1084,7 @@ var DataStore = new function () {
         // Remove data from the sorted user list of the team
         for (var i = 0; i < user_list.length; i += 1) {
             var b = user_list[i];
-            if (key == b["key"]) {
+            if (key === b["key"]) {
                 user_list.splice(i, 1);
                 break;
             }
@@ -1134,7 +1134,7 @@ var DataStore = new function () {
 
         $(window).on("storage", function (event) {
             event = event.originalEvent;
-            if (event.storageArea == localStorage)
+            if (event.storageArea === localStorage)
             {
                 if (event.key === null)
                 {
@@ -1162,7 +1162,7 @@ var DataStore = new function () {
     };
 
     self.set_selected = function (u_id, flag, color_idx) {
-        if (self.users[u_id]["selected"] == 0 && flag) {
+        if (self.users[u_id]["selected"] === 0 && flag) {
             // We have to assign a color
             if (!(color_idx > 0))
             {
@@ -1173,7 +1173,7 @@ var DataStore = new function () {
             localStorage.setItem("cms.rws.selection.users." + u_id, color_idx);
             self.select_events.fire(u_id, color_idx);
         }
-        else if (self.users[u_id]["selected"] != 0 && !flag) {
+        else if (self.users[u_id]["selected"] !== 0 && !flag) {
             // We have to remove the color
             var color_idx = self.users[u_id]["selected"];
             self.users[u_id]["selected"] = 0;
@@ -1184,7 +1184,7 @@ var DataStore = new function () {
     };
 
     self.toggle_selected = function (u_id) {
-        self.set_selected(u_id, self.users[u_id]["selected"] == 0);
+        self.set_selected(u_id, self.users[u_id]["selected"] === 0);
     };
 
     self.get_selected = function (u_id) {

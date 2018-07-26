@@ -24,7 +24,7 @@ var TeamSearch = new function () {
         });
 
         $("#TeamSearch_bg").click(function (event) {
-            if (event.target == event.currentTarget) {
+            if (event.target === event.currentTarget) {
                 self.hide();
             }
         });
@@ -154,7 +154,7 @@ var TeamSearch = new function () {
         }
 
         var $elem = $("div.item[data-team=" + t_id + "] input[type=checkbox]", self.body);
-        if (self.sel[t_id] == self.cnt[t_id]) {
+        if (self.sel[t_id] === self.cnt[t_id]) {
             $elem.prop("checked", true);
             $elem.prop("indeterminate", false);
         } else if (self.sel[t_id] > 0) {
@@ -177,7 +177,7 @@ var TeamSearch = new function () {
     self.update = function () {
         var search_text = $("#TeamSearch_input").val();
 
-        if (search_text == "") {
+        if (search_text === "") {
             $('div.item', self.body).removeClass("hidden");
         } else {
             // FIXME We could store the lowercased name of the team on the divs
@@ -186,7 +186,7 @@ var TeamSearch = new function () {
             // (We would need another query to get the complementary set).
             for (var t_id in DataStore.teams) {
                 var team = DataStore.teams[t_id];
-                if (team["name"].toLowerCase().indexOf(search_text.toLowerCase()) == -1) {
+                if (team["name"].toLowerCase().indexOf(search_text.toLowerCase()) === -1) {
                     $("div.item[data-team=" + t_id + "]", self.body).addClass("hidden");
                 } else {
                     $("div.item[data-team=" + t_id + "]", self.body).removeClass("hidden");

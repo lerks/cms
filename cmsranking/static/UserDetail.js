@@ -22,7 +22,7 @@ var UserDetail = new function () {
 
     self.init = function () {
         $("#UserDetail_bg").click(function (event) {
-            if (event.target == event.currentTarget) {
+            if (event.target === event.currentTarget) {
                 self.hide();
             }
         });
@@ -32,7 +32,7 @@ var UserDetail = new function () {
         });
 
         $(document).keyup(function (event) {
-            if (event.keyCode == 27) { // ESC key
+            if (event.keyCode === 27) { // ESC key
                 self.hide();
             }
         });
@@ -120,7 +120,7 @@ var UserDetail = new function () {
     };
 
     self.do_show = function () {
-        if (self.data_fetched == 2) {
+        if (self.data_fetched === 2) {
             self.f_name_label.text(self.user["f_name"]);
             self.l_name_label.text(self.user["l_name"]);
             self.face_image.attr("src", Config.get_face_url(self.user_id));
@@ -254,7 +254,7 @@ var UserDetail = new function () {
     </thead> \
     <tbody>";
 
-        if (self.submissions[task_id].length == 0) {
+        if (self.submissions[task_id].length === 0) {
             res += " \
         <tr> \
             <td colspan=\"" + (3 + DataStore.tasks[task_id]['extra_headers'].length) + "\">no submissions</td> \

@@ -66,7 +66,7 @@ var HistoryStore = new function () {
                 var contest_id = DataStore.tasks[task]['contest'];
                 var tmp_score = 0.0;
                 for (var t_id in d[user]) {
-                    if (DataStore.tasks[t_id]['contest'] == contest_id) {
+                    if (DataStore.tasks[t_id]['contest'] === contest_id) {
                         tmp_score += d[user][t_id];
                     }
                 }
@@ -91,7 +91,7 @@ var HistoryStore = new function () {
             var task = self.history_t[i][1];
             var time = self.history_t[i][2];
             var score = self.history_t[i][3];
-            if (user == user_id && task == task_id) {
+            if (user === user_id && task === task_id) {
                 result.push([time, score, 0]);
             }
         }
@@ -107,7 +107,7 @@ var HistoryStore = new function () {
             var contest = self.history_c[i][1];
             var time = self.history_c[i][2];
             var score = self.history_c[i][3];
-            if (user == user_id && contest == contest_id) {
+            if (user === user_id && contest === contest_id) {
                 result.push([time, score, 0]);
             }
         }
@@ -122,7 +122,7 @@ var HistoryStore = new function () {
             var user = self.history_g[i][0];
             var time = self.history_g[i][1];
             var score = self.history_g[i][2];
-            if (user == user_id) {
+            if (user === user_id) {
                 result.push([time, score, 0]);
             }
         }
@@ -147,19 +147,19 @@ var HistoryStore = new function () {
             var time = self.history_t[i][2];
             var score = self.history_t[i][3];
 
-            if (task == task_id) {
-                if (user == user_id) {
+            if (task === task_id) {
+                if (user === user_id) {
                     d[user_id] = score;
                     var new_above = 0;
                     var new_equal = 0;
                     for (var s in d) {
                         if (d[s] > score) {
                             new_above += 1;
-                        } else if (d[s] == score) {
+                        } else if (d[s] === score) {
                             new_equal += 1;
                         }
                     }
-                    if (new_above != above || new_equal != equal) {
+                    if (new_above !== above || new_equal !== equal) {
                         above = new_above;
                         equal = new_equal;
                         result.push([time, above+1, equal-1]);
@@ -173,10 +173,10 @@ var HistoryStore = new function () {
                         above -= 1;
                         changed = true;
                     }
-                    if (d[user] == d[user_id]) {
+                    if (d[user] === d[user_id]) {
                         equal -= 1;
                         changed = true;
-                    } else if (score == d[user_id]) {
+                    } else if (score === d[user_id]) {
                         equal += 1;
                         changed = true;
                     }
@@ -208,19 +208,19 @@ var HistoryStore = new function () {
             var time = self.history_c[i][2];
             var score = self.history_c[i][3];
 
-            if (contest == contest_id) {
-                if (user == user_id) {
+            if (contest === contest_id) {
+                if (user === user_id) {
                     d[user_id] = score;
                     var new_above = 0;
                     var new_equal = 0;
                     for (var s in d) {
                         if (d[s] > score) {
                             new_above += 1;
-                        } else if (d[s] == score) {
+                        } else if (d[s] === score) {
                             new_equal += 1;
                         }
                     }
-                    if (new_above != above || new_equal != equal) {
+                    if (new_above !== above || new_equal !== equal) {
                         above = new_above;
                         equal = new_equal;
                         result.push([time, above+1, equal-1]);
@@ -234,10 +234,10 @@ var HistoryStore = new function () {
                         above -= 1;
                         changed = true;
                     }
-                    if (d[user] == d[user_id]) {
+                    if (d[user] === d[user_id]) {
                         equal -= 1;
                         changed = true;
-                    } else if (score == d[user_id]) {
+                    } else if (score === d[user_id]) {
                         equal += 1;
                         changed = true;
                     }
@@ -268,18 +268,18 @@ var HistoryStore = new function () {
             var time = self.history_g[i][1];
             var score = self.history_g[i][2];
 
-            if (user == user_id) {
+            if (user === user_id) {
                 d[user_id] = score;
                 var new_above = 0;
                 var new_equal = 0;
                 for (var s in d) {
                     if (d[s] > score) {
                         new_above += 1;
-                    } else if (d[s] == score) {
+                    } else if (d[s] === score) {
                         new_equal += 1;
                     }
                 }
-                if (new_above != above || new_equal != equal) {
+                if (new_above !== above || new_equal !== equal) {
                     above = new_above;
                     equal = new_equal;
                     result.push([time, above+1, equal-1]);
@@ -293,10 +293,10 @@ var HistoryStore = new function () {
                     above -= 1;
                     changed = true;
                 }
-                if (d[user] == d[user_id]) {
+                if (d[user] === d[user_id]) {
                     equal -= 1;
                     changed = true;
-                } else if (score == d[user_id]) {
+                } else if (score === d[user_id]) {
                     equal += 1;
                     changed = true;
                 }

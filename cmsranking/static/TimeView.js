@@ -113,7 +113,7 @@ var TimeView = new function () {
                 // the next contest has yet to start: show remaining or clock
                 $("#TimeView").removeClass("cont post_cont");
                 $("#TimeView").addClass("pre_cont");
-                if (self.status == 2) {
+                if (self.status === 2) {
                     $("#TimeView").removeClass("elapsed remaining");
                     $("#TimeView").addClass("current");
                     full_time = true;
@@ -126,11 +126,11 @@ var TimeView = new function () {
                 // the next contest already started: all options available
                 $("#TimeView").removeClass("pre_cont post_cont");
                 $("#TimeView").addClass("cont");
-                if (self.status == 2) {
+                if (self.status === 2) {
                     $("#TimeView").removeClass("elapsed remaining");
                     $("#TimeView").addClass("current");
                     full_time = true;
-                } else if (self.status == 1) {
+                } else if (self.status === 1) {
                     $("#TimeView").removeClass("elapsed current");
                     $("#TimeView").addClass("remaining");
                     time = cur_time - c['end'];

@@ -301,10 +301,10 @@ var Scoreboard = new function () {
     // (where a < b means that a shoud go above b in the scoreboard)
     self.compare_users = function (a, b) {
         var sort_key = self.sort_key;
-        if ((a[sort_key] > b[sort_key]) || ((a[sort_key] == b[sort_key]) &&
-           ((a["global"] > b["global"]) || ((a["global"] == b["global"]) &&
-           ((a["l_name"] < b["l_name"]) || ((a["l_name"] == b["l_name"]) &&
-           ((a["f_name"] < b["f_name"]) || ((a["f_name"] == b["f_name"]) &&
+        if ((a[sort_key] > b[sort_key]) || ((a[sort_key] === b[sort_key]) &&
+           ((a["global"] > b["global"]) || ((a["global"] === b["global"]) &&
+           ((a["l_name"] < b["l_name"]) || ((a["l_name"] === b["l_name"]) &&
+           ((a["f_name"] < b["f_name"]) || ((a["f_name"] === b["f_name"]) &&
            (a["key"] <= b["key"]))))))))) {
             return -1;
         } else {
@@ -322,10 +322,10 @@ var Scoreboard = new function () {
         var list_l = list.length;
         var i = parseInt(user["index"]);
 
-        if (i > 0 && compare(user, list[i-1]) == -1) {
+        if (i > 0 && compare(user, list[i-1]) === -1) {
             // Move up
 
-            while (i > 0 && compare(user, list[i-1]) == -1) {
+            while (i > 0 && compare(user, list[i-1]) === -1) {
                 list[i] = list[i-1];
                 list[i]["index"] = i;
                 i -= 1;
@@ -333,15 +333,15 @@ var Scoreboard = new function () {
             list[i] = user;
             user["index"] = i;
 
-            if (i == 0) {
+            if (i === 0) {
                 self.tbody_el.prepend(user["row"]);
             } else {
                 self.tbody_el.children("tr.user[data-user=" + list[i-1]["key"] + "]").after(user["row"]);
             }
-        } else if (i < list_l-1 && compare(list[i+1], user) == -1) {
+        } else if (i < list_l-1 && compare(list[i+1], user) === -1) {
             // Move down
 
-            while (i < list_l-1 && compare(list[i+1], user) == -1) {
+            while (i < list_l-1 && compare(list[i+1], user) === -1) {
                 list[i] = list[i+1];
                 list[i]["index"] = i;
                 i += 1;
@@ -349,7 +349,7 @@ var Scoreboard = new function () {
             list[i] = user;
             user["index"] = i;
 
-            if (i == list_l-1) {
+            if (i === list_l-1) {
                 self.tbody_el.append(user["row"]);
             } else {
                 self.tbody_el.children("tr.user[data-user=" + list[i+1]["key"] + "]").before(user["row"]);
@@ -482,7 +482,7 @@ var Scoreboard = new function () {
 
         // TODO we could user a data-* attribute to store the color
 
-        if (color != 0) {
+        if (color !== 0) {
             $row.addClass("selected color" + color);
         } else {
             $row.removeClass("selected color1 color2 color3 color4 color5 color6 color7 color8");

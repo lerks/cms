@@ -65,7 +65,7 @@ var Overview = new function () {
                 data["marker_u_anim"] = old_data["marker_u_anim"];
                 delete old_data["marker_u_anim"];
             }
-            if ($.inArray(old_data, self.user_list) != -1) {
+            if ($.inArray(old_data, self.user_list) !== -1) {
                 self.user_list.splice($.inArray(old_data, self.user_list), 1, data);
             }
         });
@@ -181,7 +181,7 @@ var Overview = new function () {
         for (var i = 0; i <= self.SCORE_STEPS + 1; i += 1) {
             var x = self.PAD_L + a * self.scores[i] * self.scores[i] + b * self.scores[i] + c;
             var y = self.height - self.PAD_B - i * (self.height - self.PAD_T - self.PAD_B) / (self.SCORE_STEPS + 1);
-            if (i == 0) {
+            if (i === 0) {
                 s_path += Raphael.format("M {0},{1} R", x, y);
             } else {
                 s_path += Raphael.format(" {0},{1}", x, y);
@@ -251,9 +251,9 @@ var Overview = new function () {
     // Compare two users. Returns -1 if "a < b" or +1 if "a >= b"
     // (where a < b means that a shoud go above b in the overview)
     self.compare_users = function (a, b) {
-        if ((a["global"] > b["global"]) || ((a["global"] == b["global"]) &&
-           ((a["l_name"] < b["l_name"]) || ((a["l_name"] == b["l_name"]) &&
-           ((a["f_name"] < b["f_name"]) || ((a["f_name"] == b["f_name"]) &&
+        if ((a["global"] > b["global"]) || ((a["global"] === b["global"]) &&
+           ((a["l_name"] < b["l_name"]) || ((a["l_name"] === b["l_name"]) &&
+           ((a["f_name"] < b["f_name"]) || ((a["f_name"] === b["f_name"]) &&
            (a["key"] <= b["key"]))))))) {
             return -1;
         } else {
@@ -377,7 +377,7 @@ var Overview = new function () {
               out += sl[i][0];
           }
       }
-      if (user["team"] != null && user["team"] != undefined) {
+      if (user["team"] != null && user["team"] !== undefined) {
           return user['team'] + '-' + out;
       } else {
           return out;
