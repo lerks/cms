@@ -39,7 +39,6 @@ from future.builtins import *  # noqa
 from six import iterkeys
 
 import logging
-import os
 import traceback
 
 import tornado.web

@@ -49,7 +49,7 @@ from werkzeug.wsgi import responder, wrap_file, SharedDataMiddleware, \
 from werkzeug.utils import redirect
 
 # Needed for initialization. Do not remove.
-import cmsranking.Logger
+import cmsranking.Logger  # noqa
 
 from cmscommon.eventsource import EventSource
 from cmsranking.Config import Config
