@@ -295,7 +295,7 @@ def build_checker_list(base_dir, task_type):
         for src in (os.path.join(CHECK_DIRNAME, x)
                     for x in os.listdir(check_dir)
                     if endswith2(x, SOL_EXTS)):
-            exe, ext = basename2(src, CHECK_EXTS)
+            exe, unused_ext = basename2(src, CHECK_EXTS)
             lang = filename_to_language(src)
 
             def compile_check(src, exe, assume=None):

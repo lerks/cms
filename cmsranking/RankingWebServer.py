@@ -422,6 +422,8 @@ class ImageHandler(object):
         except HTTPException as exc:
             return exc
 
+        assert endpoint == "get"
+
         location = self.location % args
 
         request = Request(environ)

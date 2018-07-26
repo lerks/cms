@@ -28,7 +28,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
-from six import iterkeys, iteritems
+from six import iterkeys, itervalues
 
 import unittest
 
@@ -87,20 +87,20 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             self.tasks[0], self.participation, False)
 
         # A submission completely evaluated.
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         for result in results:
-            for codename, testcase in iteritems(result.dataset.testcases):
+            for testcase in itervalues(result.dataset.testcases):
                 self.add_evaluation(result, testcase)
 
         # A submission reaching maximum tries for compilation
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation)
         for result in results:
             result.compilation_tries = 25
 
         # A submission reaching maximum tries for evaluation
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         for result in results:
             result.evaluation_tries = 25
@@ -125,7 +125,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_submissions_operations_with_results(self):
         """Test for a submission with submission results."""
-        submission, results = self.add_submission_with_results(
+        submission, _ = self.add_submission_with_results(
             self.tasks[0], self.participation)
         self.session.flush()
 
@@ -156,7 +156,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_submissions_operations_to_evaluate(self):
         """Test for a compiled submission."""
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         self.session.flush()
 
@@ -171,7 +171,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_submissions_operations_to_evaluate_second_try(self):
         """Test for a compiled submission."""
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         for result in results:
             result.evaluation_tries = 1
@@ -188,7 +188,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_submissions_operations_partially_evaluate(self):
         """Test for a submission with some evaluation present."""
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         evaluated_codenames = set()
         for result in results:
@@ -228,7 +228,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             for dataset in submission.task.datasets if self.to_judge(dataset)))
 
         # A submission with results to be compiled.
-        submission, results = self.add_submission_with_results(
+        submission, _ = self.add_submission_with_results(
             self.tasks[0], self.participation)
         self.session.flush()
         expected_operations.update(set(
@@ -236,7 +236,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             for dataset in submission.task.datasets if self.to_judge(dataset)))
 
         # A submission with results to be evaluated.
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         self.session.flush()
         expected_operations.update(set(
@@ -279,17 +279,17 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
         self.add_user_test_with_results(False)
 
         # A user_test completely evaluated.
-        user_test, results = self.add_user_test_with_results(True)
+        _, results = self.add_user_test_with_results(True)
         for result in results:
             result.set_evaluation_outcome()
 
         # A user_test reaching maximum tries for compilation
-        user_test, results = self.add_user_test_with_results()
+        _, results = self.add_user_test_with_results()
         for result in results:
             result.compilation_tries = 25
 
         # A user_test reaching maximum tries for evaluation
-        user_test, results = self.add_user_test_with_results(True)
+        _, results = self.add_user_test_with_results(True)
         for result in results:
             result.evaluation_tries = 25
 
@@ -313,7 +313,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_user_tests_operations_with_results(self):
         """Test for a user_test with user_test results."""
-        user_test, results = self.add_user_test_with_results()
+        user_test, _ = self.add_user_test_with_results()
         self.session.flush()
 
         expected_operations = set(
@@ -342,7 +342,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_user_tests_operations_to_evaluate(self):
         """Test for a compiled user_test."""
-        user_test, results = self.add_user_test_with_results(True)
+        _, results = self.add_user_test_with_results(True)
         self.session.flush()
 
         expected_operations = set(
@@ -355,7 +355,7 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_user_tests_operations_to_evaluate_second_try(self):
         """Test for a compiled user_test."""
-        user_test, results = self.add_user_test_with_results(True)
+        _, results = self.add_user_test_with_results(True)
         for result in results:
             result.evaluation_tries = 1
         self.session.flush()
@@ -386,14 +386,14 @@ class TestESOperations(DatabaseMixin, unittest.TestCase):
             for dataset in user_test.task.datasets if self.to_judge(dataset)))
 
         # A user_test with results to be compiled.
-        user_test, results = self.add_user_test_with_results()
+        user_test, _ = self.add_user_test_with_results()
         self.session.flush()
         expected_operations.update(set(
             self.user_test_compilation_operation(user_test, dataset)
             for dataset in user_test.task.datasets if self.to_judge(dataset)))
 
         # A user_test with results to be evaluated.
-        user_test, results = self.add_user_test_with_results(True)
+        _, results = self.add_user_test_with_results(True)
         self.session.flush()
         expected_operations.update(set(
             self.user_test_evaluation_operation(result)

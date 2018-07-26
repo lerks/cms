@@ -28,7 +28,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
-from six import iterkeys, iteritems
+from six import iterkeys, itervalues
 
 import unittest
 
@@ -76,30 +76,29 @@ class TestScoringOperations(DatabaseMixin, unittest.TestCase):
     def test_get_operations_no_operations(self):
         """Test for submissions without operations to do."""
         # Submission to compile, without a result.
-        submission = self.add_submission(self.tasks[0], self.participation)
+        self.add_submission(self.tasks[0], self.participation)
 
         # Again to compile, but with a result.
-        submission, results = self.add_submission_with_results(
-            self.tasks[0], self.participation)
+        self.add_submission_with_results(self.tasks[0], self.participation)
 
         # With many failure during compilation.
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation)
         for result in results:
             result.compilation_tries = 25
 
         # Submission to evaluate.
-        submission, results = self.add_submission_with_results(
+        self.add_submission_with_results(
             self.tasks[0], self.participation, True)
 
         # With many failures during evaluation.
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         for result in results:
             result.evaluation_tries = 25
 
         # Submission partially evaluated.
-        submission, results = self.add_submission_with_results(
+        _, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         evaluated_codenames = set()
         for result in results:
@@ -114,7 +113,7 @@ class TestScoringOperations(DatabaseMixin, unittest.TestCase):
 
     def test_get_operations_compilation_failed(self):
         """Test for a submission which failed to compile."""
-        submission, results = self.add_submission_with_results(
+        submission, _ = self.add_submission_with_results(
             self.tasks[0], self.participation, False)
         self.session.flush()
 
@@ -132,7 +131,7 @@ class TestScoringOperations(DatabaseMixin, unittest.TestCase):
         submission, results = self.add_submission_with_results(
             self.tasks[0], self.participation, True)
         for result in results:
-            for codename, testcase in iteritems(result.dataset.testcases):
+            for testcase in itervalues(result.dataset.testcases):
                 self.add_evaluation(result, testcase)
                 result.set_evaluation_outcome()
         self.session.flush()

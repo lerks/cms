@@ -202,7 +202,7 @@ def main():
         done = 0
         for row in results:
             s_id, s_language, s_timestamp, sr_score, f_filename, f_digest, \
-                u_id, u_name, u_fname, u_lname, t_id, t_name = row
+                u_id, u_name, u_fname, u_lname, unused_t_id, t_name = row
 
             timef = s_timestamp.strftime('%Y%m%dT%H%M%S')
 

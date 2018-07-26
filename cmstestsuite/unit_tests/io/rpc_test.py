@@ -325,7 +325,7 @@ class TestRPC(unittest.TestCase):
         on_disconnect_handler = Mock()
         client.add_on_disconnect_handler(on_disconnect_handler)
 
-        for i in range(10):
+        for _ in range(10):
             self.assertTrue(client.connected)
             result = client.echo(value=42)
             result.wait()
