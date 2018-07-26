@@ -41,12 +41,12 @@ var HistoryStore = new function () {
 
     self.perform_update = function (data, callback) {
         var d = {};
-        for (var u_id in DataStore.users) {
+        DataStore.users.keys().forEach(function(u_id) {
             d[u_id] = {};
-            for (var t_id in DataStore.tasks) {
+            DataStore.tasks.keys().forEach(function(t_id) {
                 d[u_id][t_id] = 0.0;
-            }
-        }
+            });
+        });
 
         self.history_t = [];
         self.history_c = [];
@@ -64,19 +64,19 @@ var HistoryStore = new function () {
                 self.history_t.push([user, task, time, score]);
 
                 var contest_id = DataStore.tasks[task]['contest'];
-                var tmp_score = 0.0;
-                for (var t_id in d[user]) {
+                var contest_score = d[user].keys().reduce(function(sum, t_id) {
                     if (DataStore.tasks[t_id]['contest'] === contest_id) {
-                        tmp_score += d[user][t_id];
+                        sum += d[user][t_id];
                     }
-                }
-                self.history_c.push([user, contest_id, time, tmp_score])
+                    return sum;
+                }, 0.0);
+                self.history_c.push([user, contest_id, time, contest_score])
 
-                var tmp_score = 0.0;
-                for (var t_id in d[user]) {
-                    tmp_score += d[user][t_id];
-                }
-                self.history_g.push([user, time, tmp_score]);
+                var global_score = d[user].keys().reduce(function(sum, t_id) {
+                    sum += d[user][t_id];
+                    return sum;
+                }, 0.0);
+                self.history_g.push([user, time, global_score]);
             }
         }
 
@@ -132,9 +132,9 @@ var HistoryStore = new function () {
 
     self.get_rank_history_for_task = function (user_id, task_id) {
         var d = {};
-        for (var u_id in DataStore.users) {
+        DataStore.users.keys().forEach(function(u_id) {
             d[u_id] = 0.0;
-        }
+        });
         var above = 0;
         var equal = DataStore.user_count;
 
@@ -152,13 +152,13 @@ var HistoryStore = new function () {
                     d[user_id] = score;
                     var new_above = 0;
                     var new_equal = 0;
-                    for (var s in d) {
+                    d.keys().forEach(function(s) {
                         if (d[s] > score) {
                             new_above += 1;
                         } else if (d[s] === score) {
                             new_equal += 1;
                         }
-                    }
+                    });
                     if (new_above !== above || new_equal !== equal) {
                         above = new_above;
                         equal = new_equal;
@@ -193,9 +193,9 @@ var HistoryStore = new function () {
 
     self.get_rank_history_for_contest = function (user_id, contest_id) {
         var d = {};
-        for (var u_id in DataStore.users) {
+        DataStore.users.keys().forEach(function(u_id) {
             d[u_id] = 0.0;
-        }
+        });
         var above = 0;
         var equal = DataStore.user_count;
 
@@ -213,13 +213,13 @@ var HistoryStore = new function () {
                     d[user_id] = score;
                     var new_above = 0;
                     var new_equal = 0;
-                    for (var s in d) {
+                    d.keys().forEach(function(s) {
                         if (d[s] > score) {
                             new_above += 1;
                         } else if (d[s] === score) {
                             new_equal += 1;
                         }
-                    }
+                    });
                     if (new_above !== above || new_equal !== equal) {
                         above = new_above;
                         equal = new_equal;
@@ -254,9 +254,9 @@ var HistoryStore = new function () {
 
     self.get_rank_history = function (user_id) {
         var d = {};
-        for (var u_id in DataStore.users) {
+        DataStore.users.keys().forEach(function(u_id) {
             d[u_id] = 0.0;
-        }
+        });
         var above = 0;
         var equal = DataStore.user_count;
 
@@ -272,13 +272,13 @@ var HistoryStore = new function () {
                 d[user_id] = score;
                 var new_above = 0;
                 var new_equal = 0;
-                for (var s in d) {
+                d.keys().forEach(function(s) {
                     if (d[s] > score) {
                         new_above += 1;
                     } else if (d[s] === score) {
                         new_equal += 1;
                     }
-                }
+                });
                 if (new_above !== above || new_equal !== equal) {
                     above = new_above;
                     equal = new_equal;

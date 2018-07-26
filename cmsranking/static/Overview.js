@@ -201,9 +201,9 @@ var Overview = new function () {
         var users = DataStore.users;
         var max_score = DataStore.global_max_score;
 
-        for (var u_id in users) {
+        users.keys().forEach(function(u_id) {
             self.scores[self.get_score_class(users[u_id]["global"], max_score)] += 1;
-        }
+        });
     };
 
 

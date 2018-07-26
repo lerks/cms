@@ -104,10 +104,10 @@ var TeamSearch = new function () {
         self.sel = {};
         self.cnt = {};
 
-        for (var t_id in DataStore.teams) {
+        DataStore.teams.keys().forEach(function(t_id) {
             self.sel[t_id] = 0;
             self.cnt[t_id] = DataStore.teams[t_id]["users"].length;
-        }
+        });
 
         var inner_html = "";
 
@@ -184,14 +184,14 @@ var TeamSearch = new function () {
             // and then just use a query like [attribute*="value"] (with value
             // set to the lowercased search_text) and add the class to that.
             // (We would need another query to get the complementary set).
-            for (var t_id in DataStore.teams) {
+            DataStore.teams.keys().forEach(function(t_id) {
                 var team = DataStore.teams[t_id];
                 if (team["name"].toLowerCase().indexOf(search_text.toLowerCase()) === -1) {
                     $("div.item[data-team=" + t_id + "]", self.body).addClass("hidden");
                 } else {
                     $("div.item[data-team=" + t_id + "]", self.body).removeClass("hidden");
                 }
-            }
+            });
         }
     };
 };

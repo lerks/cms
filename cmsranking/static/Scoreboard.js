@@ -219,11 +219,11 @@ var Scoreboard = new function () {
 
 
     self.make_body = function () {
-        for (var u_id in DataStore.users) {
+        DataStore.users.keys().forEach(function(u_id) {
             var user = DataStore.users[u_id];
             user["row"] = $(self.make_row(user))[0];
             self.user_list.push(user);
-        }
+        });
 
         self.sort();
     };

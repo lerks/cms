@@ -66,9 +66,9 @@ var DataStore = new function () {
             dataType: "json",
             success: function (data, status, xhr) {
                 self.contest_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
-                for (var key in data) {
+                data.keys().forEach(function(key) {
                     self.create_contest(key, data[key]);
-                }
+                });
                 self.init_tasks();
             },
             error: function () {
@@ -160,9 +160,9 @@ var DataStore = new function () {
             dataType: "json",
             success: function (data, status, xhr) {
                 self.task_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
-                for (var key in data) {
+                data.keys().forEach(function(key) {
                     self.create_task(key, data[key]);
-                }
+                });
                 self.inits_todo -= 1;
                 if (self.inits_todo === 0) {
                     self.init_scores();
@@ -267,9 +267,9 @@ var DataStore = new function () {
             dataType: "json",
             success: function (data, status, xhr) {
                 self.team_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
-                for (var key in data) {
+                data.keys().forEach(function(key) {
                     self.create_team(key, data[key]);
-                }
+                });
                 self.init_users();
             },
             error: function () {
@@ -361,9 +361,9 @@ var DataStore = new function () {
             dataType: "json",
             success: function (data, status, xhr) {
                 self.user_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
-                for (var key in data) {
+                data.keys().forEach(function(key) {
                     self.create_user(key, data[key]);
-                }
+                });
                 self.inits_todo -= 1;
                 if (self.inits_todo === 0) {
                     self.init_scores();
@@ -465,16 +465,16 @@ var DataStore = new function () {
 
     self.contest_create.add(function (key, data) {
         // Add scores
-        for (var u_id in self.users) {
+        self.users.keys().forEach(function(u_id) {
             self.users[u_id]["c_" + key] = 0.0;
-        }
+        });
         // Maximum score
         data["max_score"] = 0.0;
         // Global score precision
         self.global_score_precision = 0;
-        for (var c_id in self.contests) {
+        self.contests.keys().forEach(function(c_id) {
             self.global_score_precision = Math.max(self.global_score_precision, self.contests[c_id]["score_precision"]);
-        }
+        });
     });
 
     self.contest_update.add(function (key, old_data, data) {
@@ -483,30 +483,30 @@ var DataStore = new function () {
         delete old_data["max_score"];
         // Global score precision
         self.global_score_precision = 0;
-        for (var c_id in self.contests) {
+        self.contests.keys().forEach(function(c_id) {
             self.global_score_precision = Math.max(self.global_score_precision, self.contests[c_id]["score_precision"]);
-        }
+        });
     });
 
     self.contest_delete.add(function (key, old_data) {
         // Remove scores
-        for (var u_id in self.users) {
+        self.users.keys().forEach(function(u_id) {
             delete self.users[u_id]["c_" + key];
-        }
+        });
         // Maximum score
         delete old_data["max_score"];
         // Global score precision
         self.global_score_precision = 0;
-        for (var c_id in self.contests) {
+        self.contests.keys().forEach(function(c_id) {
             self.global_score_precision = Math.max(self.global_score_precision, self.contests[c_id]["score_precision"]);
-        }
+        });
     });
 
     self.task_create.add(function (key, data) {
         // Add scores
-        for (var u_id in self.users) {
+        self.users.keys().forEach(function(u_id) {
             self.users[u_id]["t_" + key] = 0.0;
-        }
+        });
         // Maximum score
         self.contests[data["contest"]]["max_score"] += data["max_score"];
         self.global_max_score += data["max_score"];
@@ -526,9 +526,9 @@ var DataStore = new function () {
 
     self.task_delete.add(function (key, old_data) {
         // Remove scores
-        for (var u_id in self.users) {
+        self.users.keys().forEach(function(u_id) {
             delete self.users[u_id]["t_" + key];
-        }
+        });
         // Maximum score
         self.contests[old_data["contest"]]["max_score"] -= old_data["max_score"];
         self.global_max_score -= old_data["max_score"];
@@ -536,37 +536,37 @@ var DataStore = new function () {
 
     self.user_create.add(function (key, data) {
         // Add scores
-        for (var t_id in self.tasks) {
+        self.tasks.keys().forEach(function(t_id) {
             data["t_" + t_id] = 0.0;
-        }
-        for (var c_id in self.contests) {
+        });
+        self.contests.keys().forEach(function(c_id) {
             data["c_" + c_id] = 0.0;
-        }
+        });
         data["global"] = 0.0;
     });
 
     self.user_update.add(function (key, old_data, data) {
         // Copy scores
-        for (var t_id in self.tasks) {
+        self.tasks.keys().forEach(function(t_id) {
             data["t_" + t_id] = old_data["t_" + t_id];
             delete old_data["t_" + t_id];
-        }
-        for (var c_id in self.contests) {
+        });
+        self.contests.keys().forEach(function(c_id) {
             data["c_" + c_id] = old_data["c_" + c_id];
             delete old_data["c_" + c_id];
-        }
+        });
         data["global"] = old_data["global"];
         delete old_data["global"];
     });
 
     self.user_delete.add(function (key, old_data) {
         // Remove scores
-        for (var t_id in self.tasks) {
+        self.tasks.keys().forEach(function(t_id) {
             delete old_data["t_" + t_id];
-        }
-        for (var c_id in self.contests) {
+        });
+        self.contests.keys().forEach(function(c_id) {
             delete old_data["c_" + c_id];
-        }
+        });
         delete old_data["global"];
     });
 
@@ -579,11 +579,11 @@ var DataStore = new function () {
             dataType: "json",
             success: function (data, status, xhr) {
                 self.score_init_time = parseFloat(xhr.getResponseHeader("Timestamp"));
-                for (var u_id in data) {
-                    for (var t_id in data[u_id]) {
+                data.keys().forEach(function(u_id) {
+                    data[u_id].keys().forEach(function(t_id) {
                         self.set_score(u_id, t_id, data[u_id][t_id]);
-                    }
-                }
+                    });
+                });
                 self.init_ranks();
             },
             error: function () {
@@ -658,9 +658,9 @@ var DataStore = new function () {
         // Make a list of all users
         var list = [];
 
-        for (var u_id in self.users) {
+        self.users.keys().forEach(function(u_id) {
             list.push(self.users[u_id]);
-        }
+        });
 
         // Sort it by decreasing score
         list.sort(function (a, b) {
@@ -698,11 +698,11 @@ var DataStore = new function () {
              */
             var new_rank = 1;
 
-            for (var u_id in self.users) {
+            self.users.keys().forEach(function(u_id) {
                 if (self.users[u_id]["global"] > user["global"]) {
                     new_rank += 1;
                 }
-            }
+            });
 
             user["rank"] = new_rank;
         });
@@ -748,7 +748,7 @@ var DataStore = new function () {
         //     new_rank = 1 + |{user2 in users, user2.score > user.score}|
         var new_rank = 1;
 
-        for (var u2_id in self.users) {
+        self.users.keys().forEach(function(u2_id) {
             var user2 = self.users[u2_id];
             // this condition is equivalent to
             //     old_score <= user2["global"] < new_score
@@ -764,7 +764,7 @@ var DataStore = new function () {
             if (user2["global"] > new_score) {
                 new_rank += 1;
             }
-        }
+        });
 
         user["rank"] = new_rank;
 
