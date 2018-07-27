@@ -117,7 +117,7 @@ var Scoreboard = new function () {
     self.make_cols = function () {
         // We want some columns to have a fixed, constant width at all screen
         // sizes (i.e. the sel, rank and team columns) while having the other
-        // columns scale accoring to the available horizontal space. Yet, we
+        // columns scale according to the available horizontal space. Yet, we
         // also want these columns' widths to keep a certain ratio one to each
         // other, for example the task score, contest score and global score
         // columns should be in a 3:4:5 ratio. Since the number of columns is
