@@ -279,7 +279,7 @@ var Scoreboard = new function () {
         } else if (score >= max_score) {
             return "score_100";
         } else {
-            var rel_score = parseInt(score / max_score * 10) * 10;
+            var rel_score = Math.floor(score / max_score * 10) * 10;
             return "score_" + rel_score + "_" + (rel_score + 10);
         }
     };

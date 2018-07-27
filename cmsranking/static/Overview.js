@@ -235,7 +235,7 @@ var Overview = new function () {
         } else if (score >= max_score) {
             return self.SCORE_STEPS + 1;
         } else {
-            return parseInt(score / max_score * self.SCORE_STEPS) + 1;
+            return Math.floor(score / max_score * self.SCORE_STEPS) + 1;
         }
     };
 
