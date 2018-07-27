@@ -30,12 +30,11 @@ var escapeHTML = (function() {
         '/' : '&#x2F;',
         '`' : '&#x60;'
     };
-    var escapeHTML = function(str) {
+    return function(str) {
         return String(str).replace(/[&<>"'\/`]/g, function(ch) {
             return escapeMap[ch];
         });
     };
-    return escapeHTML;
 })();
 
 var Scoreboard = new function () {
@@ -434,17 +433,18 @@ var Scoreboard = new function () {
             var $this = $(this);
 
             var score = user[$this.data("sort_key")];
+            var max_score;
 
             if ($this.hasClass("global")) {
-                var max_score = DataStore.global_max_score;
+                max_score = DataStore.global_max_score;
                 $this.text(round_to_str(score, DataStore.global_score_precision));
             } else if ($this.hasClass("contest")) {
                 var contest = DataStore.contests[$this.data("contest")];
-                var max_score = contest["max_score"];
+                max_score = contest["max_score"];
                 $this.text(round_to_str(score, contest["score_precision"]));
             } else if ($this.hasClass("task")) {
                 var task = DataStore.tasks[$this.data("task")];
-                var max_score = task["max_score"];
+                max_score = task["max_score"];
                 $this.text(round_to_str(score, task["score_precision"]));
             }
 

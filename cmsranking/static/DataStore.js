@@ -677,7 +677,7 @@ var DataStore = new function () {
         var equal = 1;
 
         list.forEach(function(user) {
-            score = user["global"];
+            var score = user["global"];
 
             if (score === prev_score) {
                 equal += 1;
@@ -1178,7 +1178,7 @@ var DataStore = new function () {
         }
         else if (self.users[u_id]["selected"] !== 0 && !flag) {
             // We have to remove the color
-            var color_idx = self.users[u_id]["selected"];
+            color_idx = self.users[u_id]["selected"];
             self.users[u_id]["selected"] = 0;
             self.colors[color_idx-1] -= 1;
             localStorage.removeItem("cms.rws.selection.users." + u_id);

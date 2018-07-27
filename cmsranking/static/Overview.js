@@ -306,38 +306,39 @@ var Overview = new function () {
 
         // Map the color_index given by DataStore to the actual color
         // (FIXME This almost duplicates some code in Ranking.css...)
+        var color_a, color_b;
         switch (user["selected"]) {
             case 1:  // Blue
-                var color_a = "#729fcf";
-                var color_b = "#3465a4";
+                color_a = "#729fcf";
+                color_b = "#3465a4";
                 break;
             case 2:  // Butter
-                var color_a = "#fce94f";
-                var color_b = "#edd400";
+                color_a = "#fce94f";
+                color_b = "#edd400";
                 break;
             case 3:  // Red
-                var color_a = "#ef2929";
-                var color_b = "#cc0000";
+                color_a = "#ef2929";
+                color_b = "#cc0000";
                 break;
             case 4:  // Chameleon
-                var color_a = "#8ae234";
-                var color_b = "#73d216";
+                color_a = "#8ae234";
+                color_b = "#73d216";
                 break;
             case 5:  // Orange
-                var color_a = "#fcaf3e";
-                var color_b = "#f57900";
+                color_a = "#fcaf3e";
+                color_b = "#f57900";
                 break;
             case 6:  // Plum
-                var color_a = "#ad7fa8";
-                var color_b = "#75507b";
+                color_a = "#ad7fa8";
+                color_b = "#75507b";
                 break;
             case 7:  // Aluminium
-                var color_a = "#babdb6";
-                var color_b = "#888a85";
+                color_a = "#babdb6";
+                color_b = "#888a85";
                 break;
             case 8:  // Chocolate
-                var color_a = "#e9b96e";
-                var color_b = "#c17d11";
+                color_a = "#e9b96e";
+                color_b = "#c17d11";
                 break;
         }
 
