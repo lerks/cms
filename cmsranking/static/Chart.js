@@ -15,6 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* exported Chart */
+
 var Chart = new function () {
     var self = this;
 

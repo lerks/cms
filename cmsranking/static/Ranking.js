@@ -15,6 +15,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* globals DataStore */
+/* globals HistoryStore */
+/* globals UserDetail */
+/* globals TimeView */
+/* globals TeamSearch */
+/* globals Overview */
+/* globals Scoreboard */
+
 if (!window.console) {
     window.console = {};
 }

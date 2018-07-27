@@ -15,6 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* globals Config */
+
+/* exported DataStore */
+
 function round(value, ndigits) {
     value *= Math.pow(10, ndigits);
     value = Math.round(value);

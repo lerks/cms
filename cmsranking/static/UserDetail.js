@@ -15,7 +15,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// format_time is defined in TimeView
+/* globals Config */
+/* globals DataStore */
+/* globals format_time */ // Defined in TimeView
+
+/* exported UserDetail */
+
 
 var UserDetail = new function () {
     var self = this;

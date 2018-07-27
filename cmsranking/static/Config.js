@@ -15,6 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* exported Config */
+
 var Config = new function () {
     var self = this;
 

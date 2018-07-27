@@ -15,6 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* globals Config */
+/* globals DataStore */
+
+/* exported TeamSearch */
+
 var TeamSearch = new function () {
     var self = this;
 

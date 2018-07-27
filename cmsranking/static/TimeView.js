@@ -15,6 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* globals DataStore */
+
+/* exported format_time */
+/* exported TimeView */
+
 function format_time(time, full) {
     var h = Math.floor(time / 3600);
     var m = Math.floor((time % 3600) / 60);
