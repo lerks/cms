@@ -103,12 +103,12 @@ var Scoreboard = new function () {
         });
 
         // Create callbacks for animation-end
-        self.tbody_el.on('animationend', 'tr', function(event) {
+        self.tbody_el.on('animationend', 'tr', function() {
             $(this).removeClass("score_up score_down");
         });
 
         // Fuck, WebKit!!
-        self.tbody_el.on('webkitAnimationEnd', 'tr', function(event) {
+        self.tbody_el.on('webkitAnimationEnd', 'tr', function() {
             $(this).removeClass("score_up score_down");
         });
     };

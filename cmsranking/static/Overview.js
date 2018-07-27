@@ -554,7 +554,7 @@ var Overview = new function () {
     };
 
 
-    self.rank_handler = function (u_id, user, delta) {
+    self.rank_handler = function (u_id, user) {
         if (user["selected"] > 0) {
             self.update_markers(1000);
         }
