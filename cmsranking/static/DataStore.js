@@ -626,7 +626,6 @@ var DataStore = new function () {
             new_c_score += user["t_" + task.key];
         });
         new_c_score = round(new_c_score, contest["score_precision"]);
-        var old_c_score = user["c_" + c_id];
         user["c_" + c_id] = new_c_score;
 
         // Global
