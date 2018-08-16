@@ -41,7 +41,7 @@ import logging
 import re
 
 import tornado.web
-
+from flask import g, request, redirect, abort, url_for, current_app
 from sqlalchemy.orm import joinedload
 
 from cms import config, FEEDBACK_LEVEL_FULL
@@ -59,7 +59,8 @@ from cms.grading.scoretypes import get_score_type
 from cms.grading.tasktypes import get_task_type
 from cms.server import actual_phase_required, multi_contest
 from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import authentication_required, templated
+from cms.server.contest.handlers.base import authentication_required, templated, \
+    notify_success, notify_error, notify_warning
 from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
@@ -86,7 +87,7 @@ def submit_handler(task_name):
         """
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         # Only set the official bit when the user can compete and we are not in
         # analysis mode.
@@ -96,27 +97,27 @@ def submit_handler(task_name):
 
         try:
             submission = accept_submission(
-                self.sql_session, self.service.file_cacher, self.current_user,
-                task, self.timestamp, self.request.files,
-                self.get_argument("language", None), official)
-            self.sql_session.commit()
+                ScopedSession(), current_app.service.file_cacher, g.participation,
+                task, g.timestamp, request.files.to_dict(flat=False),
+                request.form.get("language", None), official)
+            ScopedSession().commit()
         except UnacceptableSubmission as e:
             logger.info("Sent error: `%s' - `%s'", e.subject, e.text)
-            self.notify_error(e.subject, e.text)
+            notify_error(e.subject, e.text)
         else:
-            self.service.evaluation_service.new_submission(
+            current_app.service.evaluation_service.new_submission(
                 submission_id=submission.id)
-            self.notify_success(N_("Submission received"),
-                                N_("Your submission has been received "
-                                   "and is currently being evaluated."))
+            notify_success(N_("Submission received"),
+                           N_("Your submission has been received "
+                              "and is currently being evaluated."))
             # The argument (encrypted submission id) is not used by CWS
             # (nor it discloses information to the user), but it is
             # useful for automatic testing to obtain the submission id).
             query_args["submission_id"] = \
                 encrypt_number(submission.id, config.secret_key)
 
-        self.redirect(self.contest_url("tasks", task.name, "submissions",
-                                       **query_args))
+        return redirect(url_for("contest.task_submissions_handler",
+                                task_name=task.name, **query_args))
 
 
 @contest_bp.route("/tasks/<task_name>/submissions", methods=["GET"])
@@ -131,7 +132,7 @@ def task_submissions_handler(task_name):
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         submissions = ScopedSession().query(Submission)\
             .filter(Submission.participation == participation)\
@@ -141,10 +142,10 @@ def task_submissions_handler(task_name):
             .all()
 
         submissions_left_contest = None
-        if self.contest.max_submission_number is not None:
+        if g.contest.max_submission_number is not None:
             submissions_c = \
-                get_submission_count(self.sql_session, participation,
-                                     contest=self.contest)
+                get_submission_count(ScopedSession(), participation,
+                                     contest=g.contest)
             submissions_left_contest = \
                 g.contest.max_submission_number - submissions_c
 
@@ -164,9 +165,9 @@ def task_submissions_handler(task_name):
         if submissions_left is not None:
             submissions_left = max(0, submissions_left)
 
-        tokens_info = tokens_available(participation, task, self.timestamp)
+        tokens_info = tokens_available(participation, task, g.timestamp)
 
-        download_allowed = self.contest.submissions_download_allowed
+        download_allowed = g.contest.submissions_download_allowed
         self.render("task_submissions.html",
                     task=task, submissions=submissions,
                     tokens_info=tokens_info,
@@ -181,11 +182,11 @@ def task_submissions_handler(task_name):
 def submission_status_handler(task_name, submission_num):
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         submission = self.get_submission(task, submission_num)
         if submission is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         sr = submission.get_result(task.active_dataset)
         data = dict()
@@ -239,11 +240,11 @@ def submission_status_handler(task_name, submission_num):
 def submission_details_handler(task_name, submission_num):
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         submission = self.get_submission(task, submission_num)
         if submission is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         sr = submission.get_result(task.active_dataset)
         score_type = task.active_dataset.score_type_object
@@ -276,16 +277,16 @@ def submission_file_handler(task_name, submission_num, filename):
         """Send back a submission file.
 
         """
-        if not self.contest.submissions_download_allowed:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.submissions_download_allowed:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         submission = self.get_submission(task, submission_num)
         if submission is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         # The following code assumes that submission.files is a subset
         # of task.submission_format. CWS will always ensure that for new
@@ -302,10 +303,10 @@ def submission_file_handler(task_name, submission_num, filename):
             stored_filename = re.sub(r'%s$' % extension, '.%l', filename)
 
         if stored_filename not in submission.files:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         digest = submission.files[stored_filename].digest
-        self.sql_session.close()
+        ScopedSession().close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:
@@ -323,31 +324,32 @@ def use_token_handler(task_name, submission_num):
         """
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         submission = self.get_submission(task, submission_num)
         if submission is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         try:
-            accept_token(self.sql_session, submission, self.timestamp)
-            self.sql_session.commit()
+            accept_token(ScopedSession(), submission, g.timestamp)
+            ScopedSession().commit()
         except UnacceptableToken as e:
-            self.notify_error(e.subject, e.text)
+            notify_error(e.subject, e.text)
         except TokenAlreadyPlayed as e:
-            self.notify_warning(e.subject, e.text)
+            notify_warning(e.subject, e.text)
         else:
             # Inform ProxyService and eventually the ranking that the
             # token has been played.
-            self.service.proxy_service.submission_tokened(
+            current_app.service.proxy_service.submission_tokened(
                 submission_id=submission.id)
 
             logger.info("Token played by user %s on task %s.",
-                        self.current_user.user.username, task.name)
+                        g.participation.user.username, task.name)
 
             # Add "All ok" notification.
-            self.notify_success(N_("Token request received"),
-                                N_("Your request has been received "
-                                   "and applied to the submission."))
+            notify_success(N_("Token request received"),
+                           N_("Your request has been received "
+                              "and applied to the submission."))
 
-        self.redirect(self.contest_url("tasks", task.name, "submissions"))
+        return redirect(url_for("contest.task_submissions_handler",
+                                task_name=task.name))

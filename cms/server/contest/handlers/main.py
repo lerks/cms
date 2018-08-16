@@ -36,32 +36,25 @@ from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 
 import ipaddress
-import json
 import logging
+from datetime import timedelta
 
-import tornado.web
-from flask import g
+from flask import g, request, redirect, abort, url_for, current_app, \
+    after_this_request, jsonify
 
 from cms import config
-from cms.db import PrintJob
+from cms.db import PrintJob, ScopedSession
 from cms.grading.steps import COMPILATION_MESSAGES, EVALUATION_MESSAGES
-from cms.server import multi_contest
 from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
 from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
-from cms.db import Participation, PrintJob, User, ScopedSession
-from cms.grading import COMPILATION_MESSAGES, EVALUATION_MESSAGES
-from cms.server import actual_phase_required, filter_ascii
-from cms.server.contest.authentication import check_ip
-from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import templated, authentication_required
 from cmscommon.datetime import make_datetime, make_timestamp
 
 from ..phase_management import actual_phase_required
 
-from .contest import ContestHandler
-from .contest import NOTIFICATION_ERROR, NOTIFICATION_SUCCESS
+from . import contest_bp
+from .base import templated, authentication_required, notify_success, notify_error
 
 
 logger = logging.getLogger(__name__)
@@ -87,43 +80,44 @@ def login_handler():
 
         """
         error_args = {"login_error": "true"}
-        next_page = self.get_argument("next", None)
+        next_page = request.args.get("next", None)
         if next_page is not None:
             error_args["next"] = next_page
-            if next_page != "/":
-                next_page = self.url(*next_page.strip("/").split("/"))
-            else:
-                next_page = self.url()
         else:
-            next_page = self.contest_url()
-        error_page = self.contest_url(**error_args)
+            next_page = url_for("contest.main_handler")
+        error_page = url_for("contest.main_handler", **error_args)
 
-        username = self.get_argument("username", "")
-        password = self.get_argument("password", "")
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
 
         try:
             # In py2 Tornado gives us the IP address as a native binary
             # string, whereas ipaddress wants text (unicode) strings.
-            ip_address = ipaddress.ip_address(str(self.request.remote_ip))
+            ip_address = ipaddress.ip_address(str(request.remote_addr))
         except ValueError:
-            logger.warning("Invalid IP address provided by Tornado: %s",
-                           self.request.remote_ip)
+            logger.warning("Invalid IP address provided by Flask: %s",
+                           request.remote_addr)
             return None
 
         participation, cookie = validate_login(
-            self.sql_session, self.contest, self.timestamp, username, password,
+            ScopedSession(), g.contest, g.timestamp, username, password,
             ip_address)
 
-        cookie_name = self.contest.name + "_login"
-        if cookie is None:
-            self.clear_cookie(cookie_name)
-        else:
-            self.set_secure_cookie(cookie_name, cookie, expires_days=None)
+        cookie_name = g.contest.name + "_login"
+        expires = g.timestamp - timedelta(days=365)
+        @after_this_request
+        def update_cookie(response):
+            if cookie is None:
+                response.set_cookie(cookie_name, "", expires=expires)
+            else:
+                # FIXME Secure?
+                response.set_cookie(cookie_name, cookie, expires_days=None)
+
 
         if participation is None:
-            self.redirect(error_page)
+            return redirect(error_page)
         else:
-            self.redirect(next_page)
+            return redirect(next_page)
 
 
 @contest_bp.route("/start", methods=["POST"])
@@ -141,7 +135,7 @@ def start_handler():
         participation.starting_time = g.timestamp
         ScopedSession().commit()
 
-        self.redirect(self.contest_url())
+        return redirect(url_for("contest.main_handler"))
 
 
 @contest_bp.route("/logout", method=["POST"])
@@ -150,8 +144,12 @@ def logout_handler():
         """Logout handler.
 
         """
-        self.clear_cookie(g.contest.name + "_login")
-        self.redirect(self.contest_url())
+        cookie_name = g.contest.name + "_login"
+        expires = g.timestamp - timedelta(days=365)
+        @after_this_request
+        def update_cookie(response):
+            response.set_cookie(cookie_name, "", expires=expires)
+        return redirect(url_for("contest.main_handler"))
 
 
 @contest_bp.route("/notifications", methods=["GET"])
@@ -162,15 +160,15 @@ def notifications_handler():
         """
         participation = g.participation
 
-        last_notification = self.get_argument("last_notification", None)
+        last_notification = request.args.get("last_notification", None)
         if last_notification is not None:
             last_notification = make_datetime(float(last_notification))
 
-        res = get_communications(self.sql_session, participation,
-                                 self.timestamp, after=last_notification)
+        res = get_communications(ScopedSession(), participation,
+                                 g.timestamp, after=last_notification)
 
         # Simple notifications
-        notifications = self.service.notifications
+        notifications = current_app.service.notifications
         username = participation.user.username
         if username in notifications:
             for notification in notifications[username]:
@@ -181,7 +179,7 @@ def notifications_handler():
                             "level": notification[3]})
             del notifications[username]
 
-        self.write(json.dumps(res))
+        return jsonify(res)
 
 
 @contest_bp.route("/printing", methods=["GET"])
@@ -194,8 +192,8 @@ def printing_handler_get():
         """
         participation = g.participation
 
-        if not self.r_params["printing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if config.printer is None:
+            abort(404)
 
         printjobs = ScopedSession().query(PrintJob)\
             .filter(PrintJob.participation == participation)\
@@ -215,19 +213,19 @@ def printing_handler_get():
 def printing_handler_post():
         try:
             printjob = accept_print_job(
-                self.sql_session, self.service.file_cacher, self.current_user,
-                self.timestamp, self.request.files)
-            self.sql_session.commit()
+                ScopedSession(), current_app.service.file_cacher, g.participation,
+                g.timestamp, request.files.to_dict(flat=False))
+            ScopedSession().commit()
         except PrintingDisabled:
-            raise tornado.web.HTTPError(404)
+            abort(404)
         except UnacceptablePrintJob as e:
-            self.notify_error(e.subject, e.text)
+            notify_error(e.subject, e.text)
         else:
-            self.service.printing_service.new_printjob(printjob_id=printjob.id)
-            self.notify_success(N_("Print job received"),
-                                N_("Your print job has been received."))
+            current_app.service.printing_service.new_printjob(printjob_id=printjob.id)
+            notify_success(N_("Print job received"),
+                           N_("Your print job has been received."))
 
-        self.redirect(self.contest_url("printing"))
+        return redirect(url_for("contest.printing_handler_get"))
 
 
 @contest_bp.route("/documentation", methods=["GET"])

@@ -37,16 +37,14 @@ from future.builtins import *  # noqa
 
 import logging
 
-import tornado.web
+from flask import redirect, abort, request, url_for, g
 
-from cms.server import multi_contest
+from cms.db import ScopedSession
 from cms.server.contest.communication import accept_question, \
     UnacceptableQuestion, QuestionsNotAllowed
 from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import templated, authentication_required
-
-from .contest import ContestHandler
-from .contest import NOTIFICATION_ERROR, NOTIFICATION_SUCCESS
+from cms.server.contest.handlers.base import templated, authentication_required, \
+    notify_success, notify_error
 
 
 logger = logging.getLogger(__name__)
@@ -74,17 +72,17 @@ def question_handler():
 
         """
         try:
-            accept_question(self.sql_session, self.current_user, self.timestamp,
-                            self.get_argument("question_subject", ""),
-                            self.get_argument("question_text", ""))
-            self.sql_session.commit()
+            accept_question(ScopedSession(), g.participation, g.timestamp,
+                            request.form.get("question_subject", ""),
+                            request.form.get("question_text", ""))
+            ScopedSession().commit()
         except QuestionsNotAllowed:
-            raise tornado.web.HTTPError(404)
+            abort(404)
         except UnacceptableQuestion as e:
-            self.notify_error(e.subject, e.text)
+            notify_error(e.subject, e.text)
         else:
-            self.notify_success(N_("Question received"),
-                                N_("Your question has been received, you "
-                                   "will be notified when it is answered."))
+            notify_success(N_("Question received"),
+                           N_("Your question has been received, you "
+                              "will be notified when it is answered."))
 
-        self.redirect(self.contest_url("communication"))
+        return redirect(url_for("contest.communication_handler"))

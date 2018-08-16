@@ -41,6 +41,7 @@ from six import iterkeys, iteritems
 import logging
 
 import tornado.web
+from flask import g, request, redirect, abort
 
 from cms import config
 from cms.db import Contest, Submission, Task, UserTest
@@ -74,10 +75,10 @@ class ContestHandler(BaseHandler):
         self.contest_url = None
 
     def prepare(self):
-        if self.contest.allowed_localizations:
+        if g.contest.allowed_localizations:
             lang_codes = filter_language_codes(
                 list(iterkeys(self.available_translations)),
-                self.contest.allowed_localizations)
+                g.contest.allowed_localizations)
             self.available_translations = dict(
                 (k, v) for k, v in iteritems(self.available_translations)
                 if k in lang_codes)

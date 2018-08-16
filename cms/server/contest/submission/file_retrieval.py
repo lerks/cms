@@ -106,7 +106,7 @@ def extract_files_from_archive(data):
     return result
 
 
-def extract_files_from_tornado(tornado_files):
+def extract_files_from_werkzeug(werkzeug_files):
     """Transform some files as received by Tornado into our format.
 
     Given the files as provided by Tornado on the HTTPServerRequest's
@@ -114,8 +114,8 @@ def extract_files_from_tornado(tornado_files):
     files look like they consist of just a compressed archive, extract
     it and return its contents instead.
 
-    tornado_files ({str: [tornado.httputil.HTTPFile]}): a bunch of
-        files, in Tornado's format.
+    werkzeug_files ({str: [werkzeug.datastructures.FileStorage]}): a
+        bunch of files, in Werkzeug's format.
 
     return ([ReceivedFile]): the same bunch of files, in our format
         (except if it was an archive: then it's the archive's contents).
@@ -123,12 +123,14 @@ def extract_files_from_tornado(tornado_files):
     raise (InvalidArchive): if there are issues extracting the archive.
 
     """
-    if len(tornado_files) == 1 and "submission" in tornado_files \
-            and len(tornado_files["submission"]) == 1:
-        return extract_files_from_archive(tornado_files["submission"][0].body)
+    if len(werkzeug_files) == 1 and "submission" in werkzeug_files \
+            and len(werkzeug_files["submission"]) == 1:
+        # FIXME stick to fobj, don't read
+        return extract_files_from_archive(werkzeug_files["submission"][0].read())
 
     result = list()
-    for codename, files in iteritems(tornado_files):
+    for codename, files in iteritems(werkzeug_files):
         for f in files:
-            result.append(ReceivedFile(codename, f.filename, f.body))
+            # FIXME stick to fobj, don't read
+            result.append(ReceivedFile(codename, f.filename, f.read()))
     return result

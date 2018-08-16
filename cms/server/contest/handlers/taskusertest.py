@@ -39,10 +39,10 @@ from future.builtins import *  # noqa
 import logging
 import re
 
-import tornado.web
+from flask import g, request, redirect, abort, url_for, current_app
 
 from cms import config
-from cms.db import UserTest, UserTestResult
+from cms.db import UserTest, UserTestResult, ScopedSession
 from cms.grading.languagemanager import get_language
 from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
@@ -50,7 +50,8 @@ from cms.server.contest.submission import get_submission_count, \
 from cms.grading.tasktypes import get_task_type
 from cms.server import actual_phase_required, multi_contest
 from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import authentication_required, templated
+from cms.server.contest.handlers.base import authentication_required, templated, \
+    notify_error, notify_success
 from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
@@ -76,27 +77,27 @@ def user_test_interface_handler():
         """Serve the interface to test programs.
 
         """
-        participation = self.current_user
+        participation = g.participation
 
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         user_tests = dict()
         user_tests_left = dict()
         default_task = None
 
         user_tests_left_contest = None
-        if self.contest.max_user_test_number is not None:
+        if g.contest.max_user_test_number is not None:
             user_test_c = \
-                get_submission_count(self.sql_session, participation,
-                                     contest=self.contest, cls=UserTest)
+                get_submission_count(ScopedSession(), participation,
+                                     contest=g.contest, cls=UserTest)
             user_tests_left_contest = \
-                self.contest.max_user_test_number - user_test_c
+                g.contest.max_user_test_number - user_test_c
 
-        for task in self.contest.tasks:
-            if self.get_argument("task_name", None) == task.name:
+        for task in g.contest.tasks:
+            if request.args.get("task_name", None) == task.name:
                 default_task = task
-            user_tests[task.id] = self.sql_session.query(UserTest)\
+            user_tests[task.id] = ScopedSession().query(UserTest)\
                 .filter(UserTest.participation == participation)\
                 .filter(UserTest.task == task)\
                 .all()
@@ -116,8 +117,8 @@ def user_test_interface_handler():
             if user_tests_left[task.id] is not None:
                 user_tests_left[task.id] = max(0, user_tests_left[task.id])
 
-        if default_task is None and len(self.contest.tasks) > 0:
-            default_task = self.contest.tasks[0]
+        if default_task is None and len(g.contest.tasks) > 0:
+            default_task = g.contest.tasks[0]
 
         return {"default_task": default_task,
                 "user_tests": user_tests,
@@ -129,58 +130,58 @@ def user_test_interface_handler():
 @authentication_required(refresh_cookie=False)
 @actual_phase_required(0)
 def user_test_handler(task_name):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         query_args = dict()
 
         try:
             user_test = accept_user_test(
-                self.sql_session, self.service.file_cacher, self.current_user,
-                task, self.timestamp, self.request.files,
-                self.get_argument("language", None))
-            self.sql_session.commit()
+                ScopedSession(), current_app.service.file_cacher, g.participation,
+                task, g.timestamp, request.files.to_dict(flat=False),
+                request.form.get("language", None))
+            ScopedSession().commit()
         except TestingNotAllowed:
             logger.warning("User %s tried to make test on task %s.",
-                           self.current_user.user.username, task_name)
-            raise tornado.web.HTTPError(404)
+                           g.participation.user.username, task_name)
+            abort(404)
         except UnacceptableUserTest as e:
             logger.info("Sent error: `%s' - `%s'", e.subject, e.text)
-            self.notify_error(e.subject, e.text)
+            notify_error(e.subject, e.text)
         else:
-            self.service.evaluation_service.new_user_test(
+            current_app.service.evaluation_service.new_user_test(
                 user_test_id=user_test.id)
-            self.notify_success(N_("Test received"),
-                                N_("Your test has been received "
-                                   "and is currently being executed."))
+            notify_success(N_("Test received"),
+                           N_("Your test has been received "
+                              "and is currently being executed."))
             # The argument (encrypted user test id) is not used by CWS
             # (nor it discloses information to the user), but it is
             # useful for automatic testing to obtain the user test id).
             query_args["user_test_id"] = \
                 encrypt_number(user_test.id, config.secret_key)
 
-        self.redirect(self.contest_url("testing", task_name=task.name,
-                                       **query_args))
+        return redirect(url_for("contest.user_test_interface_handler",
+                                task_name=task.name, **query_args))
 
 
 @contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>", methods=["GET"])
 @authentication_required(refresh_cookie=False)
 @actual_phase_required(0)
 def user_test_status_handler(task_name, user_test_num):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         user_test = self.get_user_test(task, user_test_num)
         if user_test is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         ur = user_test.get_result(task.active_dataset)
         data = dict()
@@ -223,16 +224,16 @@ def user_test_status_handler(task_name, user_test_num):
 @actual_phase_required(0)
 @templated("user_test_details.html")
 def user_test_details_handler(task_name, user_test_num):
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         user_test = self.get_user_test(task, user_test_num)
         if user_test is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         tr = user_test.get_result(task.active_dataset)
 
@@ -247,26 +248,26 @@ def user_test_io_handler(task_name, user_test_num, io):
         """Send back a submission file.
 
         """
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         user_test = self.get_user_test(task, user_test_num)
         if user_test is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         if io == "input":
             digest = user_test.input
         else:  # io == "output"
             tr = user_test.get_result(task.active_dataset)
             digest = tr.output if tr is not None else None
-        self.sql_session.close()
+        ScopedSession().close()
 
         if digest is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         mimetype = 'text/plain'
 
@@ -280,16 +281,16 @@ def user_test_file_handler(task_name, user_test_num, filename):
         """Send back a submission file.
 
         """
-        if not self.r_params["testing_enabled"]:
-            raise tornado.web.HTTPError(404)
+        if not g.contest.allow_user_tests:
+            abort(404)
 
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         user_test = self.get_user_test(task, user_test_num)
         if user_test is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         # filename is the name used by the browser, hence is something
         # like 'foo.c' (and the extension is CMS's preferred extension
@@ -305,8 +306,8 @@ def user_test_file_handler(task_name, user_test_num, filename):
         elif stored_filename in user_test.managers:
             digest = user_test.managers[stored_filename].digest
         else:
-            raise tornado.web.HTTPError(404)
-        self.sql_session.close()
+            abort(404)
+        ScopedSession().close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:

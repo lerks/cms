@@ -38,7 +38,7 @@ from future.builtins import *  # noqa
 
 import logging
 
-import tornado.web
+from flask import g, request, redirect, abort
 
 from cms.db import ScopedSession
 from cms.server import multi_contest
@@ -64,9 +64,9 @@ def task_description_handler(task_name):
         """
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
-        self.render("task_description.html", task=task, **self.r_params)
+        return {"task": task}
 
 
 @contest_bp.route("/tasks/<task_name>/statements/<lang_code>", methods=["GET"])
@@ -78,10 +78,10 @@ def task_statement_view_handler(task_name, lang_code):
         """
         task = self.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         if lang_code not in task.statements:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         statement = task.statements[lang_code].digest
         ScopedSession().close()
@@ -103,10 +103,10 @@ def task_attachment_view_handler(task_name, filename):
         """
         task = g.get_task(task_name)
         if task is None:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         if filename not in task.attachments:
-            raise tornado.web.HTTPError(404)
+            abort(404)
 
         attachment = task.attachments[filename].digest
         ScopedSession().close()

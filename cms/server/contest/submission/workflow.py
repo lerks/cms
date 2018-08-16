@@ -43,7 +43,7 @@ from cms.db import Submission, File, UserTestManager, UserTestFile, UserTest
 from cmscommon.datetime import make_timestamp
 
 from .check import check_max_number, check_min_interval
-from .file_retrieval import InvalidArchive, extract_files_from_tornado
+from .file_retrieval import InvalidArchive, extract_files_from_werkzeug
 from .file_matching import InvalidFilesOrLanguage, match_files_and_language
 from .utils import fetch_file_digests_from_previous_submission, StorageFailed, \
     store_local_copy
@@ -65,7 +65,7 @@ class UnacceptableSubmission(Exception):
 
 
 def accept_submission(sql_session, file_cacher, participation, task, timestamp,
-                      tornado_files, language_name, official):
+                      werkzeug_files, language_name, official):
     """Process a contestant's request to submit a submission.
 
     Parse and validate the data that a contestant sent for a submission
@@ -77,8 +77,8 @@ def accept_submission(sql_session, file_cacher, participation, task, timestamp,
     participation (Participation): the contestant who is submitting.
     task (Task): the task on which they are submitting.
     timestamp (datetime): the moment in time they submitted at.
-    tornado_files ({str: [tornado.httputil.HTTPFile]}): the files they
-        sent in.
+    werkzeug_files ({str: [werkzeug.datastructures.FileStorage]}): the
+        files they sent in.
     language_name (str|None): the language they declared their files are
         in (None means unknown and thus auto-detect).
     official (bool): whether the submission was sent in during a regular
@@ -134,7 +134,7 @@ def accept_submission(sql_session, file_cacher, participation, task, timestamp,
     required_codenames = set(task.submission_format)
 
     try:
-        received_files = extract_files_from_tornado(tornado_files)
+        received_files = extract_files_from_werkzeug(werkzeug_files)
     except InvalidArchive:
         raise UnacceptableSubmission(
             N_("Invalid archive format!"),
@@ -225,7 +225,7 @@ class UnacceptableUserTest(Exception):
 
 
 def accept_user_test(sql_session, file_cacher, participation, task, timestamp,
-                     tornado_files, language_name):
+                     werkzeug_files, language_name):
     """Process a contestant's request to submit a user test.
 
     sql_session (Session): the DB session to use to fetch and add data.
@@ -233,8 +233,8 @@ def accept_user_test(sql_session, file_cacher, participation, task, timestamp,
     participation (Participation): the contestant who is submitting.
     task (Task): the task on which they are submitting.
     timestamp (datetime): the moment in time they submitted at.
-    tornado_files ({str: [tornado.httputil.HTTPFile]}): the files they
-        sent in.
+    werkzeug_files ({str: [werkzeug.datastructures.FileStorage]}): the
+        files they sent in.
     language_name (str|None): the language they declared their files are
         in (None means unknown and thus auto-detect).
 
@@ -298,7 +298,7 @@ def accept_user_test(sql_session, file_cacher, participation, task, timestamp,
     required_codenames.add("input")
 
     try:
-        received_files = extract_files_from_tornado(tornado_files)
+        received_files = extract_files_from_werkzeug(werkzeug_files)
     except InvalidArchive:
         raise UnacceptableUserTest(
             N_("Invalid archive format!"),

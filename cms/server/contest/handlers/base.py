@@ -34,30 +34,34 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+
+from datetime import timedelta
+
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 from six import iterkeys
 
 import logging
-import os
 import traceback
 from functools import wraps
 
 import tornado.web
-from werkzeug.datastructures import LanguageAccept
-from werkzeug.exceptions import HTTPException
-from werkzeug.http import parse_accept_header
-from jinja2 import TemplateNotFound
-from flask import Blueprint,  abort
+from flask import Blueprint, abort, after_this_request
 from flask import Flask, current_app
 from flask import g, redirect, url_for
 from flask import request, render_template
+from jinja2 import TemplateNotFound
+from werkzeug.datastructures import LanguageAccept
+from werkzeug.exceptions import HTTPException
+from werkzeug.http import parse_accept_header
 
 from cms import TOKEN_MODE_MIXED, config
 from cms.db import Contest, ScopedSession
 from cms.locale import DEFAULT_TRANSLATION, choose_language_code
 from cms.server import CommonRequestHandler, compute_actual_phase
 from cms.server.contest.authentication import get_current_user
+from cms.server.contest.handlers.contest import NOTIFICATION_ERROR, \
+    NOTIFICATION_WARNING, NOTIFICATION_SUCCESS
 from cmscommon.datetime import utc as utc_tzinfo, local as local_tzinfo, \
     get_timezone, make_datetime
 from cms.server.contest.handlers import app, contest_bp
@@ -109,10 +113,15 @@ def authentication_required(refresh_cookie=True):
                 participation, cookie = get_current_user(
                     session, g.contest, g.timestamp, ip_address, cookie)
 
-            if cookie is None:
-                reset cookie
-            elif refresh_cookie:
-                set cookie
+            cookie_name = g.contest.name + "_login"
+            expires = g.timestamp - timedelta(days=365)
+            @after_this_request
+            def update_cookie(response):
+                if cookie is None:
+                    response.set_cookie(cookie_name, "", expires=expires)
+                elif refresh_cookie:
+                    # FIXME secure
+                    response.set_cookie(cookie_name, cookie, expires_days=None)
 
             if participation is None:
                 return redirect(url_for('contest.login', next=request.url))
@@ -170,7 +179,7 @@ def contest_render_params():
 
     ret["phase"] = g.contest.phase(g.timestamp)
 
-    ret["printing_enabled"] = (config.printer is not None)
+    ret["printing_enabled"] = config.printer is not None
     ret["questions_enabled"] = g.contest.allow_questions
     ret["testing_enabled"] = g.contest.allow_user_tests
 
@@ -179,7 +188,7 @@ def contest_render_params():
         g.participation = g.participation
 
         res = compute_actual_phase(
-            self.timestamp, g.contest.start, g.contest.stop,
+            g.timestamp, g.contest.start, g.contest.stop,
             g.contest.analysis_start if g.contest.analysis_enabled
             else None,
             g.contest.analysis_stop if g.contest.analysis_enabled
@@ -207,6 +216,24 @@ def contest_render_params():
         ret["tokens_tasks"] = TOKEN_MODE_MIXED
 
     return ret
+
+
+
+# TODO use flask machinery for these
+def add_notification(subject, text, level):
+    current_app.service.add_notification(
+        g.participation.user.username, g.timestamp,
+        self._(subject), self._(text), level)
+
+def notify_success(subject, text):
+    add_notification(subject, text, NOTIFICATION_SUCCESS)
+
+def notify_warning(subject, text):
+    add_notification(subject, text, NOTIFICATION_WARNING)
+
+def notify_error(subject, text):
+    add_notification(subject, text, NOTIFICATION_ERROR)
+
 
 
 
@@ -251,7 +278,7 @@ class BaseHandler(CommonRequestHandler):
         self.automatic_translation = \
             self.available_translations[automatic_lang]
 
-        cookie_lang = self.get_cookie("language", None)
+        cookie_lang = request.cookies.get("language", None)
         if cookie_lang is not None:
             chosen_lang = \
                 choose_language_code([cookie_lang, automatic_lang], lang_codes)
@@ -293,6 +320,6 @@ def contest_list_handler(self):
     # We need this to be computed for each request because we want to be
     # able to import new contests without having to restart CWS.
     contest_list = dict()
-    for contest in self.sql_session.query(Contest).all():
+    for contest in ScopedSession().query(Contest).all():
         contest_list[contest.name] = contest
     return {"contest_list": contest_list}

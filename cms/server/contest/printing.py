@@ -73,9 +73,9 @@ def accept_print_job(sql_session, file_cacher, participation, timestamp, files):
     file_cacher (FileCacher): the file cacher to store the files.
     participation (Participation): the contestant who sent the request.
     timestamp (datetime): the moment at which the request occurred.
-    files ({str: [HTTPFile]}): the provided files, as a dictionary
+    files ({str: FileStorage}): the provided files, as a dictionary
         whose keys are the field names and whose values are lists of
-        Tornado HTTPFile objects (each with a filename and a body
+        Werkzeug FileStorage objects (file objects with a filename
         attribute). The expected format consists of one item, whose key
         is "file" and whose value is a singleton list.
 
