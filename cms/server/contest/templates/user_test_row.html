@@ -37,7 +37,7 @@
     </td>
 {% endif %}
     <td class="input">
-        <a class="btn" href="{{ contest_url("tasks", task.name, "tests", t_idx, "input") }}">
+        <a class="btn" href="{{ url_for("contest.user_test_io_handler", task.name, t_idx, "input") }}">
             {% trans %}Download{% endtrans %}
         </a>
     </td>
@@ -52,7 +52,7 @@
             {% trans %}N/A{% endtrans %}
         </a>
         {% else %}
-        <a class="btn btn-primary" href="{{ contest_url("tasks", task.name, "tests", t_idx, "output") }}">
+        <a class="btn btn-primary" href="{{ url_for("contest.user_test_io_handler", task.name, t_idx, "output") }}">
             {% trans %}Download{% endtrans %}
         </a>
         {% endif %}
@@ -70,7 +70,7 @@
         {% elif files|length == 1 %}
             {% set filename = next(iterkeys(t.files)) %}
             {% set real_filename = filename|replace(".%l", (t.language|to_language).source_extension) %}
-        <a class="btn" href="{{ contest_url("tasks", task.name, "tests", t_idx, "files", real_filename) }}">
+        <a class="btn" href="{{ url_for("contest.user_test_file_handler", task.name, t_idx, real_filename) }}">
             {% trans %}Download{% endtrans %}
         </a>
         {% else %}
@@ -87,7 +87,7 @@
                     {% set real_filename = filename %}
                 {% endif %}
                 <li>
-                    <a href="{{ contest_url("tasks", task.name, "tests", t_idx, "files", filename) }}">
+                    <a href="{{ url_for("contest.user_test_file_handler", task.name, t_idx, filename) }}">
                         {{ real_filename }}
                     </a>
                 </li>

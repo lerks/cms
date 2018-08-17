@@ -40,34 +40,22 @@ from future.builtins import *  # noqa
 import logging
 import re
 
-import tornado.web
-from flask import g, request, redirect, abort, url_for, current_app
+from flask import g, request, redirect, abort, url_for, current_app, jsonify
 from sqlalchemy.orm import joinedload
 
 from cms import config, FEEDBACK_LEVEL_FULL
 from cms.db import Submission, SubmissionResult
-from cms import config
-from cms.db import File, Submission, SubmissionResult, Task, Token, \
-    ScopedSession
 from cms.grading.languagemanager import get_language
-from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
     UnacceptableSubmission, accept_submission
 from cms.server.contest.tokening import \
     UnacceptableToken, TokenAlreadyPlayed, accept_token, tokens_available
-from cms.grading.scoretypes import get_score_type
-from cms.grading.tasktypes import get_task_type
-from cms.server import actual_phase_required, multi_contest
-from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import authentication_required, templated, \
-    notify_success, notify_error, notify_warning
-from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
 
-from ..phase_management import actual_phase_required
-
-from .contest import ContestHandler, FileHandler
+from . import contest_bp, authentication_required, actual_phase_required, \
+    templated, get_task, get_submission, fetch, notify_error, notify_warning, \
+    notify_success
 
 
 logger = logging.getLogger(__name__)
@@ -85,22 +73,22 @@ def submit_handler(task_name):
         """Handles the received submissions.
 
         """
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
         # Only set the official bit when the user can compete and we are not in
         # analysis mode.
-        official = self.r_params["actual_phase"] == 0
+        official = g.actual_phase == 0
 
         query_args = dict()
 
         try:
             submission = accept_submission(
-                ScopedSession(), current_app.service.file_cacher, g.participation,
+                g.session, current_app.service.file_cacher, g.participation,
                 task, g.timestamp, request.files.to_dict(flat=False),
                 request.form.get("language", None), official)
-            ScopedSession().commit()
+            g.session.commit()
         except UnacceptableSubmission as e:
             logger.info("Sent error: `%s' - `%s'", e.subject, e.text)
             notify_error(e.subject, e.text)
@@ -128,14 +116,12 @@ def task_submissions_handler(task_name):
         """Shows the data of a task in the contest.
 
         """
-        participation = g.participation
-
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        submissions = ScopedSession().query(Submission)\
-            .filter(Submission.participation == participation)\
+        submissions = g.session.query(Submission)\
+            .filter(Submission.participation == g.participation)\
             .filter(Submission.task == task)\
             .options(joinedload(Submission.token))\
             .options(joinedload(Submission.results))\
@@ -144,7 +130,7 @@ def task_submissions_handler(task_name):
         submissions_left_contest = None
         if g.contest.max_submission_number is not None:
             submissions_c = \
-                get_submission_count(ScopedSession(), participation,
+                get_submission_count(g.session, g.participation,
                                      contest=g.contest)
             submissions_left_contest = \
                 g.contest.max_submission_number - submissions_c
@@ -165,26 +151,24 @@ def task_submissions_handler(task_name):
         if submissions_left is not None:
             submissions_left = max(0, submissions_left)
 
-        tokens_info = tokens_available(participation, task, g.timestamp)
+        tokens_info = tokens_available(g.participation, task, g.timestamp)
 
         download_allowed = g.contest.submissions_download_allowed
-        self.render("task_submissions.html",
-                    task=task, submissions=submissions,
-                    tokens_info=tokens_info,
-                    submissions_left=submissions_left,
-                    submissions_download_allowed=download_allowed,
-                    **self.r_params)
+        return {"task": task, "submissions": submissions,
+                "tokens_info": tokens_info,
+                "submissions_left": submissions_left,
+                "submissions_download_allowed": download_allowed}
 
 
-@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>", methods=["POST"])
+@contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>", methods=["GET"])
 @authentication_required(refresh_cookie=False)
 @actual_phase_required(0, 3)
 def submission_status_handler(task_name, submission_num):
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        submission = self.get_submission(task, submission_num)
+        submission = get_submission(task, submission_num)
         if submission is None:
             abort(404)
 
@@ -198,17 +182,17 @@ def submission_status_handler(task_name, submission_num):
             data["status"] = sr.get_status()
 
         if data["status"] == SubmissionResult.COMPILING:
-            data["status_text"] = self._("Compiling...")
+            data["status_text"] = g._("Compiling...")
         elif data["status"] == SubmissionResult.COMPILATION_FAILED:
             data["status_text"] = "%s <a class=\"details\">%s</a>" % (
-                self._("Compilation failed"), self._("details"))
+                g._("Compilation failed"), g._("details"))
         elif data["status"] == SubmissionResult.EVALUATING:
-            data["status_text"] = self._("Evaluating...")
+            data["status_text"] = g._("Evaluating...")
         elif data["status"] == SubmissionResult.SCORING:
-            data["status_text"] = self._("Scoring...")
+            data["status_text"] = g._("Scoring...")
         elif data["status"] == SubmissionResult.SCORED:
             data["status_text"] = "%s <a class=\"details\">%s</a>" % (
-                self._("Evaluated"), self._("details"))
+                g._("Evaluated"), g._("details"))
 
             score_type = task.active_dataset.score_type_object
             if score_type.max_public_score > 0:
@@ -219,7 +203,7 @@ def submission_status_handler(task_name, submission_num):
                 data["public_score_message"] = score_type.format_score(
                     sr.public_score, score_type.max_public_score,
                     sr.public_score_details, task.score_precision,
-                    translation=self.translation)
+                    translation=g.translation)
             if submission.token is not None:
                 data["max_score"] = \
                     round(score_type.max_score, task.score_precision)
@@ -228,9 +212,9 @@ def submission_status_handler(task_name, submission_num):
                 data["score_message"] = score_type.format_score(
                     sr.score, score_type.max_score,
                     sr.score_details, task.score_precision,
-                    translation=self.translation)
+                    translation=g.translation)
 
-        self.write(data)
+        return jsonify(data)
 
 
 @contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>/details", methods=["GET"])
@@ -238,11 +222,11 @@ def submission_status_handler(task_name, submission_num):
 @actual_phase_required(0, 3)
 @templated("submission_details.html")
 def submission_details_handler(task_name, submission_num):
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        submission = self.get_submission(task, submission_num)
+        submission = get_submission(task, submission_num)
         if submission is None:
             abort(404)
 
@@ -260,10 +244,10 @@ def submission_details_handler(task_name, submission_num):
                 feedback_level = task.feedback_level
                 # During analysis mode we show the full feedback regardless of
                 # what the task says.
-                if self.r_params["actual_phase"] == 3:
+                if g.actual_phase == 3:
                     feedback_level = FEEDBACK_LEVEL_FULL
                 details = score_type.get_html_details(
-                    details, feedback_level, translation=self.translation)
+                    details, feedback_level, translation=g.translation)
             else:
                 details = None
 
@@ -280,11 +264,11 @@ def submission_file_handler(task_name, submission_num, filename):
         if not g.contest.submissions_download_allowed:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        submission = self.get_submission(task, submission_num)
+        submission = get_submission(task, submission_num)
         if submission is None:
             abort(404)
 
@@ -306,13 +290,13 @@ def submission_file_handler(task_name, submission_num, filename):
             abort(404)
 
         digest = submission.files[stored_filename].digest
-        ScopedSession().close()
+        g.session.close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
-        self.fetch(digest, mimetype, filename)
+        fetch(digest, mimetype, filename)
 
 
 @contest_bp.route("/tasks/<task_name>/submissions/<int:submission_num>/token", methods=["POST"])
@@ -322,17 +306,17 @@ def use_token_handler(task_name, submission_num):
         """Called when the user try to use a token on a submission.
 
         """
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        submission = self.get_submission(task, submission_num)
+        submission = get_submission(task, submission_num)
         if submission is None:
             abort(404)
 
         try:
-            accept_token(ScopedSession(), submission, g.timestamp)
-            ScopedSession().commit()
+            accept_token(g.session, submission, g.timestamp)
+            g.session.commit()
         except UnacceptableToken as e:
             notify_error(e.subject, e.text)
         except TokenAlreadyPlayed as e:

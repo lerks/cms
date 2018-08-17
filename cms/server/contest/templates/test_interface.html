@@ -9,7 +9,7 @@ $(document).on("click", ".user_test_list tbody tr td.status .details", function 
     var user_test_id = $this.parent().parent().attr("data-user-test");
     var modal = $("#user_test_detail");
     var modal_body = modal.children(".modal-body");
-    modal_body.html('<div class="loading"><img src="{{ url("static", "loading.gif") }}"/>{% trans %}loading...{% endtrans %}</div>');
+    modal_body.html('<div class="loading"><img src="{{ url_for("static", prefix="static", filename="loading.gif") }}"/>{% trans %}loading...{% endtrans %}</div>');
     modal_body.load(utils.contest_url("tasks", task_id, "tests", user_test_id, "details"));
     modal.modal("show");
 });
@@ -95,7 +95,7 @@ $(document).ready(function () {
 
 <div class="submit_test row">
     <div class="span5">
-        <form class="form-horizontal" enctype="multipart/form-data" action="{{ contest_url("tasks", task.name, "test") }}" method="POST">
+        <form class="form-horizontal" enctype="multipart/form-data" action="{{ url_for("contest.user_test_handler", task.name) }}" method="POST">
             {{ xsrf_form_html|safe }}
             <fieldset>
 {% for filename in task.submission_format + task_type.get_user_managers() %}
@@ -135,7 +135,7 @@ $(document).ready(function () {
     </div>
 {% if not (task.submission_format + task_type.get_user_managers())|any("endswith", ".%l") %}
     <div class="span4">
-        <form class="form-horizontal" enctype="multipart/form-data" action="{{ contest_url("tasks", task.name, "test") }}" method="POST">
+        <form class="form-horizontal" enctype="multipart/form-data" action="{{ url_for("contest.user_test_handler", task.name) }}" method="POST">
             {{ xsrf_form_html|safe }}
             <fieldset>
                 <div class="control-group">

@@ -21,7 +21,7 @@
     {% endif %}
 
 <div id="print" class="row">
-    <form class="form-horizontal" enctype="multipart/form-data" action="{{ contest_url("printing") }}" method="POST">
+    <form class="form-horizontal" enctype="multipart/form-data" action="{{ url_for("contest.printing_handler_post") }}" method="POST">
         {{ xsrf_form_html|safe }}
         <fieldset>
             <div class="control-group">

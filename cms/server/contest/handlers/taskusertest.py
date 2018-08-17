@@ -39,26 +39,18 @@ from future.builtins import *  # noqa
 import logging
 import re
 
-from flask import g, request, redirect, abort, url_for, current_app
+from flask import g, request, redirect, abort, url_for, current_app, jsonify
 
 from cms import config
-from cms.db import UserTest, UserTestResult, ScopedSession
+from cms.db import UserTest, UserTestResult
 from cms.grading.languagemanager import get_language
-from cms.server import multi_contest
 from cms.server.contest.submission import get_submission_count, \
     TestingNotAllowed, UnacceptableUserTest, accept_user_test
-from cms.grading.tasktypes import get_task_type
-from cms.server import actual_phase_required, multi_contest
-from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import authentication_required, templated, \
-    notify_error, notify_success
-from cmscommon.archive import Archive
 from cmscommon.crypto import encrypt_number
 from cmscommon.mimetypes import get_type_for_file_name
 
-from ..phase_management import actual_phase_required
-
-from .contest import ContestHandler, FileHandler
+from . import contest_bp, authentication_required, actual_phase_required, \
+    templated, get_task, get_user_test, fetch, notify_error, notify_success
 
 
 logger = logging.getLogger(__name__)
@@ -77,8 +69,6 @@ def user_test_interface_handler():
         """Serve the interface to test programs.
 
         """
-        participation = g.participation
-
         if not g.contest.allow_user_tests:
             abort(404)
 
@@ -89,7 +79,7 @@ def user_test_interface_handler():
         user_tests_left_contest = None
         if g.contest.max_user_test_number is not None:
             user_test_c = \
-                get_submission_count(ScopedSession(), participation,
+                get_submission_count(g.session, g.participation,
                                      contest=g.contest, cls=UserTest)
             user_tests_left_contest = \
                 g.contest.max_user_test_number - user_test_c
@@ -97,8 +87,8 @@ def user_test_interface_handler():
         for task in g.contest.tasks:
             if request.args.get("task_name", None) == task.name:
                 default_task = task
-            user_tests[task.id] = ScopedSession().query(UserTest)\
-                .filter(UserTest.participation == participation)\
+            user_tests[task.id] = g.session.query(UserTest)\
+                .filter(UserTest.participation == g.participation)\
                 .filter(UserTest.task == task)\
                 .all()
             user_tests_left_task = None
@@ -133,7 +123,7 @@ def user_test_handler(task_name):
         if not g.contest.allow_user_tests:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
@@ -141,10 +131,10 @@ def user_test_handler(task_name):
 
         try:
             user_test = accept_user_test(
-                ScopedSession(), current_app.service.file_cacher, g.participation,
+                g.session, current_app.service.file_cacher, g.participation,
                 task, g.timestamp, request.files.to_dict(flat=False),
                 request.form.get("language", None))
-            ScopedSession().commit()
+            g.session.commit()
         except TestingNotAllowed:
             logger.warning("User %s tried to make test on task %s.",
                            g.participation.user.username, task_name)
@@ -175,11 +165,11 @@ def user_test_status_handler(task_name, user_test_num):
         if not g.contest.allow_user_tests:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        user_test = self.get_user_test(task, user_test_num)
+        user_test = get_user_test(task, user_test_num)
         if user_test is None:
             abort(404)
 
@@ -192,31 +182,31 @@ def user_test_status_handler(task_name, user_test_num):
             data["status"] = ur.get_status()
 
         if data["status"] == UserTestResult.COMPILING:
-            data["status_text"] = self._("Compiling...")
+            data["status_text"] = g._("Compiling...")
         elif data["status"] == UserTestResult.COMPILATION_FAILED:
             data["status_text"] = "%s <a class=\"details\">%s</a>" % (
-                self._("Compilation failed"), self._("details"))
+                g._("Compilation failed"), g._("details"))
         elif data["status"] == UserTestResult.EVALUATING:
-            data["status_text"] = self._("Executing...")
+            data["status_text"] = g._("Executing...")
         elif data["status"] == UserTestResult.EVALUATED:
             data["status_text"] = "%s <a class=\"details\">%s</a>" % (
-                self._("Executed"), self._("details"))
+                g._("Executed"), g._("details"))
 
             if ur.execution_time is not None:
                 data["time"] = \
-                    self.translation.format_duration(ur.execution_time)
+                    g.translation.format_duration(ur.execution_time)
             else:
                 data["time"] = None
 
             if ur.execution_memory is not None:
                 data["memory"] = \
-                    self.translation.format_size(ur.execution_memory)
+                    g.translation.format_size(ur.execution_memory)
             else:
                 data["memory"] = None
 
             data["output"] = ur.output is not None
 
-        self.write(data)
+        return jsonify(data)
 
 
 @contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>/details", methods=["GET"])
@@ -227,11 +217,11 @@ def user_test_details_handler(task_name, user_test_num):
         if not g.contest.allow_user_tests:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        user_test = self.get_user_test(task, user_test_num)
+        user_test = get_user_test(task, user_test_num)
         if user_test is None:
             abort(404)
 
@@ -251,11 +241,11 @@ def user_test_io_handler(task_name, user_test_num, io):
         if not g.contest.allow_user_tests:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        user_test = self.get_user_test(task, user_test_num)
+        user_test = get_user_test(task, user_test_num)
         if user_test is None:
             abort(404)
 
@@ -264,14 +254,14 @@ def user_test_io_handler(task_name, user_test_num, io):
         else:  # io == "output"
             tr = user_test.get_result(task.active_dataset)
             digest = tr.output if tr is not None else None
-        ScopedSession().close()
+        g.session.close()
 
         if digest is None:
             abort(404)
 
         mimetype = 'text/plain'
 
-        self.fetch(digest, mimetype, io)
+        fetch(digest, mimetype, io)
 
 
 @contest_bp.route("/tasks/<task_name>/tests/<int:user_test_num>/files/<filename>", methods=["GET"])
@@ -284,11 +274,11 @@ def user_test_file_handler(task_name, user_test_num, filename):
         if not g.contest.allow_user_tests:
             abort(404)
 
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
-        user_test = self.get_user_test(task, user_test_num)
+        user_test = get_user_test(task, user_test_num)
         if user_test is None:
             abort(404)
 
@@ -307,10 +297,10 @@ def user_test_file_handler(task_name, user_test_num, filename):
             digest = user_test.managers[stored_filename].digest
         else:
             abort(404)
-        ScopedSession().close()
+        g.session.close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
-        self.fetch(digest, mimetype, filename)
+        fetch(digest, mimetype, filename)

@@ -58,13 +58,3 @@ def instrument_formatting_toolbox(env):
     env.globals["get_score_class"] = get_score_class
 
     env.filters["format_token_rules"] = wrapped_format_token_rules
-
-
-CWS_ENVIRONMENT = GLOBAL_ENVIRONMENT.overlay(
-    # Load templates from CWS's package (use package rather than file
-    # system as that works even in case of a compressed distribution).
-    loader=PackageLoader('cms.server.contest', 'templates'))
-
-
-instrument_cms_toolbox(CWS_ENVIRONMENT)
-instrument_formatting_toolbox(CWS_ENVIRONMENT)

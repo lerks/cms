@@ -34,6 +34,42 @@ from cms.db.filecacher import FileCacher, TombstoneError
 SECONDS_IN_A_YEAR = 365 * 24 * 60 * 60
 
 
+def fetch(digest, filename, mimetype, file_cacher, environ):
+
+    try:
+        fobj = file_cacher.get_file(digest)
+        size = file_cacher.get_size(digest)
+    except KeyError:
+        return NotFound()
+    except TombstoneError:
+        return ServiceUnavailable()
+
+    request = Request(environ)
+    request.encoding_errors = "strict"
+
+    response = Response()
+    response.status_code = 200
+    response.mimetype = mimetype
+    if filename is not None:
+        response.headers.add(
+            "Content-Disposition", "attachment", filename=filename)
+    response.set_etag(digest)
+    response.cache_control.max_age = SECONDS_IN_A_YEAR
+    response.cache_control.private = True
+    response.response = \
+        wrap_file(environ, fobj, buffer_size=FileCacher.CHUNK_SIZE)
+    response.direct_passthrough = True
+
+    try:
+        # This takes care of conditional and partial requests.
+        response.make_conditional(
+            request, accept_ranges=True, complete_length=size)
+    except HTTPException as exc:
+        return exc
+
+    return response
+
+
 class FileServerMiddleware(object):
     """Intercept requests wanting to serve files and serve those files.
 
@@ -95,35 +131,4 @@ class FileServerMiddleware(object):
         filename = original_response.headers.pop(self.FILENAME_HEADER, None)
         mimetype = original_response.mimetype
 
-        try:
-            fobj = self.file_cacher.get_file(digest)
-            size = self.file_cacher.get_size(digest)
-        except KeyError:
-            return NotFound()
-        except TombstoneError:
-            return ServiceUnavailable()
-
-        request = Request(environ)
-        request.encoding_errors = "strict"
-
-        response = Response()
-        response.status_code = 200
-        response.mimetype = mimetype
-        if filename is not None:
-            response.headers.add(
-                "Content-Disposition", "attachment", filename=filename)
-        response.set_etag(digest)
-        response.cache_control.max_age = SECONDS_IN_A_YEAR
-        response.cache_control.private = True
-        response.response = \
-            wrap_file(environ, fobj, buffer_size=FileCacher.CHUNK_SIZE)
-        response.direct_passthrough = True
-
-        try:
-            # This takes care of conditional and partial requests.
-            response.make_conditional(
-                request, accept_ranges=True, complete_length=size)
-        except HTTPException as exc:
-            return exc
-
-        return response
+        return fetch(digest, filename, mimetype, self.file_cacher, environ)

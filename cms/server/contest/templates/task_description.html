@@ -25,7 +25,7 @@
 <div class="row statement one_statement">
     <div class="span9">
     {% for lang_code in task.statements %}
-        <a href="{{ contest_url("tasks", task.name, "statements", lang_code) }}" class="btn btn-large btn-success">{% trans %}Download task statement{% endtrans %}</a>
+        <a href="{{ url_for("contest.task_statement_view_handler, task.name, lang_code) }}" class="btn btn-large btn-success">{% trans %}Download task statement{% endtrans %}</a>
     {% endfor %}
     </div>
 </div>
@@ -39,7 +39,7 @@
         </p>
     {% for statement in itervalues(task.statements)|sort(attribute="language") %}
         {% if statement.language in task.primary_statements %}
-        <a href="{{ contest_url("tasks", task.name, "statements", statement.language) }}" class="btn btn-large btn-success">
+        <a href="{{ url_for("contest.task_statement_view_handler, task.name, statement.language) }}" class="btn btn-large btn-success">
             {% set language_name = statement.language|format_locale %}
             {% if statement.language != language_name %}
                 {% trans lang=language_name %}Statement in <b>{{ lang }}</b>{% endtrans %}
@@ -51,7 +51,7 @@
     {% endfor %}
     {% for statement in itervalues(task.statements)|sort(attribute="language") %}
         {% if statement.language in participation.user.preferred_languages and statement.language not in task.primary_statements %}
-        <a href="{{ contest_url("tasks", task.name, "statements", statement.language) }}" class="btn btn-large">
+        <a href="{{ url_for("contest.task_statement_view_handler, task.name, statement.language) }}" class="btn btn-large">
             {% set language_name = statement.language|format_locale %}
             {% if statement.language != language_name %}
                 {% trans lang=language_name %}Statement in <b>{{ lang }}</b>{% endtrans %}
@@ -67,7 +67,7 @@
             <ul>
     {% for statement in itervalues(task.statements)|sort(attribute="language") %}
                 <li>
-                    <a href="{{ contest_url("tasks", task.name, "statements", statement.language) }}">
+                    <a href="{{ url_for("contest.task_statement_view_handler, task.name, statement.language) }}">
         {% set language_name = statement.language|format_locale %}
         {% if statement.language != language_name %}
             {% trans lang=language_name %}<b>{{ lang }}</b>{% endtrans %}
@@ -143,7 +143,7 @@
         </p>
     {% elif tokens_tasks == TOKEN_MODE_INFINITE %}
         <p>
-        {% trans type_pl=_("tokens"), contest_root=contest_url() %}You can find the rules for the {{ type_pl }} on the <a href="{{ contest_root }}">contest overview page</a>.{% endtrans %}
+        {% trans type_pl=_("tokens"), contest_root=url_for("contest.main_handler") %}You can find the rules for the {{ type_pl }} on the <a href="{{ contest_root }}">contest overview page</a>.{% endtrans %}
         </p>
     {% else %}
         <p>
@@ -152,7 +152,7 @@
 
         <p>
         {% trans %}Remember that to see the detailed result of a submission you need to use both a contest-token and a task-token.{% endtrans %}
-        {% trans type_pl=_("contest-tokens"), contest_root=contest_url() %}You can find the rules for the {{ type_pl }} on the <a href="{{ contest_root }}">contest overview page</a>.{% endtrans %}
+        {% trans type_pl=_("contest-tokens"), contest_root=url_for("contest.main_handler") %}You can find the rules for the {{ type_pl }} on the <a href="{{ contest_root }}">contest overview page</a>.{% endtrans %}
         </p>
     {% endif %}
     </td>
@@ -178,11 +178,11 @@
         {% endif %}
         {% set file_size = handler.application.service.file_cacher.get_size(attachment.digest) %}
             <li>
-                <a href="{{ contest_url("tasks", task.name, "attachments", filename) }}" class="btn">
+                <a href="{{ url_for("contest.task_attachment_view_handler", task.name, filename) }}" class="btn">
             {% if type_icon is not none %}
-                    <img src="{{ url("static", "img", "mimetypes", "%s.png"|format(type_icon)) }}" alt="{{ mime_type }}" />
+                    <img src="{{ url_for("static", prefix="static", filename="img/mimetypes/%s.png"|format(type_icon)) }}" alt="{{ mime_type }}" />
             {% else %}
-                    <img src="{{ url("static", "img", "mimetypes", "unknown.png") }}" alt="{% trans %}unknown{% endtrans %}" />
+                    <img src="{{ url_for("static", prefix="static", filename="img/mimetypes/unknown.png") }}" alt="{% trans %}unknown{% endtrans %}" />
             {% endif %}
                     <span class="first_line">
                         <span class="name">{{ filename }}</span>

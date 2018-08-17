@@ -36,6 +36,7 @@ from six import iterkeys, itervalues
 
 import logging
 
+import tornado.wsgi
 from sqlalchemy import func, not_
 
 from cmscommon.binary import hex_to_bin
@@ -59,19 +60,17 @@ class AdminWebServer(WebService):
     """
     def __init__(self, shard):
         parameters = {
-            "static_files": [("cms.server", "static"),
-                             ("cms.server.admin", "static")],
             "cookie_secret": hex_to_bin(config.secret_key),
             "debug": config.tornado_debug,
-            "auth_middleware": AWSAuthMiddleware,
-            "rpc_enabled": True,
-            "rpc_auth": self.is_rpc_authorized,
             "xsrf_cookies": True,
         }
         super(AdminWebServer, self).__init__(
             config.admin_listen_port,
-            HANDLERS,
-            parameters,
+            tornado.wsgi.WSGIApplication(HANDLERS, **parameters),
+            static_files=[("cms.server", "static"), ("cms.server.admin", "static")],
+            rpc_enabled=True,
+            rpc_auth=self.is_rpc_authorized,
+            auth_middleware=AWSAuthMiddleware,
             shard=shard,
             listen_address=config.admin_listen_address)
 

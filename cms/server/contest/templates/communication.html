@@ -35,7 +35,7 @@
 
 <h2>{% trans %}Questions{% endtrans %}</h2>
 <div class="well question_submit">
-    <form class="form-horizontal" action="{{ contest_url("question") }}" method="POST">
+    <form class="form-horizontal" action="{{ url_for("contest.question_handler") }}" method="POST">
         {{ xsrf_form_html|safe }}
         <fieldset>
             <div class="control-group">

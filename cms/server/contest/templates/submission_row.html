@@ -65,7 +65,7 @@
             {% if s.language is not none %}
                 {% set filename = filename|replace(".%l", (s.language|to_language).source_extension) %}
             {% endif %}
-        <a class="btn" href="{{ contest_url("tasks", task.name, "submissions", s_idx, "files", filename) }}">
+        <a class="btn" href="{{ url_for("contest.submission_file_handler", task.name, s_idx, filename) }}">
             {% trans %}Download{% endtrans %}
         </a>
         {% else %}
@@ -83,7 +83,7 @@
                     {% endif %}
                 {% endif %}
                 <li>
-                    <a href="{{ contest_url("tasks", task.name, "submissions", s_idx, "files", filename) }}">
+                    <a href="{{ url_for("contest.submission_file_handler", task.name, s_idx, filename) }}">
                         {{ filename }}
                     </a>
                 </li>
@@ -100,7 +100,7 @@
         {% else %}
             {# TODO If the expiration or generation time are greater than valid_phase_end they "don't exist". It's useless to show "Wait..." in those cases. #}
             {% if can_play_token and not need_to_wait %}
-        <form action="{{ contest_url("tasks", task.name, "submissions", s_idx, "token") }}" method="POST">
+        <form action="{{ url_for("contest.use_token_handler", task.name, s_idx) }}" method="POST">
             {{ xsrf_form_html|safe }}
             <button type="submit" class="btn btn-warning">{% trans %}Play!{% endtrans %}</button>
         </form>

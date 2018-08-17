@@ -47,17 +47,11 @@ from future.builtins import *  # noqa
 
 import logging
 
-from werkzeug.wsgi import SharedDataMiddleware
-
-from cms.server.contest.jinja2_toolbox import CWS_ENVIRONMENT
-from cmscommon.binary import hex_to_bin
 from cms import ConfigError, ServiceCoord, config
 from cms.io import WebService
 from cms.locale import get_translations
-
-from .handlers import app, contest_bp, HANDLERS
-from .handlers.base import ContestListHandler
-from .handlers.main import MainHandler
+from cms.server.contest.handlers import app, contest_bp, contest_list_handler
+from cmscommon.binary import hex_to_bin
 
 
 logger = logging.getLogger(__name__)
@@ -72,21 +66,15 @@ class ContestWebServer(WebService):
     """
     def __init__(self, shard, contest_id=None):
 
-        app.config['SECRET_KEY'] = hex_to_bin(config.secret_key)
+        app.secret_key = hex_to_bin(config.secret_key)
         app.config['DEBUG'] = config.tornado_debug
         if contest_id is not None:
             app.register_blueprint(contest_bp)
             app.contest_id = contest_id
         else:
             app.register_blueprint(contest_bp, url_prefix='/<contest>')
-
-        parameters = {
-            "static_files": [("cms.server", "static"),
-                             ("cms.server.contest", "static")],
-            "is_proxy_used": config.is_proxy_used,
-            "num_proxies_used": config.num_proxies_used,
-            "xsrf_cookies": True,
-        }
+            app.add_url_rule("/", view_func=contest_list_handler)
+        app.service = self
 
         try:
             listen_address = config.contest_listen_address[shard]
@@ -97,29 +85,14 @@ class ContestWebServer(WebService):
                               "contest_listen_address and contest_listen_port "
                               "in cms.conf." % __name__)
 
-
-        if self.contest_id is None:
-            HANDLERS.append((r"", MainHandler))
-            handlers = [(r'/', ContestListHandler)]
-            for h in HANDLERS:
-                handlers.append((r'/([^/]+)' + h[0],) + h[1:])
-        else:
-            HANDLERS.append((r"/", MainHandler))
-            handlers = HANDLERS
-
         super(ContestWebServer, self).__init__(
             listen_port,
-            handlers,
-            parameters,
+            app.wsgi_app,
+            static_files=[],
+            is_proxy_used=config.is_proxy_used,
+            num_proxies_used=config.num_proxies_used,
             shard=shard,
             listen_address=listen_address)
-
-        self.wsgi_app = SharedDataMiddleware(
-            self.wsgi_app, {"/stl": config.stl_path},
-            cache=True, cache_timeout=SECONDS_IN_A_YEAR,
-            fallback_mimetype="application/octet-stream")
-
-        self.jinja2_environment = CWS_ENVIRONMENT
 
         # This is a dictionary (indexed by username) of pending
         # notification. Things like "Yay, your submission went

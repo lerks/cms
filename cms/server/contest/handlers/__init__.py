@@ -31,16 +31,21 @@ from __future__ import unicode_literals
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 
-from flask import Flask, Blueprint
 
+from .base import app, templated, contest_list_handler, fetch
+from .contest import contest_bp, authentication_required, \
+    actual_phase_required, get_task, get_submission, get_user_test, \
+    notify_error, notify_warning, notify_success
 
-app = Flask('cms.server.contest')
-contest_bp = Blueprint('contest', 'cms.server.contest')
-
-
-# The following prefixes are handled by WSGI middlewares:
-# * /static, defined in cms/io/web_service.py
-# * /stl, defined in cms/server/contest/server.py
-
-
-__all__ = ["app", "contest_bp"]
+from .main import main_handler, login_handler, start_handler, logout_handler, \
+    notifications_handler, printing_handler_get, printing_handler_post, \
+    documentation_handler
+from .communication import communication_handler, question_handler
+from .task import task_description_handler, task_statement_view_handler, \
+    task_attachment_view_handler
+from .tasksubmission import submit_handler, task_submissions_handler, \
+    submission_status_handler, submission_details_handler, \
+    submission_file_handler, use_token_handler
+from .taskusertest import user_test_interface_handler, user_test_handler, \
+    user_test_status_handler, user_test_details_handler, user_test_io_handler, \
+    user_test_file_handler

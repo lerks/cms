@@ -6,13 +6,13 @@
 
         <title>{% block title %}{% endblock title %}</title>
 
-        <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
-        <link rel="stylesheet" href="{{ url("static", "css", "bootstrap.css") }}">
-        <link rel="stylesheet" href="{{ url("static", "cws_style.css") }}">
+        <link rel="shortcut icon" href="{{ url_for("static", prefix="static", filename="favicon.ico") }}" />
+        <link rel="stylesheet" href="{{ url_for("static", prefix="static", filename="css/bootstrap.css") }}">
+        <link rel="stylesheet" href="{{ url_for("static", prefix="static", filename="cws_style.css") }}">
 
-        <script src="{{ url("static", "jq", "jquery-1.7.1.min.js") }}"></script>
-        <script src="{{ url("static", "js", "bootstrap.js") }}"></script>
-        <script src="{{ url("static", "cws_utils.js") }}"></script>
+        <script src="{{ url_for("static", prefix="static", filename="jq/jquery-1.7.1.min.js") }}"></script>
+        <script src="{{ url_for("static", prefix="static", filename="js/bootstrap.js") }}"></script>
+        <script src="{{ url_for("static", prefix="static", filename="cws_utils.js") }}"></script>
 
         {% block js %}{% endblock js %}
     </head>

@@ -39,12 +39,11 @@ import logging
 
 from flask import redirect, abort, request, url_for, g
 
-from cms.db import ScopedSession
 from cms.server.contest.communication import accept_question, \
     UnacceptableQuestion, QuestionsNotAllowed
-from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import templated, authentication_required, \
-    notify_success, notify_error
+
+from . import contest_bp, authentication_required, templated, notify_error, \
+    notify_success
 
 
 logger = logging.getLogger(__name__)
@@ -72,10 +71,10 @@ def question_handler():
 
         """
         try:
-            accept_question(ScopedSession(), g.participation, g.timestamp,
+            accept_question(g.session, g.participation, g.timestamp,
                             request.form.get("question_subject", ""),
                             request.form.get("question_text", ""))
-            ScopedSession().commit()
+            g.session.commit()
         except QuestionsNotAllowed:
             abort(404)
         except UnacceptableQuestion as e:

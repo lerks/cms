@@ -27,11 +27,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from future.builtins.disabled import *  # noqa
-from future.builtins import *  # noqa
 
 from datetime import datetime, timedelta
-from functools import wraps
 
 
 def compute_actual_phase(timestamp, contest_start, contest_stop,
@@ -193,25 +190,3 @@ def compute_actual_phase(timestamp, contest_start, contest_stop,
     return (actual_phase,
             current_phase_begin, current_phase_end,
             actual_start, actual_stop)
-
-
-def actual_phase_required(*actual_phases):
-    """Return decorator filtering out requests in the wrong phase.
-
-    actual_phases ([int]): the phases in which the request can pass.
-
-    return (function): the decorator.
-
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapped(self, *args, **kwargs):
-            if self.r_params["actual_phase"] not in actual_phases and \
-                    (self.current_user is None or
-                     not self.current_user.unrestricted):
-                # TODO maybe return some error code?
-                self.redirect(self.contest_url())
-            else:
-                return func(self, *args, **kwargs)
-        return wrapped
-    return decorator

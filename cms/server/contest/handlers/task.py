@@ -38,17 +38,12 @@ from future.builtins import *  # noqa
 
 import logging
 
-from flask import g, request, redirect, abort
+from flask import g, abort
 
-from cms.db import ScopedSession
-from cms.server import multi_contest
-from cms.server.contest.handlers import contest_bp
-from cms.server.contest.handlers.base import authentication_required, templated
 from cmscommon.mimetypes import get_type_for_file_name
 
-from ..phase_management import actual_phase_required
-
-from .contest import ContestHandler, FileHandler
+from . import contest_bp, authentication_required, actual_phase_required, \
+    templated, fetch, get_task
 
 
 logger = logging.getLogger(__name__)
@@ -62,7 +57,7 @@ def task_description_handler(task_name):
         """Shows the data of a task in the contest.
 
         """
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
@@ -76,7 +71,7 @@ def task_statement_view_handler(task_name, lang_code):
         """Shows the statement file of a task in the contest.
 
         """
-        task = self.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
@@ -84,14 +79,14 @@ def task_statement_view_handler(task_name, lang_code):
             abort(404)
 
         statement = task.statements[lang_code].digest
-        ScopedSession().close()
+        g.session.close()
 
         if len(lang_code) > 0:
             filename = "%s (%s).pdf" % (task.name, lang_code)
         else:
             filename = "%s.pdf" % task.name
 
-        self.fetch(statement, "application/pdf", filename)
+        fetch(statement, "application/pdf", filename)
 
 
 @contest_bp.route("/tasks/<task_name>/attachments/<filename>", methods=["GET"])
@@ -101,7 +96,7 @@ def task_attachment_view_handler(task_name, filename):
         """Shows an attachment file of a task in the contest.
 
         """
-        task = g.get_task(task_name)
+        task = get_task(task_name)
         if task is None:
             abort(404)
 
@@ -109,10 +104,10 @@ def task_attachment_view_handler(task_name, filename):
             abort(404)
 
         attachment = task.attachments[filename].digest
-        ScopedSession().close()
+        g.session.close()
 
         mimetype = get_type_for_file_name(filename)
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
-        self.fetch(attachment, mimetype, filename)
+        fetch(attachment, mimetype, filename)

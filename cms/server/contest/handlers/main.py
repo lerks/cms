@@ -40,10 +40,10 @@ import logging
 from datetime import timedelta
 
 from flask import g, request, redirect, abort, url_for, current_app, \
-    after_this_request, jsonify
+    after_this_request, jsonify, session
 
 from cms import config
-from cms.db import PrintJob, ScopedSession
+from cms.db import PrintJob
 from cms.grading.steps import COMPILATION_MESSAGES, EVALUATION_MESSAGES
 from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import get_communications
@@ -51,10 +51,8 @@ from cms.server.contest.printing import accept_print_job, PrintingDisabled, \
     UnacceptablePrintJob
 from cmscommon.datetime import make_datetime, make_timestamp
 
-from ..phase_management import actual_phase_required
-
-from . import contest_bp
-from .base import templated, authentication_required, notify_success, notify_error
+from . import contest_bp, authentication_required, actual_phase_required, \
+    templated, notify_error, notify_success
 
 
 logger = logging.getLogger(__name__)
@@ -67,11 +65,11 @@ def N_(msgid):
 
 @contest_bp.route("/", methods=["GET"])
 @templated("overview.html")
-def main_handler(self):
-    """Home page handler.
+def main_handler():
+        """Home page handler.
 
-    """
-    pass
+        """
+        pass
 
 
 @contest_bp.route("/login", methods=["POST"])
@@ -100,18 +98,14 @@ def login_handler():
             return None
 
         participation, cookie = validate_login(
-            ScopedSession(), g.contest, g.timestamp, username, password,
+            g.session, g.contest, g.timestamp, username, password,
             ip_address)
 
         cookie_name = g.contest.name + "_login"
-        expires = g.timestamp - timedelta(days=365)
-        @after_this_request
-        def update_cookie(response):
-            if cookie is None:
-                response.set_cookie(cookie_name, "", expires=expires)
-            else:
-                # FIXME Secure?
-                response.set_cookie(cookie_name, cookie, expires_days=None)
+        if cookie is None:
+            session.pop(cookie_name, None)
+        else:
+            session[cookie_name] = cookie
 
 
         if participation is None:
@@ -129,26 +123,21 @@ def start_handler():
         Used by a user who wants to start their per_user_time.
 
         """
-        participation = g.participation
-
-        logger.info("Starting now for user %s", participation.user.username)
-        participation.starting_time = g.timestamp
-        ScopedSession().commit()
+        logger.info("Starting now for user %s", g.participation.user.username)
+        g.participation.starting_time = g.timestamp
+        g.session.commit()
 
         return redirect(url_for("contest.main_handler"))
 
 
-@contest_bp.route("/logout", method=["POST"])
+@contest_bp.route("/logout", methods=["POST"])
 @authentication_required()
 def logout_handler():
         """Logout handler.
 
         """
         cookie_name = g.contest.name + "_login"
-        expires = g.timestamp - timedelta(days=365)
-        @after_this_request
-        def update_cookie(response):
-            response.set_cookie(cookie_name, "", expires=expires)
+        session.pop(cookie_name, None)
         return redirect(url_for("contest.main_handler"))
 
 
@@ -158,18 +147,16 @@ def notifications_handler():
         """Displays notifications.
 
         """
-        participation = g.participation
-
         last_notification = request.args.get("last_notification", None)
         if last_notification is not None:
             last_notification = make_datetime(float(last_notification))
 
-        res = get_communications(ScopedSession(), participation,
+        res = get_communications(g.session, g.participation,
                                  g.timestamp, after=last_notification)
 
         # Simple notifications
         notifications = current_app.service.notifications
-        username = participation.user.username
+        username = g.participation.user.username
         if username in notifications:
             for notification in notifications[username]:
                 res.append({"type": "notification",
@@ -190,13 +177,11 @@ def printing_handler_get():
         """Serve the interface to print and handle submitted print jobs.
 
         """
-        participation = g.participation
-
-        if config.printer is None:
+        if not g.printing_enabled:
             abort(404)
 
-        printjobs = ScopedSession().query(PrintJob)\
-            .filter(PrintJob.participation == participation)\
+        printjobs = g.session.query(PrintJob)\
+            .filter(PrintJob.participation == g.participation)\
             .all()
 
         remaining_jobs = max(0, config.max_jobs_per_user - len(printjobs))
@@ -211,11 +196,14 @@ def printing_handler_get():
 @authentication_required()
 @actual_phase_required(0)
 def printing_handler_post():
+        if not g.printing_enabled:
+            abort(404)
+
         try:
             printjob = accept_print_job(
-                ScopedSession(), current_app.service.file_cacher, g.participation,
+                g.session, current_app.service.file_cacher, g.participation,
                 g.timestamp, request.files.to_dict(flat=False))
-            ScopedSession().commit()
+            g.session.commit()
         except PrintingDisabled:
             abort(404)
         except UnacceptablePrintJob as e:

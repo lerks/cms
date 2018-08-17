@@ -56,19 +56,22 @@ class WebService(Service):
 
     """
 
-    def __init__(self, listen_port, handlers, parameters, shard=0,
+    def __init__(self, listen_port, wsgi_app,
+                 static_files=None,
+                 rpc_enabled=False,
+                 rpc_auth=None,
+                 auth_middleware=None,
+                 is_proxy_used=None,
+                 num_proxies_used=None,
+                 shard=0,
                  listen_address=""):
         super(WebService, self).__init__(shard)
 
-        static_files = parameters.pop('static_files', [])
-        rpc_enabled = parameters.pop('rpc_enabled', False)
-        rpc_auth = parameters.pop('rpc_auth', None)
-        auth_middleware = parameters.pop('auth_middleware', None)
-        is_proxy_used = parameters.pop('is_proxy_used', None)
-        num_proxies_used = parameters.pop('num_proxies_used', None)
+        if static_files is None:
+            static_files = []
 
-        self.wsgi_app = tornado.wsgi.WSGIApplication(handlers, **parameters)
-        self.wsgi_app.service = self
+        self.wsgi_app = wsgi_app
+        #self.wsgi_app.service = self
 
         for entry in static_files:
             # TODO If we will introduce a flag to trigger autoreload in
@@ -79,7 +82,7 @@ class WebService(Service):
                 fallback_mimetype="application/octet-stream")
 
         self.file_cacher = FileCacher(self)
-        self.wsgi_app = FileServerMiddleware(self.file_cacher, self.wsgi_app)
+#        self.wsgi_app = FileServerMiddleware(self.file_cacher, self.wsgi_app)
 
         if rpc_enabled:
             self.wsgi_app = DispatcherMiddleware(

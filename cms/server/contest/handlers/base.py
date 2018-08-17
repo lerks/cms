@@ -35,104 +35,124 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from datetime import timedelta
-
+import pkg_resources
 from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
-from six import iterkeys
 
 import logging
-import traceback
-from functools import wraps
+from functools import wraps, partial
 
-import tornado.web
-from flask import Blueprint, abort, after_this_request
-from flask import Flask, current_app
-from flask import g, redirect, url_for
+from flask import Flask, current_app, send_from_directory
+from flask import g
 from flask import request, render_template
-from jinja2 import TemplateNotFound
-from werkzeug.datastructures import LanguageAccept
-from werkzeug.exceptions import HTTPException
-from werkzeug.http import parse_accept_header
+from jinja2 import PackageLoader, StrictUndefined
+from six import iterkeys
+from werkzeug.exceptions import HTTPException, NotFound
 
-from cms import TOKEN_MODE_MIXED, config
-from cms.db import Contest, ScopedSession
-from cms.locale import DEFAULT_TRANSLATION, choose_language_code
-from cms.server import CommonRequestHandler, compute_actual_phase
-from cms.server.contest.authentication import get_current_user
-from cms.server.contest.handlers.contest import NOTIFICATION_ERROR, \
-    NOTIFICATION_WARNING, NOTIFICATION_SUCCESS
-from cmscommon.datetime import utc as utc_tzinfo, local as local_tzinfo, \
-    get_timezone, make_datetime
-from cms.server.contest.handlers import app, contest_bp
-from cms.server import CommonRequestHandler
-from cmscommon.datetime import utc as utc_tzinfo
+from cms import config
+from cms.db import Contest, Session
+from cms.locale import DEFAULT_TRANSLATION
+from cms.server.jinja2_toolbox import \
+    instrument_generic_toolbox as global_instrument_generic_toolbox, \
+    instrument_cms_toolbox as global_instrument_cms_toolbox, \
+    instrument_formatting_toolbox as global_instrument_formatting_toolbox
+from cms.server.contest.jinja2_toolbox import \
+    instrument_cms_toolbox as cws_instrument_cms_toolbox, \
+    instrument_formatting_toolbox as cws_instrument_formatting_toolbox
+from cmscommon.datetime import utc as utc_tzinfo, \
+    make_datetime, local_tz as local_tzinfo
+from cms.server.file_middleware import fetch as base_fetch
 
 
 logger = logging.getLogger(__name__)
 
 
-@contest_bp.route('/<page>')
-def show(page):
-    try:
-        return render_template('pages/%s.html' % page)
-    except TemplateNotFound:
-        abort(404)
+class WebServer(Flask):
 
+    def __init__(self, import_name, static_map=None):
+        super(WebServer, self).__init__(import_name, static_folder=None)
 
-@contest_bp.url_defaults
-def add_contest_name(endpoint, values):
-    values.setdefault('contest', g.contest.name)
+        self.static_map = static_map or {}
+        self.add_url_rule("/<prefix>/<path:filename>", endpoint="static",
+                          view_func=self.serve_static_file)
 
+        # Load templates from CWS's package (use package rather than file
+        # system as that works even in case of a compressed distribution).
+        self.jinja_loader = PackageLoader('cms.server.contest', 'templates')
+        # Force autoescape of string, always and forever.
+        self.select_jinja_autoescape = True
+        # Don't check the disk every time to see whether the templates'
+        # files have changed.
+        self.templates_auto_reload = False
+        self.jinja_options = dict(
+            # These cause a line that only contains a control block to be
+            # suppressed from the output, making it more readable.
+            trim_blocks=True, lstrip_blocks=True,
+            # This causes an error when we try to render an undefined value.
+            undefined=StrictUndefined,
+            # Cache all templates, no matter how many.
+            cache_size=-1,
+            # Allow the use of {% trans %} tags to localize strings.
+            extensions=['jinja2.ext.i18n'])
+        # This compresses all leading/trailing whitespace and line breaks of
+        # internationalized messages when translating and extracting them.
+        self.jinja_env.policies['ext.i18n.trimmed'] = True
+        global_instrument_generic_toolbox(self.jinja_env)
+        global_instrument_cms_toolbox(self.jinja_env)
+        global_instrument_formatting_toolbox(self.jinja_env)
+        cws_instrument_cms_toolbox(self.jinja_env)
+        cws_instrument_formatting_toolbox(self.jinja_env)
 
-@contest_bp.url_value_preprocessor
-def pull_contest_name(endpoint, values):
-    with ScopedSession() as session:
-        if hasattr(current_app, "contest_id"):
-            g.contest = Contest.get_from_id(current_app.contest_id, session)
+    def serve_static_file(self, prefix, filename):
+        directories = self.static_map.get(prefix, [])
+        cache_timeout = self.get_send_file_max_age(filename)
+        for directory in directories:
+            try:
+                return send_from_directory(directory, filename,
+                                           cache_timeout=cache_timeout)
+            except NotFound:
+                continue
         else:
-            g.contest = Contest.by_name(values.pop('contest'))
+            raise NotFound()
 
 
+app = WebServer('cms.server.contest', {"static": [pkg_resources.resource_filename("cms.server", "static"),
+                                                  pkg_resources.resource_filename("cms.server.contest", "static")],
+                                       "/stl": config.stl_path})
+
+
+# TODO What was this for again?
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    with ScopedSession() as session:
-        session.remove()
+    #with ScopedSession() as session:
+    #    session.remove()
+    pass
 
 
 @app.before_request
-def inject_timestamp():
+def prepare_context():
     g.timestamp = make_datetime()
+    g.session = Session()
+    # FIXME could even go to app
+    g.printing_enabled = config.printer is not None
+
+    # The list of interface translations the user can choose from.
+    g.available_translations = current_app.service.translations
+    # The translation that best matches the user's system settings
+    # (as reflected by the browser in the HTTP request's
+    # Accept-Language header).
+    g.automatic_translation = DEFAULT_TRANSLATION
+    # The translation that the user specifically manually picked.
+    g.cookie_translation = None
+    # The translation that we are going to use.
+    g.translation = DEFAULT_TRANSLATION
+    g._ = g.translation.gettext
+    g.n_ = g.translation.ngettext
 
 
-def authentication_required(refresh_cookie=True):
-    def decorator(f):
-        @wraps(f)
-        def wrapped_f(*args, **kwargs):
-            with ScopedSession() as session:
-                participation, cookie = get_current_user(
-                    session, g.contest, g.timestamp, ip_address, cookie)
-
-            cookie_name = g.contest.name + "_login"
-            expires = g.timestamp - timedelta(days=365)
-            @after_this_request
-            def update_cookie(response):
-                if cookie is None:
-                    response.set_cookie(cookie_name, "", expires=expires)
-                elif refresh_cookie:
-                    # FIXME secure
-                    response.set_cookie(cookie_name, cookie, expires_days=None)
-
-            if participation is None:
-                return redirect(url_for('contest.login', next=request.url))
-
-            g.participation = participation
-
-            return f(*args, **kwargs)
-
-        return wrapped_f
-
-    return decorator
+@app.after_request
+def clean_up(response):
+    g.session.rollback()
 
 
 def templated(template):
@@ -160,166 +180,35 @@ def render_params():
     ret["now"] = g.timestamp
     ret["tzinfo"] = local_tzinfo
     ret["utc"] = utc_tzinfo
-    ret["url"] = g.url
+
     ret["available_translations"] = g.available_translations
     ret["cookie_translation"] = g.cookie_translation
     ret["automatic_translation"] = g.automatic_translation
     ret["translation"] = g.translation
     ret["gettext"] = g._
     ret["ngettext"] = g.n_
-    ret["xsrf_form_html"] = xsrf_form_html()
-    return ret
 
-
-@contest_bp.context_processor
-def contest_render_params():
-    ret = dict()
-
-    ret["contest"] = g.contest
-
-    ret["phase"] = g.contest.phase(g.timestamp)
-
-    ret["printing_enabled"] = config.printer is not None
-    ret["questions_enabled"] = g.contest.allow_questions
-    ret["testing_enabled"] = g.contest.allow_user_tests
-
-    if g.participation is not None:
-        ret["current_user"] = g.participation
-        g.participation = g.participation
-
-        res = compute_actual_phase(
-            g.timestamp, g.contest.start, g.contest.stop,
-            g.contest.analysis_start if g.contest.analysis_enabled
-            else None,
-            g.contest.analysis_stop if g.contest.analysis_enabled
-            else None,
-            g.contest.per_user_time, g.participation.starting_time,
-            g.participation.delay_time, g.participation.extra_time)
-
-        ret["actual_phase"], ret["current_phase_begin"], \
-            ret["current_phase_end"], ret["valid_phase_begin"], \
-            ret["valid_phase_end"] = res
-
-        if ret["actual_phase"] == 0:
-            ret["phase"] = 0
-
-        # set the timezone used to format timestamps
-        ret["timezone"] = get_timezone(g.user, g.contest)
-
-    # some information about token configuration
-    ret["tokens_contest"] = g.contest.token_mode
-
-    t_tokens = set(t.token_mode for t in g.contest.tasks)
-    if len(t_tokens) == 1:
-        ret["tokens_tasks"] = next(iter(t_tokens))
-    else:
-        ret["tokens_tasks"] = TOKEN_MODE_MIXED
+    # ret["xsrf_form_html"] = xsrf_form_html()
+    ret["printing_enabled"] = g.printing_enabled
 
     return ret
 
 
-
-# TODO use flask machinery for these
-def add_notification(subject, text, level):
-    current_app.service.add_notification(
-        g.participation.user.username, g.timestamp,
-        self._(subject), self._(text), level)
-
-def notify_success(subject, text):
-    add_notification(subject, text, NOTIFICATION_SUCCESS)
-
-def notify_warning(subject, text):
-    add_notification(subject, text, NOTIFICATION_WARNING)
-
-def notify_error(subject, text):
-    add_notification(subject, text, NOTIFICATION_ERROR)
-
-
-
-
-class BaseHandler(CommonRequestHandler):
-    """Base RequestHandler for this application.
-
-    This will also handle the contest list on the homepage.
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(BaseHandler, self).__init__(*args, **kwargs)
-        # The list of interface translations the user can choose from.
-        self.available_translations = self.service.translations
-        # The translation that best matches the user's system settings
-        # (as reflected by the browser in the HTTP request's
-        # Accept-Language header).
-        self.automatic_translation = DEFAULT_TRANSLATION
-        # The translation that the user specifically manually picked.
-        self.cookie_translation = None
-        # The translation that we are going to use.
-        self.translation = DEFAULT_TRANSLATION
-        self._ = self.translation.gettext
-        self.n_ = self.translation.ngettext
-
-    def prepare(self):
-        """This method is executed at the beginning of each request.
-
-        """
-        super(BaseHandler, self).prepare()
-        self.setup_locale()
-
-    def setup_locale(self):
-        lang_codes = list(iterkeys(self.available_translations))
-
-        browser_langs = parse_accept_header(
-            self.request.headers.get("Accept-Language", ""),
-            LanguageAccept).values()
-        automatic_lang = choose_language_code(browser_langs, lang_codes)
-        if automatic_lang is None:
-            automatic_lang = lang_codes[0]
-        self.automatic_translation = \
-            self.available_translations[automatic_lang]
-
-        cookie_lang = request.cookies.get("language", None)
-        if cookie_lang is not None:
-            chosen_lang = \
-                choose_language_code([cookie_lang, automatic_lang], lang_codes)
-            if chosen_lang == cookie_lang:
-                self.cookie_translation = \
-                    self.available_translations[cookie_lang]
-        else:
-            chosen_lang = automatic_lang
-        self.translation = self.available_translations[chosen_lang]
-
-        self._ = self.translation.gettext
-        self.n_ = self.translation.ngettext
-
-        self.set_header("Content-Language", chosen_lang)
-
-    def write_error(self, status_code, **kwargs):
-        if "exc_info" in kwargs and \
-                kwargs["exc_info"][0] != tornado.web.HTTPError:
-            exc_info = kwargs["exc_info"]
-            logger.error(
-                "Uncaught exception (%r) while processing a request: %s",
-                exc_info[1], ''.join(traceback.format_exception(*exc_info)))
-
-        # We assume that if r_params is defined then we have at least
-        # the data we need to display a basic template with the error
-        # information. If r_params is not defined (i.e. something went
-        # *really* bad) we simply return a basic textual error notice.
-        if self.r_params is not None:
-            self.render("error.html", status_code=status_code, **self.r_params)
-        else:
-            self.write("A critical error has occurred :-(")
-            self.finish()
-
-
-# TODO actually should be inserted dynamically if multi-contest
-@app.route("/", methods=["GET"])
 @templated("contest_list.html")
-def contest_list_handler(self):
+def contest_list_handler():
     # We need this to be computed for each request because we want to be
     # able to import new contests without having to restart CWS.
     contest_list = dict()
-    for contest in ScopedSession().query(Contest).all():
+    for contest in g.session.query(Contest).all():
         contest_list[contest.name] = contest
     return {"contest_list": contest_list}
+
+
+# The following prefixes are handled by WSGI middlewares:
+# * /static, defined in cms/io/web_service.py
+# * /stl, defined in cms/server/contest/server.py
+
+
+def fetch(digest, mimetype, filename):
+    return base_fetch(digest, filename, mimetype,
+                      current_app.service.file_cacher, request.environ)
