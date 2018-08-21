@@ -144,18 +144,19 @@ class Batch(TaskType):
 
     def get_compilation_commands(self, submission_format):
         """See TaskType.get_compilation_commands."""
-        source_filenames = []
+        codenames_to_compile = []
         # If a grader is specified, we add to the command line (and to
         # the files to get) the corresponding manager.
         if self._uses_grader():
-            source_filenames.append(self.GRADER_BASENAME + ".%l")
-        source_filenames.append(submission_format[0])
-        executable_filename = submission_format[0].replace(".%l", "")
+            codenames_to_compile.append(self.GRADER_BASENAME + ".%l")
+        codenames_to_compile.extend(submission_format)
+        executable_filename = self._executable_filename(submission_format)
         res = dict()
         for language in LANGUAGES:
+            source_ext = language.source_extension
             res[language.name] = language.get_compilation_commands(
-                [source.replace(".%l", language.source_extension)
-                 for source in source_filenames],
+                [filename.replace(".%l", source_ext)
+                 for filename in codenames_to_compile],
                 executable_filename)
         return res
 
@@ -202,8 +203,8 @@ class Batch(TaskType):
         files_to_get = {}
         source_filenames = []
         if self._uses_grader():
-            grader_source_filename = self.GRADER_BASENAME + source_ext
-            if not check_manager_present(job, grader_source_filename):
+            grader_filename = self.GRADER_BASENAME + source_ext
+            if not check_manager_present(job, grader_filename):
                 return
             source_filenames.append(grader_filename)
             files_to_get[grader_filename] = job.managers[grader_filename].digest
