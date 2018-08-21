@@ -40,10 +40,12 @@ from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 
 import logging
+import os
 from functools import wraps, partial
+from hmac import compare_digest
 
 from flask import Flask, current_app, send_from_directory
-from flask import g
+from flask import g, abort, session, escape
 from flask import request, render_template
 from jinja2 import PackageLoader, StrictUndefined
 from six import iterkeys
@@ -62,7 +64,7 @@ from cms.server.contest.jinja2_toolbox import \
 from cmscommon.datetime import utc as utc_tzinfo, \
     make_datetime, local_tz as local_tzinfo
 from cms.server.file_middleware import fetch as base_fetch
-
+from cmscommon.binary import bin_to_b64, b64_to_bin
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +131,72 @@ def shutdown_session(exception=None):
     pass
 
 
+XSRF_TOKEN_SIZE = 16
+
+
+def generate_xsrf_token():
+    return os.urandom(XSRF_TOKEN_SIZE)
+
+
+def salt_xsrf_token(token):
+    if not isinstance(token, bytes):
+        raise TypeError("token isn't bytes: %s" % type(token))
+    if len(token) != XSRF_TOKEN_SIZE:
+        raise ValueError("token isn't %d bytes long: %d"
+                         % (XSRF_TOKEN_SIZE, len(token)))
+    salt = os.urandom(XSRF_TOKEN_SIZE)
+    salted_token = bytes(s ^ t for s, t in zip(salt, token))
+    return bin_to_b64(salt + salted_token)
+
+
+def unsalt_xsrf_token(value):
+    if not isinstance(value, str):
+        raise TypeError("value isn't str: %s" % type(value))
+    try:
+        value = b64_to_bin(value)
+    except ValueError:
+        raise ValueError("value isn't base64-encoded bytes")
+    if len(value) != 2 * XSRF_TOKEN_SIZE:
+        raise ValueError("value isn't %d bytes long: %d"
+                         % (2 * XSRF_TOKEN_SIZE, len(value)))
+    salt, salted_token = value[:XSRF_TOKEN_SIZE], value[XSRF_TOKEN_SIZE:]
+    return bytes(s ^ t for s, t in zip(salt, salted_token))
+
+
 @app.before_request
 def prepare_context():
+    expected_xsrf_token = request.cookies.get("_xsrf", None)
+    if expected_xsrf_token is not None:
+        try:
+            expected_xsrf_token = unsalt_xsrf_token(expected_xsrf_token)
+        except (TypeError, ValueError) as err:
+            logger.warning("Bad XSRF token in cookie: %s", err)
+            expected_xsrf_token = None
+
+    if request.method == "POST":
+        if expected_xsrf_token is None:
+            logger.warning("No XSRF token in cookie.")
+            raise HTTPException(403)
+        received_xsrf_token = request.form.get("_xsrf", None)
+        if received_xsrf_token is None:
+            logger.warning("No XSRF token in form field.")
+            raise HTTPException(403)
+        try:
+            received_xsrf_token = unsalt_xsrf_token(received_xsrf_token)
+        except (TypeError, ValueError) as err:
+            logger.warning("Bad XSRF token in form field: %s", err)
+            raise HTTPException(403)
+        if not compare_digest(expected_xsrf_token, received_xsrf_token):
+            logger.warning("XSRF tokens don't match")
+            raise HTTPException(403)
+
+    if expected_xsrf_token is None:
+        expected_xsrf_token = generate_xsrf_token()
+
+    session["_xsrf"] = salt_xsrf_token(expected_xsrf_token)
+    g.xsrf_form_html = ('<input type="hidden" name="_xsrf" value="%s"/>'
+                        % escape(salt_xsrf_token(expected_xsrf_token)))
+
     g.timestamp = make_datetime()
     g.session = Session()
     # FIXME could even go to app
@@ -152,7 +218,10 @@ def prepare_context():
 
 @app.after_request
 def clean_up(response):
-    g.session.rollback()
+    if hasattr(g, "session"):
+        g.session.rollback()
+
+    return response
 
 
 def templated(template):
@@ -171,7 +240,9 @@ def templated(template):
 
 @app.errorhandler(HTTPException)
 def page_not_found(error):
-    return 'This page does not exist', 404
+    code = error.code if isinstance(error, HTTPException) else 500
+    # FIXME return 200 always?
+    return "Error %d" % code, code
 
 
 @app.context_processor
@@ -188,7 +259,7 @@ def render_params():
     ret["gettext"] = g._
     ret["ngettext"] = g.n_
 
-    # ret["xsrf_form_html"] = xsrf_form_html()
+    ret["xsrf_form_html"] = g.xsrf_form_html
     ret["printing_enabled"] = g.printing_enabled
 
     return ret

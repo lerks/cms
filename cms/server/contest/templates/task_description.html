@@ -176,7 +176,7 @@
             {% set type_name = none %}
             {% set type_icon = none %}
         {% endif %}
-        {% set file_size = handler.application.service.file_cacher.get_size(attachment.digest) %}
+        {% set file_size = current_app.service.file_cacher.get_size(attachment.digest) %}
             <li>
                 <a href="{{ url_for("contest.task_attachment_view_handler", task.name, filename) }}" class="btn">
             {% if type_icon is not none %}

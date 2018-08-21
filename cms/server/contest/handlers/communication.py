@@ -76,7 +76,7 @@ def question_handler():
                             request.form.get("question_text", ""))
             g.session.commit()
         except QuestionsNotAllowed:
-            abort(404)
+            raise HTTPException(404)
         except UnacceptableQuestion as e:
             notify_error(e.subject, e.text)
         else:

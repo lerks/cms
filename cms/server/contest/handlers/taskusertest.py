@@ -70,7 +70,7 @@ def user_test_interface_handler():
 
         """
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         user_tests = dict()
         user_tests_left = dict()
@@ -121,11 +121,11 @@ def user_test_interface_handler():
 @actual_phase_required(0)
 def user_test_handler(task_name):
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         query_args = dict()
 
@@ -138,7 +138,7 @@ def user_test_handler(task_name):
         except TestingNotAllowed:
             logger.warning("User %s tried to make test on task %s.",
                            g.participation.user.username, task_name)
-            abort(404)
+            raise HTTPException(404)
         except UnacceptableUserTest as e:
             logger.info("Sent error: `%s' - `%s'", e.subject, e.text)
             notify_error(e.subject, e.text)
@@ -163,15 +163,15 @@ def user_test_handler(task_name):
 @actual_phase_required(0)
 def user_test_status_handler(task_name, user_test_num):
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         user_test = get_user_test(task, user_test_num)
         if user_test is None:
-            abort(404)
+            raise HTTPException(404)
 
         ur = user_test.get_result(task.active_dataset)
         data = dict()
@@ -215,15 +215,15 @@ def user_test_status_handler(task_name, user_test_num):
 @templated("user_test_details.html")
 def user_test_details_handler(task_name, user_test_num):
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         user_test = get_user_test(task, user_test_num)
         if user_test is None:
-            abort(404)
+            raise HTTPException(404)
 
         tr = user_test.get_result(task.active_dataset)
 
@@ -239,15 +239,15 @@ def user_test_io_handler(task_name, user_test_num, io):
 
         """
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         user_test = get_user_test(task, user_test_num)
         if user_test is None:
-            abort(404)
+            raise HTTPException(404)
 
         if io == "input":
             digest = user_test.input
@@ -257,7 +257,7 @@ def user_test_io_handler(task_name, user_test_num, io):
         g.session.close()
 
         if digest is None:
-            abort(404)
+            raise HTTPException(404)
 
         mimetype = 'text/plain'
 
@@ -272,15 +272,15 @@ def user_test_file_handler(task_name, user_test_num, filename):
 
         """
         if not g.contest.allow_user_tests:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         user_test = get_user_test(task, user_test_num)
         if user_test is None:
-            abort(404)
+            raise HTTPException(404)
 
         # filename is the name used by the browser, hence is something
         # like 'foo.c' (and the extension is CMS's preferred extension
@@ -296,7 +296,7 @@ def user_test_file_handler(task_name, user_test_num, filename):
         elif stored_filename in user_test.managers:
             digest = user_test.managers[stored_filename].digest
         else:
-            abort(404)
+            raise HTTPException(404)
         g.session.close()
 
         mimetype = get_type_for_file_name(filename)

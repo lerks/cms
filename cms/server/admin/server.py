@@ -64,9 +64,11 @@ class AdminWebServer(WebService):
             "debug": config.tornado_debug,
             "xsrf_cookies": True,
         }
+        wsgi_app = tornado.wsgi.WSGIApplication(HANDLERS, **parameters)
+        wsgi_app.service = self
         super(AdminWebServer, self).__init__(
             config.admin_listen_port,
-            tornado.wsgi.WSGIApplication(HANDLERS, **parameters),
+            wsgi_app,
             static_files=[("cms.server", "static"), ("cms.server.admin", "static")],
             rpc_enabled=True,
             rpc_auth=self.is_rpc_authorized,

@@ -91,6 +91,7 @@ def login_handler():
         try:
             # In py2 Tornado gives us the IP address as a native binary
             # string, whereas ipaddress wants text (unicode) strings.
+            # FIXME Still true with Flask?
             ip_address = ipaddress.ip_address(str(request.remote_addr))
         except ValueError:
             logger.warning("Invalid IP address provided by Flask: %s",
@@ -106,7 +107,6 @@ def login_handler():
             session.pop(cookie_name, None)
         else:
             session[cookie_name] = cookie
-
 
         if participation is None:
             return redirect(error_page)
@@ -178,7 +178,7 @@ def printing_handler_get():
 
         """
         if not g.printing_enabled:
-            abort(404)
+            raise HTTPException(404)
 
         printjobs = g.session.query(PrintJob)\
             .filter(PrintJob.participation == g.participation)\
@@ -197,7 +197,7 @@ def printing_handler_get():
 @actual_phase_required(0)
 def printing_handler_post():
         if not g.printing_enabled:
-            abort(404)
+            raise HTTPException(404)
 
         try:
             printjob = accept_print_job(
@@ -205,7 +205,7 @@ def printing_handler_post():
                 g.timestamp, request.files.to_dict(flat=False))
             g.session.commit()
         except PrintingDisabled:
-            abort(404)
+            raise HTTPException(404)
         except UnacceptablePrintJob as e:
             notify_error(e.subject, e.text)
         else:

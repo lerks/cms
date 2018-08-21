@@ -75,7 +75,7 @@ def submit_handler(task_name):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         # Only set the official bit when the user can compete and we are not in
         # analysis mode.
@@ -118,7 +118,7 @@ def task_submissions_handler(task_name):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         submissions = g.session.query(Submission)\
             .filter(Submission.participation == g.participation)\
@@ -166,11 +166,11 @@ def task_submissions_handler(task_name):
 def submission_status_handler(task_name, submission_num):
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         submission = get_submission(task, submission_num)
         if submission is None:
-            abort(404)
+            raise HTTPException(404)
 
         sr = submission.get_result(task.active_dataset)
         data = dict()
@@ -224,11 +224,11 @@ def submission_status_handler(task_name, submission_num):
 def submission_details_handler(task_name, submission_num):
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         submission = get_submission(task, submission_num)
         if submission is None:
-            abort(404)
+            raise HTTPException(404)
 
         sr = submission.get_result(task.active_dataset)
         score_type = task.active_dataset.score_type_object
@@ -262,15 +262,15 @@ def submission_file_handler(task_name, submission_num, filename):
 
         """
         if not g.contest.submissions_download_allowed:
-            abort(404)
+            raise HTTPException(404)
 
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         submission = get_submission(task, submission_num)
         if submission is None:
-            abort(404)
+            raise HTTPException(404)
 
         # The following code assumes that submission.files is a subset
         # of task.submission_format. CWS will always ensure that for new
@@ -287,7 +287,7 @@ def submission_file_handler(task_name, submission_num, filename):
             stored_filename = re.sub(r'%s$' % extension, '.%l', filename)
 
         if stored_filename not in submission.files:
-            abort(404)
+            raise HTTPException(404)
 
         digest = submission.files[stored_filename].digest
         g.session.close()
@@ -308,11 +308,11 @@ def use_token_handler(task_name, submission_num):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         submission = get_submission(task, submission_num)
         if submission is None:
-            abort(404)
+            raise HTTPException(404)
 
         try:
             accept_token(g.session, submission, g.timestamp)

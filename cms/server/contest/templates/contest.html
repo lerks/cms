@@ -78,7 +78,7 @@ $(document).ready(function () {
             </div>
         </div>
 {% if participation is undefined %}
-    {% if handler.get_argument("login_error", "") != "" %}
+    {% if request.args.get("login_error", "") != "" %}
         <div id="notifications" class="notifications">
             <div class="alert alert-block alert-error notification">
                 <a class="close" data-dismiss="alert" href="#">&#xD7;</a>
@@ -92,7 +92,7 @@ $(document).ready(function () {
                 <p>{% trans %}Please log in{% endtrans %}</p>
                 <form class="form-horizontal" action="{{ url_for("contest.login_handler") }}" method="POST">
                     {{ xsrf_form_html|safe }}
-                    {% set next_page = handler.get_argument("next", none) %}
+                    {% set next_page = request.args.get("next", none) %}
                     {% if next_page is not none %}
                     <input type="hidden" name="next" value="{{ next_page }}">
                     {% endif %}

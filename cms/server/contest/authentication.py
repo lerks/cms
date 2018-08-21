@@ -35,7 +35,6 @@ from future.builtins import *  # noqa
 
 import ipaddress
 import logging
-import pickle
 from datetime import timedelta
 
 from sqlalchemy.orm import contains_eager
@@ -150,7 +149,7 @@ def validate_login(
                 timestamp)
 
     return (participation,
-            pickle.dumps((username, password, make_timestamp(timestamp))))
+            (username, password, make_timestamp(timestamp)))
 
 
 class AmbiguousIPAddress(Exception):
@@ -316,10 +315,12 @@ def _authenticate_request_from_cookie(sql_session, contest, timestamp, cookie):
 
     # Parse cookie.
     try:
-        cookie = pickle.loads(cookie)
-        username = cookie[0]
-        password = cookie[1]
-        last_update = make_datetime(cookie[2])
+        assert isinstance(cookie, tuple), "not a tuple"
+        username, password, last_update = cookie
+        assert isinstance(username, str), "username not a str"
+        assert isinstance(password, str), "password not a str"
+        assert isinstance(last_update, float), "last_update not a float"
+        last_update = make_datetime(last_update)
     except Exception as e:
         # Cookies are stored securely and thus cannot be tampered with:
         # this is either a programming or a configuration error.
@@ -357,4 +358,4 @@ def _authenticate_request_from_cookie(sql_session, contest, timestamp, cookie):
                 timestamp)
 
     return (participation,
-            pickle.dumps((username, password, make_timestamp(timestamp))))
+            (username, password, make_timestamp(timestamp)))

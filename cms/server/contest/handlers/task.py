@@ -59,7 +59,7 @@ def task_description_handler(task_name):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         return {"task": task}
 
@@ -73,10 +73,10 @@ def task_statement_view_handler(task_name, lang_code):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         if lang_code not in task.statements:
-            abort(404)
+            raise HTTPException(404)
 
         statement = task.statements[lang_code].digest
         g.session.close()
@@ -98,10 +98,10 @@ def task_attachment_view_handler(task_name, filename):
         """
         task = get_task(task_name)
         if task is None:
-            abort(404)
+            raise HTTPException(404)
 
         if filename not in task.attachments:
-            abort(404)
+            raise HTTPException(404)
 
         attachment = task.attachments[filename].digest
         g.session.close()

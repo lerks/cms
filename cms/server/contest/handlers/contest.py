@@ -38,6 +38,7 @@ from future.builtins.disabled import *  # noqa
 from future.builtins import *  # noqa
 from six import iterkeys, iteritems
 
+import ipaddress
 import logging
 from datetime import timedelta
 from functools import wraps
@@ -73,26 +74,34 @@ contest_bp = Blueprint('contest', 'cms.server.contest')
 #     try:
 #         return render_template('pages/%s.html' % page)
 #     except TemplateNotFound:
-#         abort(404)
+#         raise HTTPException(404)
 
 
 @contest_bp.url_defaults
 def add_contest_name(endpoint, values):
     # TODO This is fishy, we shouldn't need to check whethere contest is defined, it always is!
-    if hasattr(current_app, "contest_id") and hasattr(g, "contest"):
+    if not hasattr(current_app, "contest_id") and hasattr(g, "contest"):
         values.setdefault('contest', g.contest.name)
 
 
 @contest_bp.url_value_preprocessor
 def pull_contest_name(endpoint, values):
-    if hasattr(current_app, "contest_id"):
-        g.contest = Contest.get_from_id(current_app.contest_id, g.session)
-    else:
-        g.contest = Contest.by_name(values.pop('contest'))
+    if not hasattr(current_app, "contest_id"):
+        g.contest_name = values.pop("contest")
 
 
 @contest_bp.before_request
 def prepare_contest_for_contest():
+    if hasattr(g, "contest_name"):
+        g.contest = g.session.query(Contest).filter(
+            Contest.name == g.contest_name).first()
+        # TODO what if None?
+        del g.contest_name
+    elif hasattr(current_app, "contest_id"):
+        Contest.get_from_id(current_app.contest_id, g.session)
+    else:
+        raise RuntimeError("cannot determine contest")
+
     if g.contest.allowed_localizations:
         lang_codes = filter_language_codes(
             list(iterkeys(g.available_translations)),
@@ -102,6 +111,44 @@ def prepare_contest_for_contest():
             if k in lang_codes)
 
     g.phase = g.contest.phase(g.timestamp)
+
+    cookie_name = g.contest.name + "_login"
+    old_cookie = session.get(cookie_name, None)
+
+    try:
+        # In py2 Tornado gives us the IP address as a native binary
+        # string, whereas ipaddress wants text (unicode) strings.
+        # FIXME Still true with Flask?
+        ip_address = ipaddress.ip_address(str(request.remote_addr))
+    except ValueError:
+        logger.warning("Invalid IP address provided by Flask: %s",
+                       request.remote_addr)
+        return None
+
+    participation, new_cookie = authenticate_request(
+        g.session, g.contest, g.timestamp, old_cookie, ip_address)
+
+    if new_cookie is None:
+        session.pop(cookie_name, None)
+#    elif refresh_cookie:
+    elif True:
+        session[cookie_name] = new_cookie
+
+    if participation is not None:
+        g.participation = participation
+        g.user = participation.user
+
+        setup_locale()
+
+        g.actual_phase, g.current_phase_begin, g.current_phase_end, g.valid_phase_begin, g.valid_phase_end = compute_actual_phase(
+            g.timestamp, g.contest.start, g.contest.stop,
+            g.contest.analysis_start if g.contest.analysis_enabled else None,
+            g.contest.analysis_stop if g.contest.analysis_enabled else None,
+            g.contest.per_user_time, g.participation.starting_time,
+            g.participation.delay_time, g.participation.extra_time)
+
+        if g.actual_phase == 0:
+            g.phase = 0
 
 
 def setup_locale():
@@ -133,46 +180,19 @@ def setup_locale():
 
     @after_this_request
     def set_header(response):
-        response.set_header("Content-Language", chosen_lang)
+        response.headers["Content-Language"] = chosen_lang
+        return response
 
 
 def authentication_required(refresh_cookie=True):
     def decorator(f):
         @wraps(f)
         def wrapped_f(*args, **kwargs):
-            cookie_name = g.contest.name + "_login"
-            old_cookie = session.get(cookie_name, None)
-
-            participation, new_cookie = authenticate_request(
-                g.session, g.contest, g.timestamp, request.remote_addr, old_cookie)
-
-            if new_cookie is None:
-                session.pop(cookie_name, None)
-            elif refresh_cookie:
-                session[cookie_name] = new_cookie
-
-            if participation is None:
+            if not hasattr(g, "participation"):
                 # TODO make next relative?
                 return redirect(url_for('contest.login', next=request.url))
-
-            g.participation = participation
-
-            setup_locale()
-
-            g.actual_phase, g.current_phase_begin, g.current_phase_end, g.valid_phase_begin, g.valid_phase_end = compute_actual_phase(
-                g.timestamp, g.contest.start, g.contest.stop,
-                g.contest.analysis_start if g.contest.analysis_enabled else None,
-                g.contest.analysis_stop if g.contest.analysis_enabled else None,
-                g.contest.per_user_time, g.participation.starting_time,
-                g.participation.delay_time, g.participation.extra_time)
-
-            if g.actual_phase == 0:
-                g.phase = 0
-
             return f(*args, **kwargs)
-
         return wrapped_f
-
     return decorator
 
 
@@ -209,6 +229,7 @@ def contest_render_params():
 
     if hasattr(g, "participation"):
         ret["participation"] = g.participation
+        ret["user"] = g.user
 
         ret["actual_phase"] = g.actual_phase
         ret["current_phase_begin"] = g.current_phase_begin
