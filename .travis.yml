@@ -14,21 +14,28 @@ addons:
 
   apt:
     packages:
-      - build-essential
-      - php5-cli
-      - haskell-platform
-      - fp-compiler
+      # Tools needed by this script.
       - postgresql-client
-      - python2.7
-      - cppreference-doc-en-html
+      - wget
+      # Libraries needed by isolate.
       - cgroup-lite
       - libcap-dev
-      - python-dev
+      # Libraries needed to install dependencies via pip.
       - libpq-dev
-      - libcups2-dev
       - libyaml-dev
-      - wget
+      - libcups2-dev
+      # Compilers and interpreters for the languages we test in.
+      - build-essential
+      - fp-compiler
+      - python2.7
+      - python3
+      - php7.2-cli
+      - haskell-platform
       - mono-mcs
+      # Other stuff.
+      - cppreference-doc-en-html
+
+cache: pip
 
 install:
   - wget "https://static.rust-lang.org/dist/rust-1.15.1-x86_64-unknown-linux-gnu.tar.gz"

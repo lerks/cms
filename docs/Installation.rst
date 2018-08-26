@@ -34,7 +34,7 @@ Then you require the compilation and execution environments for the languages yo
 
 * `Free Pascal <http://www.freepascal.org/>`_ (for Pascal, with executable ``fpc``);
 
-* `Python <http://www.python.org/>`_ >= 2.7, < 3.0 (for Python, with executable ``python2``; note though that this must be installed anyway because it is required by CMS itself);
+* `Python <http://www.python.org/>`_ 2 and 3 (for Python, with executable ``python2`` and ``python3``);
 
 * `PHP <http://www.php.net>`_ >= 5 (for PHP, with executable ``php``);
 
