@@ -15,7 +15,7 @@ addons:
   apt:
     packages:
       # Tools needed by this script.
-      - postgresql-client
+      #- postgresql-client
       - wget
       # Libraries needed by isolate.
       - cgroup-lite
@@ -29,8 +29,9 @@ addons:
       - fp-compiler
       - python2.7
       - python3
-      - php7.2-cli
+      - php5-cli  # Ubuntu 14.04 doesn't have version 7.2.
       - haskell-platform
+      - rustc
       - mono-mcs
       # Other stuff.
       - cppreference-doc-en-html
@@ -38,12 +39,6 @@ addons:
 cache: pip
 
 install:
-  - wget "https://static.rust-lang.org/dist/rust-1.15.1-x86_64-unknown-linux-gnu.tar.gz"
-  - tar xf rust-1.15.1-x86_64-unknown-linux-gnu.tar.gz
-  - pushd rust-1.15.1-x86_64-unknown-linux-gnu
-  - sudo ./install.sh --prefix=/usr
-  - popd
-
   - pip install -r requirements.txt
   - pip install -r dev-requirements.txt
 
