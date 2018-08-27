@@ -14,9 +14,6 @@ addons:
 
   apt:
     packages:
-      # Tools needed by this script.
-      #- postgresql-client
-      - wget
       # Libraries needed by isolate.
       - cgroup-lite
       - libcap-dev
