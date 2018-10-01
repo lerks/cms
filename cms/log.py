@@ -395,6 +395,34 @@ class OperationAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
+class ExcludeModuleFilter(logging.Filter):
+    """Filter out records that come from within the given module.
+
+    """
+    def __init__(self, module_name):
+        """Initialize a filter for the given module name.
+
+        module_name (str): the name of the module (e.g., "cms.io.rpc");
+            packages work too.
+
+        """
+        logging.Filter.__init__(self, "")
+        self.module_name = module_name
+
+    def filter(self, record):
+        """Decide whether to keep the given record.
+
+        record (LogRecord): data for a log message.
+
+        return (bool): whether to keep the record or not.
+
+        """
+        if record.name == self.module_name \
+                or record.name.startswith(self.module_name + "."):
+            return False
+        return True
+
+
 # Get the root logger.
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)

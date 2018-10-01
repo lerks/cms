@@ -51,7 +51,7 @@ from gevent.backdoor import BackdoorServer
 from cms import ConfigError, config, mkdir, ServiceCoord, Address, \
     get_service_address
 from cms.log import root_logger, shell_handler, ServiceFilter, \
-    DetailedFormatter, LogServiceHandler, FileHandler
+    DetailedFormatter, LogServiceHandler, FileHandler, ExcludeModuleFilter
 from cmscommon.datetime import monotonic_time
 
 from .rpc import rpc_method, RemoteServiceServer, RemoteServiceClient, \
@@ -157,6 +157,7 @@ class Service(object):
             log_service = self.connect_to(ServiceCoord("LogService", 0))
             remote_handler = LogServiceHandler(log_service)
             remote_handler.setLevel(logging.INFO)
+            remote_handler.addFilter(ExcludeModuleFilter("cms.io.rpc"))
             remote_handler.addFilter(filter_)
             root_logger.addHandler(remote_handler)
 
