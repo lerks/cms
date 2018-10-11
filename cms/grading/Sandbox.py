@@ -995,8 +995,7 @@ class IsolateSandbox(SandboxBase):
                 os.path.realpath(os.path.join(self._home_dest, inner_path))
             # If an inner path is absolute (e.g., /fifo0/u0_to_m) then
             # it may be outside home and we should ignore it.
-            # FIXME: In Py3 use os.path.commonpath.
-            if not abs_inner_path.startswith(self._home_dest + "/"):
+            if os.path.commonpath([abs_inner_path, self._home_dest]) != self._home_dest:
                 continue
             rel_inner_path = os.path.relpath(abs_inner_path, self._home_dest)
             outer_path = os.path.join(self._home, rel_inner_path)

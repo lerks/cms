@@ -382,7 +382,7 @@ class PolygonContestLoader(ContestLoader):
             self.languages.append(alternative_name.attrib['language'])
 
         logger.info("Contest languages are %s %s",
-                    self.primary_language, str(self.languages))
+                    self.primary_language, self.languages)
 
         args['description'] = root.find('names') \
             .find("name[@language='%s']" % self.primary_language) \

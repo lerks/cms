@@ -175,15 +175,12 @@ class Program:
             # We try one more time to kill gracefully using Ctrl-C.
             logger.info("Interrupting %s and waiting...", self.coord)
             self.instance.send_signal(signal.SIGINT)
-            # FIXME on py3 this becomes self.instance.wait(timeout=5)
-            t = monotonic_time()
-            while monotonic_time() - t < 5:
-                if self.instance.poll() is not None:
-                    logger.info("Terminated %s.", self.coord)
-                    break
-                time.sleep(0.1)
-            else:
+            try:
+                self.instance.wait(timeout=5)
+            except subprocess.TimeoutExpired:
                 self.kill()
+            else:
+                logger.info("Terminated %s.", self.coord)
 
     def kill(self):
         """Kill the program."""
