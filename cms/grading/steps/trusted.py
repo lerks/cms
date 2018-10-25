@@ -156,21 +156,21 @@ def trusted_step(sandbox, commands):
 
     exit_status = stats["exit_status"]
 
-    if exit_status == Sandbox.EXIT_OK:
+    if exit_status == Sandbox.Exit.OK:
         # Sandbox ok, commands ok.
         logger.debug("Trusted step ended successfully.")
         return True, True, stats
     elif exit_status in [
-            Sandbox.EXIT_NONZERO_RETURN,
-            Sandbox.EXIT_TIMEOUT,
-            Sandbox.EXIT_TIMEOUT_WALL,
-            Sandbox.EXIT_SIGNAL]:
+            Sandbox.Exit.NONZERO_RETURN,
+            Sandbox.Exit.TIMEOUT,
+            Sandbox.Exit.TIMEOUT_WALL,
+            Sandbox.Exit.SIGNAL]:
         # Sandbox ok, commands not ok.
         logger.error("Trusted step ended with status '%s' (usually due to "
                      "programming errors in a manager or configuration "
                      "issues).", exit_status)
         return True, False, stats
-    elif exit_status == Sandbox.EXIT_SANDBOX_ERROR:
+    elif exit_status == Sandbox.Exit.SANDBOX_ERROR:
         # Sandbox not ok.
         logger.error("Unexpected SANDBOX_ERROR exit status in trusted step.")
         return False, None, None

@@ -47,7 +47,7 @@ def execution_stats(sandbox, collect_output=False):
         "execution_memory": sandbox.get_memory_used(),
         "exit_status": sandbox.get_exit_status(),
     }
-    if stats["exit_status"] == Sandbox.EXIT_SIGNAL:
+    if stats["exit_status"] == Sandbox.Exit.SIGNAL:
         stats["signal"] = sandbox.get_killing_signal()
 
     if collect_output:
@@ -103,9 +103,9 @@ def merge_execution_stats(first_stats, second_stats, concurrent=True):
         ret["execution_memory"] = max(ret["execution_memory"],
                                       second_stats["execution_memory"])
 
-    if first_stats["exit_status"] == Sandbox.EXIT_OK:
+    if first_stats["exit_status"] == Sandbox.Exit.OK:
         ret["exit_status"] = second_stats["exit_status"]
-        if second_stats["exit_status"] == Sandbox.EXIT_SIGNAL:
+        if second_stats["exit_status"] == Sandbox.Exit.SIGNAL:
             ret["signal"] = second_stats["signal"]
 
     for f in ["stdout", "stderr"]:

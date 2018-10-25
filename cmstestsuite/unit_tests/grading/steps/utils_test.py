@@ -49,7 +49,7 @@ class TestGenericStep(unittest.TestCase):
 
         # Stdout and stderr are encoded in UTF-8.
         self.assertEqual(
-            stats, get_stats(0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK,
+            stats, get_stats(0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK,
                              stdout="o", stderr="你好"))
         # Generic step always redirects stdout and stderr.
         self.assertEqual(self.sandbox.stdout_file, "name_stdout_0.txt")
@@ -64,7 +64,7 @@ class TestGenericStep(unittest.TestCase):
 
         # No output collected on stats.
         self.assertEqual(
-            stats, get_stats(0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK))
+            stats, get_stats(0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK))
         # Generic step always redirects stdout and stderr.
         self.assertEqual(self.sandbox.stdout_file, "name_stdout_0.txt")
         self.assertEqual(self.sandbox.stderr_file, "name_stderr_0.txt")
@@ -75,7 +75,7 @@ class TestGenericStep(unittest.TestCase):
         stats = generic_step(self.sandbox, ONE_COMMAND, "name")
 
         self.assertEqual(stats, get_stats(0.1, 0.5, 1000 * 1024,
-                                          Sandbox.EXIT_NONZERO_RETURN))
+                                          Sandbox.Exit.NONZERO_RETURN))
 
     def test_single_command_failed_timeout(self):
         self.sandbox.fake_execute_data(True, b"o", b"e", 0.1, 0.5, 1000, "TO")
@@ -83,7 +83,7 @@ class TestGenericStep(unittest.TestCase):
         stats = generic_step(self.sandbox, ONE_COMMAND, "name")
 
         self.assertEqual(stats, get_stats(0.1, 0.5, 1000 * 1024,
-                                          Sandbox.EXIT_TIMEOUT))
+                                          Sandbox.Exit.TIMEOUT))
 
     def test_single_command_failed_timeout_wall(self):
         self.sandbox.fake_execute_data(
@@ -93,7 +93,7 @@ class TestGenericStep(unittest.TestCase):
         stats = generic_step(self.sandbox, ONE_COMMAND, "name")
 
         self.assertEqual(stats, get_stats(0.1, 0.5, 1000 * 1024,
-                                          Sandbox.EXIT_TIMEOUT_WALL))
+                                          Sandbox.Exit.TIMEOUT_WALL))
 
     def test_single_command_failed_signal(self):
         self.sandbox.fake_execute_data(
@@ -102,7 +102,7 @@ class TestGenericStep(unittest.TestCase):
         stats = generic_step(self.sandbox, ONE_COMMAND, "name")
 
         self.assertEqual(stats, get_stats(0.1, 0.5, 1000 * 1024,
-                                          Sandbox.EXIT_SIGNAL, signal=11))
+                                          Sandbox.Exit.SIGNAL, signal=11))
 
     def test_single_command_sandbox_failed(self):
         self.sandbox.fake_execute_data(
@@ -127,7 +127,7 @@ class TestGenericStep(unittest.TestCase):
         self.assertEqual(stats, get_stats(1.1,  # sum
                                           5.5,  # sum
                                           10_000 * 1024,  # max
-                                          Sandbox.EXIT_OK,
+                                          Sandbox.Exit.OK,
                                           stdout="o1\n===\no2",
                                           stderr="e1\n===\ne2"))
 
@@ -144,7 +144,7 @@ class TestGenericStep(unittest.TestCase):
         self.assertEquals(self.sandbox.exec_num, 0)
         # Stats are only for the first command.
         self.assertEqual(stats, get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_NONZERO_RETURN,
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.NONZERO_RETURN,
             stdout="o1", stderr="e1"))
 
     def test_multiple_commands_sandbox_failure_terminates_early(self):

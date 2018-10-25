@@ -378,7 +378,7 @@ class Communication(TaskType):
         if box_success_user and evaluation_success_user and \
                 stats_user["execution_time"] >= job.time_limit:
             evaluation_success_user = False
-            stats_user['exit_status'] = Sandbox.EXIT_TIMEOUT
+            stats_user['exit_status'] = Sandbox.Exit.TIMEOUT
 
         success = box_success_user \
             and box_success_mgr and evaluation_success_mgr

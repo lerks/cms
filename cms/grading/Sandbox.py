@@ -27,6 +27,7 @@ import select
 import stat
 import tempfile
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 from functools import wraps, partial
 
 import gevent
@@ -179,12 +180,13 @@ class SandboxBase(metaclass=ABCMeta):
 
     """
 
-    EXIT_SANDBOX_ERROR = 'sandbox error'
-    EXIT_OK = 'ok'
-    EXIT_SIGNAL = 'signal'
-    EXIT_TIMEOUT = 'timeout'
-    EXIT_TIMEOUT_WALL = 'wall timeout'
-    EXIT_NONZERO_RETURN = 'nonzero return'
+    class Exit(Enum):
+        SANDBOX_ERROR = 'sandbox error'
+        OK = 'ok'
+        SIGNAL = 'signal'
+        TIMEOUT = 'timeout'
+        TIMEOUT_WALL = 'wall timeout'
+        NONZERO_RETURN = 'nonzero return'
 
     def __init__(self, file_cacher, name=None, temp_dir=None):
         """Initialization.
@@ -629,9 +631,9 @@ class StupidSandbox(SandboxBase):
 
         """
         if self.popen.returncode >= 0:
-            return self.EXIT_OK
+            return self.Exit.OK
         else:
-            return self.EXIT_SIGNAL
+            return self.Exit.SIGNAL
 
     def get_exit_code(self):
         """Return the exit code of the sandboxed process.
@@ -650,10 +652,10 @@ class StupidSandbox(SandboxBase):
 
         """
         status = self.get_exit_status()
-        if status == self.EXIT_OK:
+        if status == self.Exit.OK:
             return "Execution successfully finished (with exit code %d)" % \
                 self.get_exit_code()
-        elif status == self.EXIT_SIGNAL:
+        elif status == self.Exit.SIGNAL:
             return "Execution killed with signal %s" % \
                 self.get_killing_signal()
 
@@ -1223,18 +1225,18 @@ class IsolateSandbox(SandboxBase):
         """
         status_list = self.get_status_list()
         if 'XX' in status_list:
-            return self.EXIT_SANDBOX_ERROR
+            return self.Exit.SANDBOX_ERROR
         elif 'TO' in status_list:
             if 'message' in self.log and 'wall' in self.log['message'][0]:
-                return self.EXIT_TIMEOUT_WALL
+                return self.Exit.TIMEOUT_WALL
             else:
-                return self.EXIT_TIMEOUT
+                return self.Exit.TIMEOUT
         elif 'SG' in status_list:
-            return self.EXIT_SIGNAL
+            return self.Exit.SIGNAL
         elif 'RE' in status_list:
-            return self.EXIT_NONZERO_RETURN
+            return self.Exit.NONZERO_RETURN
         # OK status is not reported in the log file, it's implicit.
-        return self.EXIT_OK
+        return self.Exit.OK
 
     def get_human_exit_description(self):
         """Get the status of the sandbox and return a human-readable
@@ -1245,19 +1247,19 @@ class IsolateSandbox(SandboxBase):
 
         """
         status = self.get_exit_status()
-        if status == self.EXIT_OK:
+        if status == self.Exit.OK:
             return "Execution successfully finished (with exit code %d)" % \
                 self.get_exit_code()
-        elif status == self.EXIT_SANDBOX_ERROR:
+        elif status == self.Exit.SANDBOX_ERROR:
             return "Execution failed because of sandbox error"
-        elif status == self.EXIT_TIMEOUT:
+        elif status == self.Exit.TIMEOUT:
             return "Execution timed out"
-        elif status == self.EXIT_TIMEOUT_WALL:
+        elif status == self.Exit.TIMEOUT_WALL:
             return "Execution timed out (wall clock limit exceeded)"
-        elif status == self.EXIT_SIGNAL:
+        elif status == self.Exit.SIGNAL:
             return "Execution killed with signal %s" % \
                 self.get_killing_signal()
-        elif status == self.EXIT_NONZERO_RETURN:
+        elif status == self.Exit.NONZERO_RETURN:
             return "Execution failed because the return code was nonzero"
 
     def inner_absolute_path(self, path):

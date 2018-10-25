@@ -95,7 +95,7 @@ def generic_step(sandbox, commands, step_name, collect_output=False):
 
         stats = merge_execution_stats(stats, this_stats, concurrent=False)
         # Command error, also return immediately, but returning the stats.
-        if stats["exit_status"] != Sandbox.EXIT_OK:
+        if stats["exit_status"] != Sandbox.Exit.OK:
             break
 
     return stats

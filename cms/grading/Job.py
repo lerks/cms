@@ -37,6 +37,7 @@ import logging
 
 from cms.db import Dataset, Evaluation, Executable, File, Manager, Submission, \
     UserTest, UserTestExecutable
+from cms.grading.Sandbox import Sandbox
 from cms.grading.languagemanager import get_language
 from cms.service.esoperations import ESOperation
 
@@ -135,6 +136,10 @@ class Job:
 
     def export_to_dict(self):
         """Return a dict representing the job."""
+        plus = None
+        if self.plus is not None:
+            plus = self.plus.copy()
+            plus["exit_status"] = plus["exit_status"].value
         res = {
             'operation': (self.operation.to_dict()
                           if self.operation is not None
@@ -149,7 +154,7 @@ class Job:
             'info': self.info,
             'success': self.success,
             'text': self.text,
-            'plus': self.plus,
+            'plus': plus,
             'files': dict((k, v.digest)
                           for k, v in self.files.items()),
             'managers': dict((k, v.digest)
@@ -191,6 +196,9 @@ class Job:
             (k, Manager(k, v)) for k, v in data['managers'].items())
         data['executables'] = dict(
             (k, Executable(k, v)) for k, v in data['executables'].items())
+        if data['plus'] is not None and 'exit_status' in data['plus']:
+            data['plus']['exit_status'] = \
+                Sandbox.Exit(data['plus']['exit_status'])
         return cls(**data)
 
     @staticmethod

@@ -112,28 +112,28 @@ def compilation_step(sandbox, commands):
     # For each possible exit status we return an appropriate result.
     exit_status = stats["exit_status"]
 
-    if exit_status == Sandbox.EXIT_OK:
+    if exit_status == Sandbox.Exit.OK:
         # Execution finished successfully and the executable was generated.
         logger.debug("Compilation successfully finished.")
         text = [COMPILATION_MESSAGES.get("success").message]
         return True, True, text, stats
 
-    elif exit_status == Sandbox.EXIT_NONZERO_RETURN:
+    elif exit_status == Sandbox.Exit.NONZERO_RETURN:
         # Error in compilation: no executable was generated, and we return
         # an error to the user.
         logger.debug("Compilation failed.")
         text = [COMPILATION_MESSAGES.get("fail").message]
         return True, False, text, stats
 
-    elif exit_status == Sandbox.EXIT_TIMEOUT or \
-            exit_status == Sandbox.EXIT_TIMEOUT_WALL:
+    elif exit_status == Sandbox.Exit.TIMEOUT or \
+            exit_status == Sandbox.Exit.TIMEOUT_WALL:
         # Timeout: we assume it is the user's fault, and we return the error
         # to them.
         logger.debug("Compilation timed out.")
         text = [COMPILATION_MESSAGES.get("timeout").message]
         return True, False, text, stats
 
-    elif exit_status == Sandbox.EXIT_SIGNAL:
+    elif exit_status == Sandbox.Exit.SIGNAL:
         # Terminated by signal: we assume again it is the user's fault, and
         # we return the error to them.
         signal = stats["signal"]
@@ -141,7 +141,7 @@ def compilation_step(sandbox, commands):
         text = [COMPILATION_MESSAGES.get("signal").message, str(signal)]
         return True, False, text, stats
 
-    elif exit_status == Sandbox.EXIT_SANDBOX_ERROR:
+    elif exit_status == Sandbox.Exit.SANDBOX_ERROR:
         # We shouldn't arrive here, as we should have gotten a False success
         # from execute_without_std.
         logger.error("Unexpected SANDBOX_ERROR exit status.")

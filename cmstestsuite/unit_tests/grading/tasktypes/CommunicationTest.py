@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, call, ANY, patch
 from cms import config
 from cms.db import File, Manager, Executable
 from cms.grading.Job import CompilationJob, EvaluationJob
+from cms.grading.Sandbox import Sandbox
 from cms.grading.steps import merge_execution_stats
 from cms.grading.tasktypes.Communication import Communication
 from cmstestsuite.unit_tests.filesystemmixin import FileSystemMixin
@@ -750,7 +751,7 @@ class TestEvaluate(TaskTypeTestMixin, FileSystemMixin, unittest.TestCase):
         # The stats are the merge of the two, but the status is changed to
         # timeout since the sum of the cpu times is over the time limit.
         stats = merge_execution_stats(stats0, stats1)
-        stats["exit_status"] = "timeout"
+        stats["exit_status"] = Sandbox.Exit.TIMEOUT
         self.assertResultsInJob(
             job, True, str(0.0), self.human_evaluation_message.return_value,
             stats)

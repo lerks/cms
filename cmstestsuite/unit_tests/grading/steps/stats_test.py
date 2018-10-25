@@ -62,7 +62,7 @@ class TestExecutionStats(unittest.TestCase):
 
         stats = execution_stats(self.sandbox)
         self.assertEqual(stats,
-                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK))
+                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK))
 
     def test_success_signal_exit(self):
         self.sandbox.fake_execute_data(
@@ -71,7 +71,7 @@ class TestExecutionStats(unittest.TestCase):
 
         stats = execution_stats(self.sandbox)
         self.assertEqual(stats,
-                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.EXIT_SIGNAL,
+                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.Exit.SIGNAL,
                                    signal=11))
 
     def test_success_with_output(self):
@@ -81,7 +81,7 @@ class TestExecutionStats(unittest.TestCase):
 
         stats = execution_stats(self.sandbox, collect_output=True)
         self.assertEqual(stats,
-                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK,
+                         get_stats(0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK,
                                    stdout="o", stderr="e"))
 
     def test_invalid_utf8(self):
@@ -118,107 +118,107 @@ class TestMergeExecutionStats(unittest.TestCase):
     def test_success_status_ok(self):
         self.assertStats(
             merge_execution_stats(
-                get_stats(1.0, 2.0, 300, Sandbox.EXIT_OK),
-                get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_OK)),
-            get_stats(1.1, 2.0, 300.3, Sandbox.EXIT_OK))
+                get_stats(1.0, 2.0, 300, Sandbox.Exit.OK),
+                get_stats(0.1, 0.2, 0.3, Sandbox.Exit.OK)),
+            get_stats(1.1, 2.0, 300.3, Sandbox.Exit.OK))
 
     def test_success_sequential(self):
         # In non-concurrent mode memory is max'd and wall clock is added.
         self.assertStats(
             merge_execution_stats(
-                get_stats(1.0, 2.0, 300, Sandbox.EXIT_OK),
-                get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_OK),
+                get_stats(1.0, 2.0, 300, Sandbox.Exit.OK),
+                get_stats(0.1, 0.2, 0.3, Sandbox.Exit.OK),
                 concurrent=False),
-            get_stats(1.1, 2.2, 300.0, Sandbox.EXIT_OK))
+            get_stats(1.1, 2.2, 300.0, Sandbox.Exit.OK))
 
     def test_success_first_status_ok(self):
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_OK),
-                get_stats(0, 0, 0, Sandbox.EXIT_TIMEOUT)),
-            get_stats(0, 0, 0, Sandbox.EXIT_TIMEOUT))
+                get_stats(0, 0, 0, Sandbox.Exit.OK),
+                get_stats(0, 0, 0, Sandbox.Exit.TIMEOUT)),
+            get_stats(0, 0, 0, Sandbox.Exit.TIMEOUT))
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_OK),
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11)),
-            get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11))
+                get_stats(0, 0, 0, Sandbox.Exit.OK),
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11)),
+            get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11))
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_OK),
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11)),
-            get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11))
+                get_stats(0, 0, 0, Sandbox.Exit.OK),
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11)),
+            get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11))
 
     def test_success_first_status_not_ok(self):
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_TIMEOUT),
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11)),
-            get_stats(0, 0, 0, Sandbox.EXIT_TIMEOUT))
+                get_stats(0, 0, 0, Sandbox.Exit.TIMEOUT),
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11)),
+            get_stats(0, 0, 0, Sandbox.Exit.TIMEOUT))
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=9),
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=11)),
-            get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=9))
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=9),
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=11)),
+            get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=9))
         self.assertStats(
             merge_execution_stats(
-                get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=9),
-                get_stats(0, 0, 0, Sandbox.EXIT_OK)),
-            get_stats(0, 0, 0, Sandbox.EXIT_SIGNAL, signal=9))
+                get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=9),
+                get_stats(0, 0, 0, Sandbox.Exit.OK)),
+            get_stats(0, 0, 0, Sandbox.Exit.SIGNAL, signal=9))
 
     def test_success_stats_are_not_modified(self):
-        r0 = get_stats(1.0, 2.0, 300, Sandbox.EXIT_OK)
-        r1 = get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_SIGNAL, signal=11)
+        r0 = get_stats(1.0, 2.0, 300, Sandbox.Exit.OK)
+        r1 = get_stats(0.1, 0.2, 0.3, Sandbox.Exit.SIGNAL, signal=11)
         m = merge_execution_stats(r0, r1)
         self.assertStats(
-            m, get_stats(1.1, 2.0, 300.3, Sandbox.EXIT_SIGNAL, signal=11))
+            m, get_stats(1.1, 2.0, 300.3, Sandbox.Exit.SIGNAL, signal=11))
         self.assertStats(
-            r0, get_stats(1.0, 2.0, 300, Sandbox.EXIT_OK))
+            r0, get_stats(1.0, 2.0, 300, Sandbox.Exit.OK))
         self.assertStats(
-            r1, get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_SIGNAL, signal=11))
+            r1, get_stats(0.1, 0.2, 0.3, Sandbox.Exit.SIGNAL, signal=11))
 
     def test_success_first_none(self):
-        r1 = get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_SIGNAL, signal=11)
+        r1 = get_stats(0.1, 0.2, 0.3, Sandbox.Exit.SIGNAL, signal=11)
         m = merge_execution_stats(None, r1)
         self.assertStats(m, r1)
         self.assertIsNot(r1, m)
 
     def test_success_output_joined(self):
-        r0 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o1", stderr="e1")
-        r1 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o2", stderr="e2")
+        r0 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o1", stderr="e1")
+        r1 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o2", stderr="e2")
         m = merge_execution_stats(r0, r1)
         self.assertStats(
-            m, get_stats(0, 0, 0, Sandbox.EXIT_OK,
+            m, get_stats(0, 0, 0, Sandbox.Exit.OK,
                          stdout="o1\n===\no2", stderr="e1\n===\ne2"))
 
     def test_success_output_missing_one(self):
-        r0 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o1")
-        r1 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stderr="e2")
+        r0 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o1")
+        r1 = get_stats(0, 0, 0, Sandbox.Exit.OK, stderr="e2")
         m = merge_execution_stats(r0, r1)
         self.assertStats(
-            m, get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o1", stderr="e2"))
+            m, get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o1", stderr="e2"))
 
     def test_failure_second_none(self):
         with self.assertRaises(ValueError):
             merge_execution_stats(None, None)
 
-        r0 = get_stats(0.1, 0.2, 0.3, Sandbox.EXIT_OK)
+        r0 = get_stats(0.1, 0.2, 0.3, Sandbox.Exit.OK)
         with self.assertRaises(ValueError):
             merge_execution_stats(r0, None)
 
     def test_empty_outputs_are_preserved(self):
-        r0 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o1", stderr="")
-        r1 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="", stderr="e2")
+        r0 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o1", stderr="")
+        r1 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="", stderr="e2")
         m = merge_execution_stats(r0, r1)
         self.assertStats(
-            m, get_stats(0, 0, 0, Sandbox.EXIT_OK,
+            m, get_stats(0, 0, 0, Sandbox.Exit.OK,
                          stdout="o1\n===\n", stderr="\n===\ne2"))
 
     def test_missing_outputs_are_not_preserved(self):
-        r0 = get_stats(0, 0, 0, Sandbox.EXIT_OK)
-        r1 = get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o2", stderr="e2")
+        r0 = get_stats(0, 0, 0, Sandbox.Exit.OK)
+        r1 = get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o2", stderr="e2")
         m = merge_execution_stats(r0, r1)
         self.assertStats(
-            m, get_stats(0, 0, 0, Sandbox.EXIT_OK, stdout="o2", stderr="e2"))
+            m, get_stats(0, 0, 0, Sandbox.Exit.OK, stdout="o2", stderr="e2"))
 
 
 if __name__ == "__main__":

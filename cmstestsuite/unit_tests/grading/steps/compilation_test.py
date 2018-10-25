@@ -50,7 +50,7 @@ class TestCompilationStep(unittest.TestCase):
 
     def test_single_command_success(self):
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK, stdout="o", stderr="你好")
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK, stdout="o", stderr="你好")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats) as mock_generic_step:
             success, compilation_success, text, stats = compilation_step(
@@ -68,7 +68,7 @@ class TestCompilationStep(unittest.TestCase):
         # This case is a "success" for the sandbox (it's the user's fault),
         # but compilation is unsuccessful (no executable).
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_NONZERO_RETURN,
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.NONZERO_RETURN,
             stdout="o", stderr="e")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats):
@@ -86,7 +86,7 @@ class TestCompilationStep(unittest.TestCase):
         # This case is a "success" for the sandbox (it's the user's fault),
         # but compilation is unsuccessful (no executable).
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_TIMEOUT,
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.TIMEOUT,
             stdout="o", stderr="e")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats):
@@ -104,7 +104,7 @@ class TestCompilationStep(unittest.TestCase):
         # This case is a "success" for the sandbox (it's the user's fault),
         # but compilation is unsuccessful (no executable).
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_TIMEOUT_WALL,
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.TIMEOUT_WALL,
             stdout="o", stderr="e")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats):
@@ -122,7 +122,7 @@ class TestCompilationStep(unittest.TestCase):
         # This case is a "success" for the sandbox (it's the user's fault),
         # but compilation is unsuccessful (no executable).
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_SIGNAL, signal=11,
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.SIGNAL, signal=11,
             stdout="o", stderr="e")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats):
@@ -152,7 +152,7 @@ class TestCompilationStep(unittest.TestCase):
 
     def test_multiple_commands_success(self):
         expected_stats = get_stats(
-            0.1, 0.5, 1000 * 1024, Sandbox.EXIT_OK, stdout="o", stderr="你好")
+            0.1, 0.5, 1000 * 1024, Sandbox.Exit.OK, stdout="o", stderr="你好")
         with patch("cms.grading.steps.compilation.generic_step",
                    return_value=expected_stats) as mock_generic_step:
             success, compilation_success, text, stats = compilation_step(

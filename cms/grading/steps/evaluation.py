@@ -219,16 +219,16 @@ def evaluation_step_after_run(sandbox):
     stats = execution_stats(sandbox)
     exit_status = stats["exit_status"]
 
-    if exit_status == Sandbox.EXIT_OK:
+    if exit_status == Sandbox.Exit.OK:
         # Evaluation succeeded, and user program terminated correctly.
         logger.debug("Evaluation terminated correctly.")
         return True, True, stats
 
     elif exit_status in [
-            Sandbox.EXIT_TIMEOUT,
-            Sandbox.EXIT_TIMEOUT_WALL,
-            Sandbox.EXIT_NONZERO_RETURN,
-            Sandbox.EXIT_SIGNAL]:
+            Sandbox.Exit.TIMEOUT,
+            Sandbox.Exit.TIMEOUT_WALL,
+            Sandbox.Exit.NONZERO_RETURN,
+            Sandbox.Exit.SIGNAL]:
         # Evaluation succeeded, and user program was interrupted for some error
         # condition. We report the success, the task type should decide how to
         # grade this evaluation.
@@ -236,7 +236,7 @@ def evaluation_step_after_run(sandbox):
         return True, False, stats
 
     # Unexpected errors of various degrees; we report the failure.
-    elif exit_status == Sandbox.EXIT_SANDBOX_ERROR:
+    elif exit_status == Sandbox.Exit.SANDBOX_ERROR:
         logger.error("Evaluation aborted because of sandbox error "
                      "(status '%s').", exit_status)
         return False, None, None
@@ -263,19 +263,19 @@ def human_evaluation_message(stats):
 
     """
     exit_status = stats['exit_status']
-    if exit_status == Sandbox.EXIT_TIMEOUT:
+    if exit_status == Sandbox.Exit.TIMEOUT:
         return [EVALUATION_MESSAGES.get("timeout").message]
-    elif exit_status == Sandbox.EXIT_TIMEOUT_WALL:
+    elif exit_status == Sandbox.Exit.TIMEOUT_WALL:
         return [EVALUATION_MESSAGES.get("walltimeout").message]
-    elif exit_status == Sandbox.EXIT_SIGNAL:
+    elif exit_status == Sandbox.Exit.SIGNAL:
         return [EVALUATION_MESSAGES.get("signal").message]
-    elif exit_status == Sandbox.EXIT_SANDBOX_ERROR:
+    elif exit_status == Sandbox.Exit.SANDBOX_ERROR:
         # Contestants won't see this, the submission will still be evaluating.
         return []
-    elif exit_status == Sandbox.EXIT_NONZERO_RETURN:
+    elif exit_status == Sandbox.Exit.NONZERO_RETURN:
         # Don't tell which code: would be too much information!
         return [EVALUATION_MESSAGES.get("returncode").message]
-    elif exit_status == Sandbox.EXIT_OK:
+    elif exit_status == Sandbox.Exit.OK:
         return []
     else:
         logger.error("Unrecognized exit status for an evaluation: %s",
