@@ -23,6 +23,7 @@
 import logging
 import os
 import tempfile
+from enum import Enum
 from functools import reduce
 
 from cms import config, rmtree
@@ -87,10 +88,13 @@ class Communication(TaskType):
     OUTPUT_FILENAME = "output.txt"
 
     # Constants used in the parameter definition.
-    COMPILATION_ALONE = "alone"
-    COMPILATION_STUB = "stub"
-    USER_IO_STD = "std_io"
-    USER_IO_FIFOS = "fifo_io"
+    class Compilation(Enum):
+        ALONE = "alone"
+        STUB = "stub"
+
+    class UserIO(Enum):
+        STD = "std_io"
+        FIFOS = "fifo_io"
 
     ALLOW_PARTIAL_SUBMISSION = False
 
@@ -103,16 +107,16 @@ class Communication(TaskType):
         "Compilation",
         "compilation",
         "",
-        {COMPILATION_ALONE: "Submissions are self-sufficient",
-         COMPILATION_STUB: "Submissions are compiled with a stub"})
+        {Compilation.ALONE.value: "Submissions are self-sufficient",
+         Compilation.STUB.value: "Submissions are compiled with a stub"})
 
     _USER_IO = ParameterTypeChoice(
         "User I/O",
         "user_io",
         "",
-        {USER_IO_STD: "User processes read from stdin and write to stdout",
-         USER_IO_FIFOS: "User processes read from and write to fifos, "
-                        "whose paths are given as arguments"})
+        {UserIO.STD.value: "User processes read from stdin and write to stdout",
+         UserIO.FIFOS.value: "User processes read from and write to fifos, "
+                       "whose paths are given as arguments"})
 
     ACCEPTED_PARAMETERS = [_NUM_PROCESSES, _COMPILATION, _USER_IO]
 
@@ -125,8 +129,8 @@ class Communication(TaskType):
         super().__init__(parameters)
 
         self.num_processes = self.parameters[0]
-        self.compilation = self.parameters[1]
-        self.io = self.parameters[2]
+        self.compilation = self.Compilation(self.parameters[1])
+        self.io = self.UserIO(self.parameters[2])
 
     def get_compilation_commands(self, submission_format):
         """See TaskType.get_compilation_commands."""
@@ -156,10 +160,10 @@ class Communication(TaskType):
         return [self.MANAGER_FILENAME]
 
     def _uses_stub(self):
-        return self.compilation == self.COMPILATION_STUB
+        return self.compilation == self.Compilation.STUB
 
     def _uses_fifos(self):
-        return self.io == self.USER_IO_FIFOS
+        return self.io == self.UserIO.FIFOS
 
     @staticmethod
     def _executable_filename(codenames):

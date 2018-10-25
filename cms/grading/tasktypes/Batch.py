@@ -21,6 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+from enum import Enum
 
 from cms.db import Executable
 from cms.grading.ParameterTypes import ParameterTypeCollection, \
@@ -77,10 +78,13 @@ class Batch(TaskType):
     DEFAULT_OUTPUT_FILENAME = "output.txt"
 
     # Constants used in the parameter definition.
-    OUTPUT_EVAL_DIFF = "diff"
-    OUTPUT_EVAL_CHECKER = "comparator"
-    COMPILATION_ALONE = "alone"
-    COMPILATION_GRADER = "grader"
+    class OutputEval(Enum):
+        DIFF = "diff"
+        CHECKER = "comparator"
+
+    class Compilation(Enum):
+        ALONE = "alone"
+        GRADER = "grader"
 
     # Other constants to specify the task type behaviour and parameters.
     ALLOW_PARTIAL_SUBMISSION = False
@@ -89,8 +93,8 @@ class Batch(TaskType):
         "Compilation",
         "compilation",
         "",
-        {COMPILATION_ALONE: "Submissions are self-sufficient",
-         COMPILATION_GRADER: "Submissions are compiled with a grader"})
+        {Compilation.ALONE.value: "Submissions are self-sufficient",
+         Compilation.GRADER.value: "Submissions are compiled with a grader"})
 
     _USE_FILE = ParameterTypeCollection(
         "I/O (blank for stdin/stdout)",
@@ -105,8 +109,8 @@ class Batch(TaskType):
         "Output evaluation",
         "output_eval",
         "",
-        {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
-         OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator"})
+        {OutputEval.DIFF.value: "Outputs compared with white diff",
+         OutputEval.CHECKER.value: "Outputs are compared by a comparator"})
 
     ACCEPTED_PARAMETERS = [_COMPILATION, _USE_FILE, _EVALUATION]
 
@@ -120,9 +124,9 @@ class Batch(TaskType):
         super().__init__(parameters)
 
         # Data in the parameters.
-        self.compilation = self.parameters[0]
+        self.compilation = self.Compilation(self.parameters[0])
         self.input_filename, self.output_filename = self.parameters[1]
-        self.output_eval = self.parameters[2]
+        self.output_eval = self.OutputEval(self.parameters[2])
 
         # Actual input and output are the files used to store input and
         # where the output is checked, regardless of using redirects or not.
@@ -163,10 +167,10 @@ class Batch(TaskType):
         return []
 
     def _uses_grader(self):
-        return self.compilation == self.COMPILATION_GRADER
+        return self.compilation == self.Compilation.GRADER
 
     def _uses_checker(self):
-        return self.output_eval == self.OUTPUT_EVAL_CHECKER
+        return self.output_eval == self.OutputEval.CHECKER
 
     @staticmethod
     def _executable_filename(codenames):

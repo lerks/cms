@@ -23,6 +23,7 @@
 import logging
 import os
 import tempfile
+from enum import Enum
 
 from cms import config
 from cms.db import Executable
@@ -71,8 +72,9 @@ class TwoSteps(TaskType):
     OUTPUT_FILENAME = "output.txt"
 
     # Constants used in the parameter definition.
-    OUTPUT_EVAL_DIFF = "diff"
-    OUTPUT_EVAL_CHECKER = "comparator"
+    class OutputEval(Enum):
+        DIFF = "diff"
+        CHECKER = "comparator"
 
     ALLOW_PARTIAL_SUBMISSION = False
 
@@ -80,8 +82,8 @@ class TwoSteps(TaskType):
         "Output evaluation",
         "output_eval",
         "",
-        {OUTPUT_EVAL_DIFF: "Outputs compared with white diff",
-         OUTPUT_EVAL_CHECKER: "Outputs are compared by a comparator"})
+        {OutputEval.DIFF.value: "Outputs compared with white diff",
+         OutputEval.CHECKER.value: "Outputs are compared by a comparator"})
 
     ACCEPTED_PARAMETERS = [_EVALUATION]
 
@@ -93,7 +95,7 @@ class TwoSteps(TaskType):
 
     def __init__(self, parameters):
         super().__init__(parameters)
-        self.output_eval = self.parameters[0]
+        self.output_eval = self.OutputEval(self.parameters[0])
 
     def get_compilation_commands(self, submission_format):
         """See TaskType.get_compilation_commands."""
@@ -134,7 +136,7 @@ class TwoSteps(TaskType):
         return []
 
     def _uses_checker(self):
-        return self.output_eval == TwoSteps.OUTPUT_EVAL_CHECKER
+        return self.output_eval == TwoSteps.OutputEval.CHECKER
 
     def compile(self, job, file_cacher):
         """See TaskType.compile."""
