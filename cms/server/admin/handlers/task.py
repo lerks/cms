@@ -33,6 +33,7 @@ import tornado.web
 
 from cms import FeedbackLevel, TokenMode
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cmscommon.constants import ScoreMode
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 
@@ -156,7 +157,7 @@ class TaskHandler(BaseHandler):
 
             self.get_int(attrs, "score_precision")
 
-            self.get_string(attrs, "score_mode")
+            self.get_string(attrs, "score_mode", func=ScoreMode)
 
             # Update the task.
             task.set_attrs(attrs)

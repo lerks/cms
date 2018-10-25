@@ -355,7 +355,7 @@ class ProxyService(TriggeredService):
                     "max_score": score_type.max_score,
                     "extra_headers": score_type.ranking_headers,
                     "score_precision": task.score_precision,
-                    "score_mode": task.score_mode,
+                    "score_mode": task.score_mode.value,
                 }
 
         self.enqueue(ProxyOperation(ProxyExecutor.CONTEST_TYPE,

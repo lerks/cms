@@ -34,7 +34,7 @@ import gevent
 from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 
 from cms.service.ProxyService import ProxyService
-from cmscommon.constants import SCORE_MODE_MAX
+from cmscommon.constants import ScoreMode
 
 
 class TestProxyService(DatabaseMixin, unittest.TestCase):
@@ -59,7 +59,7 @@ class TestProxyService(DatabaseMixin, unittest.TestCase):
 
         self.task = self.add_task(contest=self.contest)
         self.task.score_precision = 2
-        self.task.score_mode = SCORE_MODE_MAX
+        self.task.score_mode = ScoreMode.MAX
         self.dataset = self.add_dataset(task=self.task)
         self.task.active_dataset = self.dataset
 

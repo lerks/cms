@@ -22,8 +22,7 @@ import heapq
 import logging
 from itertools import zip_longest
 
-from cmscommon.constants import \
-    SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cmscommon.constants import ScoreMode
 
 
 logger = logging.getLogger(__name__)
@@ -114,17 +113,17 @@ class Score:
                  self._submissions[s_id].time > self._last.time):
             self._last = self._submissions[s_id]
 
-        if self._score_mode == SCORE_MODE_MAX:
+        if self._score_mode == ScoreMode.MAX:
             score = max((submission.score
                          for submission in self._submissions.values()),
                         default=0.0)
-        elif self._score_mode == SCORE_MODE_MAX_SUBTASK:
+        elif self._score_mode == ScoreMode.MAX_SUBTASK:
             scores_by_submission = (map(float, s.extra or [])
                                     for s in self._submissions.values())
             scores_by_subtask = zip_longest(*scores_by_submission,
                                             fillvalue=0.0)
             score = float(sum(max(s) for s in scores_by_subtask))
-        elif self._score_mode == SCORE_MODE_MAX_TOKENED_LAST:
+        elif self._score_mode == ScoreMode.MAX_TOKENED_LAST:
             score = max(self._released.query(),
                         self._last.score if self._last is not None else 0.0)
         else:
@@ -286,7 +285,7 @@ class ScoringStore:
         if submission.task not in self._scores[submission.user]:
             task = self.task_store.retrieve(submission.task)
             self._scores[submission.user][submission.task] = \
-                Score(score_mode=task["score_mode"])
+                Score(score_mode=ScoreMode(task["score_mode"]))
 
         score_obj = self._scores[submission.user][submission.task]
         old_score = score_obj.get_score()
@@ -309,7 +308,7 @@ class ScoringStore:
         score_obj = self._scores[submission.user][submission.task]
         old_score = score_obj.get_score()
         score_obj.update_submission(key, submission)
-        score_obj.update_score_mode(task["score_mode"])
+        score_obj.update_score_mode(ScoreMode(task["score_mode"]))
         new_score = score_obj.get_score()
         if old_score != new_score:
             self.notify_callbacks(submission.user, submission.task, new_score)

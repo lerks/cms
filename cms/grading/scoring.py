@@ -28,8 +28,7 @@ from collections import namedtuple
 from sqlalchemy.orm import joinedload
 
 from cms.db import Submission
-from cmscommon.constants import \
-    SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cmscommon.constants import ScoreMode
 
 
 __all__ = [
@@ -159,11 +158,11 @@ def task_score(participation, task, public=False, only_tokened=False):
             score, score_details = sr.score, sr.score_details
         score_details_tokened.append((score, score_details, s.tokened()))
 
-    if task.score_mode == SCORE_MODE_MAX:
+    if task.score_mode == ScoreMode.MAX:
         return _task_score_max(score_details_tokened), partial
-    if task.score_mode == SCORE_MODE_MAX_SUBTASK:
+    if task.score_mode == ScoreMode.MAX_SUBTASK:
         return _task_score_max_subtask(score_details_tokened), partial
-    elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
+    elif task.score_mode == ScoreMode.MAX_TOKENED_LAST:
         return _task_score_max_tokened_last(score_details_tokened), partial
     else:
         raise ValueError("Unknown score mode '%s'" % task.score_mode)

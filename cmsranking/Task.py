@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from cmscommon.constants import ScoreMode
 from cmsranking.Entity import Entity, InvalidData
 
 
@@ -34,6 +35,7 @@ class Task(Entity):
         extra fields that will be provided with each submission for the
         task
     - order (int): the order of the tasks inside of the contest
+    - score_mode (ScoreMode): how to aggregate the submissions' scores.
 
     """
     def __init__(self):
@@ -45,6 +47,7 @@ class Task(Entity):
         self.short_name = None
         self.contest = None
         self.max_score = None
+        self.score_precision = None
         self.extra_headers = None
         self.order = None
         self.score_mode = None
@@ -94,11 +97,12 @@ class Task(Entity):
         self.score_precision = data['score_precision']
         self.extra_headers = data['extra_headers']
         self.order = data['order']
-        self.score_mode = data['score_mode']
+        self.score_mode = ScoreMode(data['score_mode'])
 
     def get(self):
         result = self.__dict__.copy()
         del result['key']
+        result['score_mode'] = result['score_mode'].value
         return result
 
     def consistent(self, stores):

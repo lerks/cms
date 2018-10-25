@@ -36,8 +36,7 @@ from sqlalchemy.types import Boolean, Integer, Float, String, Unicode, \
     Interval, Enum, BigInteger
 
 from cms import TokenMode, FeedbackLevel
-from cmscommon.constants import \
-    SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cmscommon.constants import ScoreMode
 from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest
 
 
@@ -206,12 +205,10 @@ class Task(Base):
 
     # Score mode for the task.
     score_mode = Column(
-        Enum(SCORE_MODE_MAX_TOKENED_LAST,
-             SCORE_MODE_MAX,
-             SCORE_MODE_MAX_SUBTASK,
-             name="score_mode"),
+        Enum(ScoreMode, name="score_mode",
+             values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default=SCORE_MODE_MAX_TOKENED_LAST)
+        default=ScoreMode.MAX_TOKENED_LAST)
 
     # Active Dataset (id and object) currently being used for scoring.
     # The ForeignKeyConstraint for this column is set at table-level.

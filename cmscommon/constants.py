@@ -16,11 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Task score modes.
+from enum import Enum
 
-# Maximum score amongst all submissions.
-SCORE_MODE_MAX = "max"
-# Sum of maximum score for each subtask over all submissions.
-SCORE_MODE_MAX_SUBTASK = "max_subtask"
-# Maximum score among all tokened submissions and the last submission.
-SCORE_MODE_MAX_TOKENED_LAST = "max_tokened_last"
+
+class ScoreMode(Enum):
+    """Task score modes"""
+    # Maximum score amongst all submissions.
+    MAX = "max"
+    # Sum of maximum score for each subtask over all submissions.
+    MAX_SUBTASK = "max_subtask"
+    # Maximum score among all tokened submissions and the last submission.
+    MAX_TOKENED_LAST = "max_tokened_last"

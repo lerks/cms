@@ -27,8 +27,7 @@ from datetime import timedelta
 from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 
 from cms.grading.scoring import task_score
-from cmscommon.constants import \
-    SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
+from cmscommon.constants import ScoreMode
 from cmscommon.datetime import make_datetime
 
 
@@ -77,7 +76,7 @@ class TestTaskScoreMaxTokenedLast(TaskScoreMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.task.score_mode = SCORE_MODE_MAX_TOKENED_LAST
+        self.task.score_mode = ScoreMode.MAX_TOKENED_LAST
 
     def test_no_submissions(self):
         self.assertEqual(self.call(), (0.0, False))
@@ -166,7 +165,7 @@ class TestTaskScoreMaxSubtask(TaskScoreMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.task.score_mode = SCORE_MODE_MAX_SUBTASK
+        self.task.score_mode = ScoreMode.MAX_SUBTASK
 
     @staticmethod
     def subtask(idx, max_score, score_fraction):
@@ -318,7 +317,7 @@ class TestTaskScoreMax(TaskScoreMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.task.score_mode = SCORE_MODE_MAX
+        self.task.score_mode = ScoreMode.MAX
 
     def test_no_submissions(self):
         self.assertEqual(self.call(), (0.0, False))
