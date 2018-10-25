@@ -27,8 +27,7 @@ from cmstestsuite import CONFIG
 from cmstestsuite.Test import Test
 from cmstestsuite.Tests import LANG_C
 from cmstestsuite.functionaltestframework import FunctionalTestFramework
-from cmstestsuite.profiling import \
-    PROFILER_KERNPROF, PROFILER_NONE, PROFILER_YAPPI
+from cmstestsuite.profiling import Profiler
 from cmstestsuite.testrunner import TestRunner
 
 
@@ -89,8 +88,8 @@ def main():
         "-v", "--verbose", action="count", default=0,
         help="print debug information (use multiple times for more)")
     parser.add_argument(
-        "--profiler", choices=[PROFILER_YAPPI, PROFILER_KERNPROF],
-        default=PROFILER_NONE, help="set profiler")
+        "--profiler", choices=[Profiler.YAPPI.value, Profiler.KERNPROF.value],
+        type=Profiler, default=Profiler.NONE, help="set profiler")
     args = parser.parse_args()
 
     CONFIG["VERBOSITY"] = args.verbose

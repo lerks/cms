@@ -30,8 +30,7 @@ from cmstestsuite import CONFIG
 from cmstestsuite.Tests import ALL_TESTS
 from cmstestsuite.coverage import clear_coverage, combine_coverage, \
     send_coverage_to_codecov
-from cmstestsuite.profiling import \
-    PROFILER_KERNPROF, PROFILER_NONE, PROFILER_YAPPI
+from cmstestsuite.profiling import Profiler
 from cmstestsuite.testrunner import TestRunner
 
 
@@ -176,8 +175,8 @@ def main():
         "--coverage", action="store_true",
         help="compute line coverage information")
     g.add_argument(
-        "--profiler", choices=[PROFILER_YAPPI, PROFILER_KERNPROF],
-        default=PROFILER_NONE, help="set profiler")
+        "--profiler", choices=[Profiler.YAPPI.value, Profiler.KERNPROF.value],
+        type=Profiler, default=Profiler.NONE, help="set profiler")
     args = parser.parse_args()
     if args.codecov and not args.coverage:
         parser.error("--codecov requires --coverage")

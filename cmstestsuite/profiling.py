@@ -38,12 +38,15 @@ using `python -m line_profile output.lprof`
 
 """
 
+from enum import Enum
+
 from cmstestsuite import CONFIG
 
 
-PROFILER_NONE = ""
-PROFILER_YAPPI = "yappi"
-PROFILER_KERNPROF = "kernprof"
+class Profiler(Enum):
+    NONE = ""
+    YAPPI = "yappi"
+    KERNPROF = "kernprof"
 
 
 _YAPPI_CMDLINE = ["yappi", "-o", "%(output_basename)s.prof"]
@@ -60,12 +63,12 @@ def _format_cmdline(profiler_cmdline, cmdline, output_basename):
 
 def profiling_cmdline(cmdline, output_basename):
     """Return a cmdline possibly decorated to record profiling information."""
-    profiler = CONFIG.get("PROFILER", PROFILER_NONE)
-    if profiler == PROFILER_NONE:
+    profiler = CONFIG.get("PROFILER", Profiler.NONE)
+    if profiler == Profiler.NONE:
         return cmdline
-    elif profiler == PROFILER_YAPPI:
+    elif profiler == Profiler.YAPPI:
         return _format_cmdline(_YAPPI_CMDLINE, cmdline, output_basename)
-    elif profiler == PROFILER_KERNPROF:
+    elif profiler == Profiler.KERNPROF:
         return _format_cmdline(_KERNPROF_CMDLINE, cmdline, output_basename)
     else:
         raise ValueError("Unknown profiler %s" % profiler)
