@@ -27,7 +27,7 @@
 
 """
 
-from cms import ServiceCoord, get_service_shards, get_service_address
+from cms import ServiceCoord, get_service_shards, get_service_address, TokenMode
 from cms.db import Contest, Participation, Submission
 from cmscommon.datetime import make_datetime
 
@@ -101,7 +101,7 @@ class ContestHandler(SimpleContestHandler("contest.html")):
             self.get_bool(attrs, "ip_restriction")
             self.get_bool(attrs, "ip_autologin")
 
-            self.get_string(attrs, "token_mode")
+            self.get_string(attrs, "token_mode", func=TokenMode)
             self.get_int(attrs, "token_max_number")
             self.get_timedelta_sec(attrs, "token_min_interval")
             self.get_int(attrs, "token_gen_initial")

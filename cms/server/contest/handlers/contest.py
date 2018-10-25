@@ -34,7 +34,7 @@ import logging
 
 import tornado.web
 
-from cms import config, TOKEN_MODE_MIXED
+from cms import config, AggregateTokenMode, TokenMode
 from cms.db import Contest, Submission, Task, UserTest
 from cms.locale import filter_language_codes
 from cms.server import FileHandlerMixin
@@ -201,10 +201,18 @@ class ContestHandler(BaseHandler):
         ret["tokens_contest"] = self.contest.token_mode
 
         t_tokens = set(t.token_mode for t in self.contest.tasks)
-        if len(t_tokens) == 1:
-            ret["tokens_tasks"] = next(iter(t_tokens))
+        if len(t_tokens) != 1:
+            ret["tokens_tasks"] = AggregateTokenMode.MIXED
         else:
-            ret["tokens_tasks"] = TOKEN_MODE_MIXED
+            t_tokens = next(iter(t_tokens))
+            if t_tokens == TokenMode.DISABLED:
+                ret["tokens_tasks"] = AggregateTokenMode.ALL_DISABLED
+            elif t_tokens == TokenMode.FINITE:
+                ret["tokens_tasks"] = AggregateTokenMode.ALL_FINITE
+            elif t_tokens == TokenMode.INFINITE:
+                ret["tokens_tasks"] = AggregateTokenMode.ALL_INFINITE
+            else:
+                raise RuntimeError("Unexpected value for Task.token_mode")
 
         return ret
 

@@ -137,8 +137,8 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
         </td>
         <td>
           <select name="feedback_level">
-            <option value={{ FEEDBACK_LEVEL_RESTRICTED }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_RESTRICTED else "" }}>Restricted</option>
-            <option value={{ FEEDBACK_LEVEL_FULL }} {{ "selected" if task.feedback_level == FEEDBACK_LEVEL_FULL else "" }}>Full</option>
+            <option value={{ FeedbackLevel.RESTRICTED.value }} {{ "selected" if task.feedback_level == FeedbackLevel.RESTRICTED else "" }}>Restricted</option>
+            <option value={{ FeedbackLevel.FULL.value }} {{ "selected" if task.feedback_level == FeedbackLevel.FULL else "" }}>Full</option>
           </select>
         </td>
       </tr>
@@ -151,9 +151,9 @@ $("select[name=task_type_{{ dataset.id }}]").change(function() {
         </td>
         <td>
           <select name="token_mode">
-            <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if task.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
-            <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
-            <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if task.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
+            <option value="{{ TokenMode.DISABLED.value }}" {{ "selected" if task.token_mode == TokenMode.DISABLED else "" }}>Disabled</option>
+            <option value="{{ TokenMode.FINITE.value }}" {{ "selected" if task.token_mode == TokenMode.FINITE else "" }}>Finite</option>
+            <option value="{{ TokenMode.INFINITE.value }}" {{ "selected" if task.token_mode == TokenMode.INFINITE else "" }}>Infinite</option>
           </select>
         </td>
       </tr>

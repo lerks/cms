@@ -31,6 +31,7 @@ import traceback
 
 import tornado.web
 
+from cms import FeedbackLevel, TokenMode
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
@@ -138,9 +139,9 @@ class TaskHandler(BaseHandler):
             ]))
 
             self.get_submission_format(attrs)
-            self.get_string(attrs, "feedback_level")
+            self.get_string(attrs, "feedback_level", func=FeedbackLevel)
 
-            self.get_string(attrs, "token_mode")
+            self.get_string(attrs, "token_mode", func=TokenMode)
             self.get_int(attrs, "token_max_number")
             self.get_timedelta_sec(attrs, "token_min_interval")
             self.get_int(attrs, "token_gen_initial")

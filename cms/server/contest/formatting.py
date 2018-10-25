@@ -22,7 +22,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE
+from cms import TokenMode
 from cms.locale import DEFAULT_TRANSLATION
 
 
@@ -57,18 +57,18 @@ def format_token_rules(tokens, t_type=None, translation=DEFAULT_TRANSLATION):
 
     result = ""
 
-    if tokens["mode"] == TOKEN_MODE_DISABLED:
+    if tokens["mode"] == TokenMode.DISABLED:
         # This message will only be shown on tasks in case of a mixed
         # modes scenario.
         result += \
             _("You don't have %(type_pl)s available for this task.") % tokens
-    elif tokens["mode"] == TOKEN_MODE_INFINITE:
+    elif tokens["mode"] == TokenMode.INFINITE:
         # This message will only be shown on tasks in case of a mixed
         # modes scenario.
         result += \
             _("You have an infinite number of %(type_pl)s "
               "for this task.") % tokens
-    elif tokens["mode"] == TOKEN_MODE_FINITE:
+    elif tokens["mode"] == TokenMode.FINITE:
         if tokens['gen_initial'] == 0:
             result += _("You start with no %(type_pl)s.") % tokens
         else:

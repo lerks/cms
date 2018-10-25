@@ -129,9 +129,9 @@
       </td>
       <td>
         <select name="token_mode">
-          <option value="{{ TOKEN_MODE_DISABLED }}" {{ "selected" if contest.token_mode == TOKEN_MODE_DISABLED else "" }}>Disabled</option>
-          <option value="{{ TOKEN_MODE_FINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_FINITE else "" }}>Finite</option>
-          <option value="{{ TOKEN_MODE_INFINITE }}" {{ "selected" if contest.token_mode == TOKEN_MODE_INFINITE else "" }}>Infinite</option>
+          <option value="{{ TokenMode.DISABLED.value }}" {{ "selected" if contest.token_mode == TokenMode.DISABLED else "" }}>Disabled</option>
+          <option value="{{ TokenMode.FINITE.value }}" {{ "selected" if contest.token_mode == TokenMode.FINITE else "" }}>Finite</option>
+          <option value="{{ TokenMode.INFINITE.value }}" {{ "selected" if contest.token_mode == TokenMode.INFINITE else "" }}>Infinite</option>
         </select>
       </td>
     </tr>

@@ -34,7 +34,7 @@ import logging
 import re
 from abc import ABCMeta, abstractmethod
 
-from cms import FEEDBACK_LEVEL_RESTRICTED
+from cms import FeedbackLevel
 from cms.locale import DEFAULT_TRANSLATION
 from cms.server.jinja2_toolbox import GLOBAL_ENVIRONMENT
 
@@ -105,7 +105,7 @@ class ScoreType(metaclass=ABCMeta):
             translation.format_decimal(round(max_score, score_precision)))
 
     def get_html_details(self, score_details,
-                         feedback_level=FEEDBACK_LEVEL_RESTRICTED,
+                         feedback_level=FeedbackLevel.RESTRICTED,
                          translation=DEFAULT_TRANSLATION):
         """Return an HTML string representing the score details of a
         submission.
@@ -245,7 +245,7 @@ class ScoreTypeGroup(ScoreTypeAlone):
                     <th class="details">
                         {% trans %}Details{% endtrans %}
                     </th>
-    {% if feedback_level == FEEDBACK_LEVEL_FULL %}
+    {% if feedback_level == FeedbackLevel.FULL %}
                     <th class="execution-time">
                         {% trans %}Execution time{% endtrans %}
                     </th>
@@ -258,7 +258,7 @@ class ScoreTypeGroup(ScoreTypeAlone):
             <tbody>
     {% for tc in st["testcases"] %}
         {% if "outcome" in tc
-               and (feedback_level == FEEDBACK_LEVEL_FULL
+               and (feedback_level == FeedbackLevel.FULL
                     or tc["show_in_restricted_feedback"]) %}
             {% if tc["outcome"] == "Correct" %}
                 <tr class="correct">
@@ -272,7 +272,7 @@ class ScoreTypeGroup(ScoreTypeAlone):
                     <td class="details">
                       {{ tc["text"]|format_status_text }}
                     </td>
-            {% if feedback_level == FEEDBACK_LEVEL_FULL %}
+            {% if feedback_level == FeedbackLevel.FULL %}
                     <td class="execution-time">
                 {% if "time" in tc and tc["time"] is not none %}
                         {{ tc["time"]|format_duration }}
@@ -292,7 +292,7 @@ class ScoreTypeGroup(ScoreTypeAlone):
         {% else %}
                 <tr class="undefined">
                     <td class="idx">{{ loop.index }}</td>
-            {% if feedback_level == FEEDBACK_LEVEL_FULL %}
+            {% if feedback_level == FeedbackLevel.FULL %}
                     <td colspan="4">
             {% else %}
                     <td colspan="2">

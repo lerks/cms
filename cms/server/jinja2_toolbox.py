@@ -27,8 +27,7 @@ filters, tests, etc. that are useful for generic global usage.
 from jinja2 import Environment, StrictUndefined, contextfilter, \
     contextfunction, environmentfunction
 
-from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
-    TOKEN_MODE_MIXED, FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED
+from cms import TokenMode, AggregateTokenMode, FeedbackLevel
 from cms.db import SubmissionResult, UserTestResult
 from cms.grading import format_status_text
 from cms.grading.languagemanager import get_language
@@ -149,13 +148,10 @@ def instrument_generic_toolbox(env):
     env.globals["SCORE_MODE_MAX"] = SCORE_MODE_MAX
     env.globals["SCORE_MODE_MAX_SUBTASK"] = SCORE_MODE_MAX_SUBTASK
 
-    env.globals["TOKEN_MODE_DISABLED"] = TOKEN_MODE_DISABLED
-    env.globals["TOKEN_MODE_FINITE"] = TOKEN_MODE_FINITE
-    env.globals["TOKEN_MODE_INFINITE"] = TOKEN_MODE_INFINITE
-    env.globals["TOKEN_MODE_MIXED"] = TOKEN_MODE_MIXED
+    env.globals["TokenMode"] = TokenMode
+    env.globals["AggregateTokenMode"] = AggregateTokenMode
 
-    env.globals["FEEDBACK_LEVEL_FULL"] = FEEDBACK_LEVEL_FULL
-    env.globals["FEEDBACK_LEVEL_RESTRICTED"] = FEEDBACK_LEVEL_RESTRICTED
+    env.globals["FeedbackLevel"] = FeedbackLevel
 
     env.filters["all"] = all_
     env.filters["any"] = any_

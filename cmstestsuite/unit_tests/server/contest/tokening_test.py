@@ -27,7 +27,7 @@ from unittest.mock import patch
 # Needs to be first to allow for monkey patching the DB connection string.
 from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 
-from cms import TOKEN_MODE_INFINITE, TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE
+from cms import TokenMode
 from cms.server.contest.tokening import accept_token, UnacceptableToken, \
     TokenAlreadyPlayed, tokens_available
 from cmscommon.datetime import make_datetime
@@ -63,13 +63,13 @@ class TestTokensAvailable(DatabaseMixin, unittest.TestCase):
         self.add_token(timestamp=self.at(timestamp), submission=submission)
 
     def set_contest_token_infinite(self):
-        self.contest.token_mode = TOKEN_MODE_INFINITE
+        self.contest.token_mode = TokenMode.INFINITE
 
     def set_contest_token_disabled(self):
-        self.contest.token_mode = TOKEN_MODE_DISABLED
+        self.contest.token_mode = TokenMode.DISABLED
 
     def set_contest_token_finite(self, initial, number, interval, max_=None):
-        self.contest.token_mode = TOKEN_MODE_FINITE
+        self.contest.token_mode = TokenMode.FINITE
         self.contest.token_gen_initial = initial
         self.contest.token_gen_number = number
         self.contest.token_gen_interval = timedelta(seconds=interval)
@@ -80,13 +80,13 @@ class TestTokensAvailable(DatabaseMixin, unittest.TestCase):
         self.contest.token_min_interval = timedelta(seconds=min_interval)
 
     def set_task_token_infinite(self):
-        self.task.token_mode = TOKEN_MODE_INFINITE
+        self.task.token_mode = TokenMode.INFINITE
 
     def set_task_token_disabled(self):
-        self.task.token_mode = TOKEN_MODE_DISABLED
+        self.task.token_mode = TokenMode.DISABLED
 
     def set_task_token_finite(self, initial, number, interval, max_=None):
-        self.task.token_mode = TOKEN_MODE_FINITE
+        self.task.token_mode = TokenMode.FINITE
         self.task.token_gen_initial = initial
         self.task.token_gen_number = number
         self.task.token_gen_interval = timedelta(seconds=interval)

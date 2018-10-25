@@ -61,13 +61,14 @@ def argument_reader(func, empty=None):
         RequestHandler.
 
     """
-    def helper(self, dest, name, empty=empty):
+    def helper(self, dest, name, empty=empty, func=func):
         """Read the argument called "name" and save it in "dest".
 
         self (RequestHandler): a thing with a get_argument method.
         dest (dict): a place to store the obtained value.
         name (string): the name of the argument and of the item.
         empty (object): overrides the default empty value.
+        func (callable): overrides the default caster/validator.
 
         """
         value = self.get_argument(name, None)

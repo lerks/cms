@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import Enum
+
 # As this package initialization code is run by all code that imports
 # something in cms.* it's the best place to setup the logging handlers.
 # By importing the log module we install a handler on stdout. Other
@@ -30,9 +32,7 @@ import cms.log
 
 __all__ = [
     "__version__",
-    "TOKEN_MODE_DISABLED", "TOKEN_MODE_FINITE", "TOKEN_MODE_INFINITE",
-    "TOKEN_MODE_MIXED",
-    "FEEDBACK_LEVEL_FULL", "FEEDBACK_LEVEL_RESTRICTED",
+    "TokenMode", "AggregateTokenMode", "FeedbackLevel",
     # log
     # Nothing intended for external use, no need to advertise anything.
     # conf
@@ -53,21 +53,28 @@ __version__ = '1.5.dev0'
 
 # Token modes.
 
-TOKEN_MODE_DISABLED = "disabled"
-TOKEN_MODE_FINITE = "finite"
-TOKEN_MODE_INFINITE = "infinite"
-# Only used when aggregating modes (e.g., for all tasks of a contest).
-# Acts as a "none of the above".
-TOKEN_MODE_MIXED = "mixed"
+class TokenMode(Enum):
+    DISABLED = "disabled"
+    FINITE = "finite"
+    INFINITE = "infinite"
+
+
+class AggregateTokenMode(Enum):
+    ALL_DISABLED = "disabled"
+    ALL_FINITE = "finite"
+    ALL_INFINITE = "infinite"
+    MIXED = "mixed"
+
 
 # Feedback level.
 
-# Full information (killing signals, time and memory, status for all
-# testcases).
-FEEDBACK_LEVEL_FULL = "full"
-# Restricted set of information (no killing signal, time or memory, testcases
-# can be omitted).
-FEEDBACK_LEVEL_RESTRICTED = "restricted"
+class FeedbackLevel(Enum):
+    # Full information (killing signals, time and memory, status for all
+    # testcases).
+    FULL = "full"
+    # Restricted set of information (no killing signal, time or memory,
+    # testcases can be omitted).
+    RESTRICTED = "restricted"
 
 
 from .conf import Address, ServiceCoord, ConfigError, async_config, config

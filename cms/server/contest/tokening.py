@@ -27,7 +27,7 @@
 
 import logging
 
-from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_INFINITE
+from cms import TokenMode
 from cms.db import Token, Submission
 
 
@@ -54,7 +54,7 @@ def _tokens_available(mode, gen_initial, gen_number, gen_interval, gen_max,
     just task-tokens). What tokens_available will do is call this
     function twice, once for each type, and then combine the results.
 
-    mode (str): one of the TOKEN_MODE_* constants.
+    mode (str): one of the TokenMode constants.
     gen_initial (int): in finite mode, how many tokens the contestant
         starts with.
     gen_number (int): in finite mode, how many tokens the contestant
@@ -82,12 +82,12 @@ def _tokens_available(mode, gen_initial, gen_number, gen_interval, gen_max,
 
     """
     # If tokens are disabled there are no tokens available.
-    if mode == TOKEN_MODE_DISABLED:
+    if mode == TokenMode.DISABLED:
         return 0, None, None
 
     # If tokens are infinite there are always tokens available. Also,
     # the constraints don't apply.
-    if mode == TOKEN_MODE_INFINITE:
+    if mode == TokenMode.INFINITE:
         return -1, None, None
 
     # avail is the current number of available tokens. We are going to

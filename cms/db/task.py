@@ -35,8 +35,7 @@ from sqlalchemy.schema import Column, ForeignKey, CheckConstraint, \
 from sqlalchemy.types import Boolean, Integer, Float, String, Unicode, \
     Interval, Enum, BigInteger
 
-from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
-    FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED
+from cms import TokenMode, FeedbackLevel
 from cmscommon.constants import \
     SCORE_MODE_MAX, SCORE_MODE_MAX_SUBTASK, SCORE_MODE_MAX_TOKENED_LAST
 from . import Codename, Filename, FilenameSchemaArray, Digest, Base, Contest
@@ -122,10 +121,10 @@ class Task(Base):
     #   contest instead.
     # - infinite: The user will always be able to use a token.
     token_mode = Column(
-        Enum(TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE,
-             name="token_mode"),
+        Enum(TokenMode, name="token_mode",
+             values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default=TOKEN_MODE_DISABLED)
+        default=TokenMode.DISABLED)
 
     # The maximum number of tokens a contestant is allowed to use
     # during the whole contest (on this tasks).
@@ -192,10 +191,10 @@ class Task(Base):
     # submissions. Offering full information might help some users to
     # reverse engineer task data.
     feedback_level = Column(
-        Enum(FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED,
-             name="feedback_level"),
+        Enum(FeedbackLevel, name="feedback_level",
+             values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default=FEEDBACK_LEVEL_RESTRICTED)
+        default=FeedbackLevel.RESTRICTED)
 
     # The scores for this task will be rounded to this number of
     # decimal places.

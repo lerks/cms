@@ -35,7 +35,7 @@ from sqlalchemy.schema import Column, ForeignKey, CheckConstraint
 from sqlalchemy.types import Integer, Unicode, DateTime, Interval, Enum, \
     Boolean, String
 
-from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE
+from cms import TokenMode
 from . import Codename, Base, Admin
 
 
@@ -138,10 +138,10 @@ class Contest(Base):
     #   contest instead.
     # - infinite: The user will always be able to use a token.
     token_mode = Column(
-        Enum(TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE,
-             name="token_mode"),
+        Enum(TokenMode, name="token_mode",
+             values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default=TOKEN_MODE_INFINITE)
+        default=TokenMode.INFINITE)
 
     # The maximum number of tokens a contestant is allowed to use
     # during the whole contest (on all tasks).

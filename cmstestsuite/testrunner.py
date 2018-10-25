@@ -24,7 +24,7 @@ import logging
 import os
 import subprocess
 
-from cms import TOKEN_MODE_FINITE
+from cms import TokenMode
 from cmscommon.datetime import get_system_timezone
 from cmstestsuite import CONFIG
 from cmstestsuite.Test import TestFailure
@@ -135,7 +135,7 @@ class TestRunner:
             stop=stop_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
             timezone=get_system_timezone(),
             allow_user_tests="checked",
-            token_mode=TOKEN_MODE_FINITE,
+            token_mode=TokenMode.FINITE.value,
             token_max_number="100",
             token_min_interval="0",
             token_gen_initial="100",
@@ -200,7 +200,7 @@ class TestRunner:
             return self.task_id_map[name][0]
 
         task_create_args = {
-            "token_mode": TOKEN_MODE_FINITE,
+            "token_mode": TokenMode.FINITE.value,
             "token_max_number": "100",
             "token_min_interval": "0",
             "token_gen_initial": "100",

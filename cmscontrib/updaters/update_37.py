@@ -25,8 +25,6 @@ Add the feedback_level field for tasks. The default for new tasks is
 
 """
 
-from cms import FEEDBACK_LEVEL_FULL
-
 
 class Updater:
 
@@ -39,5 +37,5 @@ class Updater:
             if k.startswith("_"):
                 continue
             if v["_class"] == "Task":
-                v["feedback_level"] = FEEDBACK_LEVEL_FULL
+                v["feedback_level"] = "full"
         return self.objs

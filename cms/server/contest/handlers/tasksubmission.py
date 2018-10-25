@@ -35,7 +35,7 @@ import re
 import tornado.web
 from sqlalchemy.orm import joinedload
 
-from cms import config, FEEDBACK_LEVEL_FULL
+from cms import config, FeedbackLevel
 from cms.db import Submission, SubmissionResult
 from cms.grading.languagemanager import get_language
 from cms.grading.scoring import task_score
@@ -297,7 +297,7 @@ class SubmissionDetailsHandler(ContestHandler):
                 # During analysis mode we show the full feedback regardless of
                 # what the task says.
                 if self.r_params["actual_phase"] == 3:
-                    feedback_level = FEEDBACK_LEVEL_FULL
+                    feedback_level = FeedbackLevel.FULL
                 details = score_type.get_html_details(
                     details, feedback_level, translation=self.translation)
             else:
