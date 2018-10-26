@@ -48,7 +48,7 @@ import sys
 
 import gevent.lock
 
-from cmscommon.terminal import colors, add_color_to_string, has_color_support
+from cmscommon.terminal import Color, add_color_to_string, has_color_support
 
 
 class StreamHandler(logging.StreamHandler):
@@ -144,24 +144,17 @@ class LogServiceHandler(logging.Handler):
 def get_color_hash(string):
     """Deterministically return a color based on the string's content.
 
-    Determine one of colors.* using only the data of the given string.
+    Determine one of Color.* using only the data of the given string.
     The only condition is for the operation to give the same result when
     repeated.
 
     string (string): the string.
 
-    return (int): a color, as a colors.* constant.
+    return (Color): a color.
 
     """
     # We get the default hash of the string and use it to pick a color.
-    return [colors.BLACK,
-            colors.RED,
-            colors.GREEN,
-            colors.YELLOW,
-            colors.BLUE,
-            colors.MAGENTA,
-            colors.CYAN,
-            colors.WHITE][hash(string) % 8]
+    return list(Color)[hash(string) % 8]
 
 
 class CustomFormatter(logging.Formatter):
@@ -180,11 +173,11 @@ class CustomFormatter(logging.Formatter):
     (this cannot be done with the standard formatter!).
 
     """
-    SEVERITY_COLORS = {logging.CRITICAL: colors.RED,
-                       logging.ERROR: colors.RED,
-                       logging.WARNING: colors.YELLOW,
-                       logging.INFO: colors.GREEN,
-                       logging.DEBUG: colors.CYAN}
+    SEVERITY_COLORS = {logging.CRITICAL: Color.RED,
+                       logging.ERROR: Color.RED,
+                       logging.WARNING: Color.YELLOW,
+                       logging.INFO: Color.GREEN,
+                       logging.DEBUG: Color.CYAN}
 
     def __init__(self, colors=False):
         """Initialize a formatter.

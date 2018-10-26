@@ -35,7 +35,7 @@ import yaml
 from cms import utf8_decoder
 from cms.grading.languagemanager import SOURCE_EXTS, filename_to_language
 from cmscommon.terminal import move_cursor, add_color_to_string, \
-    colors, directions
+    Color, Direction
 from cmstaskenv.Test import test_testcases, clean_test_env
 
 
@@ -241,7 +241,7 @@ def build_sols_list(base_dir, task_type, in_out_files, yaml_conf):
                     new_srcs, new_exe, for_evaluation=for_evaluation)
                 for command in compilation_commands:
                     call(tempdir, command)
-                    move_cursor(directions.UP, erase=True, stream=sys.stderr)
+                    move_cursor(Direction.UP, erase=True, stream=sys.stderr)
                 shutil.copyfile(os.path.join(tempdir, new_exe),
                                 os.path.join(base_dir, exe))
                 shutil.copymode(os.path.join(tempdir, new_exe),
@@ -253,7 +253,7 @@ def build_sols_list(base_dir, task_type, in_out_files, yaml_conf):
             # Solution names begin with sol/ and end with _EVAL, we strip that
             print(
                 "Testing solution",
-                add_color_to_string(exe[4:-5], colors.BLACK, bold=True)
+                add_color_to_string(exe[4:-5], Color.BLACK, bold=True)
             )
             test_testcases(
                 base_dir,
@@ -429,7 +429,7 @@ def build_gen_list(base_dir, task_type, yaml_conf):
         for (is_copy, line, st) in testcases:
             print(
                 "Generating",
-                add_color_to_string("input # %d" % n, colors.BLACK,
+                add_color_to_string("input # %d" % n, Color.BLACK,
                                     stream=sys.stderr, bold=True),
                 file=sys.stderr
             )
@@ -451,7 +451,7 @@ def build_gen_list(base_dir, task_type, yaml_conf):
             call(base_dir, command)
             n += 1
             for _ in range(3):
-                move_cursor(directions.UP, erase=True, stream=sys.stderr)
+                move_cursor(Direction.UP, erase=True, stream=sys.stderr)
 
     def make_output(n, assume=None):
         try:
@@ -460,7 +460,7 @@ def build_gen_list(base_dir, task_type, yaml_conf):
             pass
         print(
             "Generating",
-            add_color_to_string("output # %d" % n, colors.BLACK,
+            add_color_to_string("output # %d" % n, Color.BLACK,
                                 stream=sys.stderr, bold=True),
             file=sys.stderr
         )
@@ -498,7 +498,7 @@ def build_gen_list(base_dir, task_type, yaml_conf):
             if task_type != ['Communication', '']:
                 call(temp_dir, [os.path.join(temp_dir, SOL_FILENAME)],
                      stdin=fin, stdout=fout)
-                move_cursor(directions.UP, erase=True, stream=sys.stderr)
+                move_cursor(Direction.UP, erase=True, stream=sys.stderr)
 
         finally:
             if fin is not None:
@@ -509,7 +509,7 @@ def build_gen_list(base_dir, task_type, yaml_conf):
         os.rename(copied_outfile, outfile)
         shutil.rmtree(temp_dir)
 
-        move_cursor(directions.UP, erase=True, stream=sys.stderr)
+        move_cursor(Direction.UP, erase=True, stream=sys.stderr)
 
     actions = []
     actions.append(([gen_src],

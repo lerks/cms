@@ -18,9 +18,10 @@
 
 import curses
 import sys
+from enum import Enum
 
 
-class colors:
+class Color(Enum):
     BLACK = curses.COLOR_BLACK
     RED = curses.COLOR_RED
     GREEN = curses.COLOR_GREEN
@@ -31,7 +32,7 @@ class colors:
     WHITE = curses.COLOR_WHITE
 
 
-class directions:
+class Direction(Enum):
     UP = 1
     DOWN = 2
     LEFT = 3
@@ -73,7 +74,7 @@ def add_color_to_string(string, color, stream=sys.stdout, bold=False,
     stream passed has color support. Else return the string as it is.
 
     string (string): the string to color.
-    color (int): the color as a colors constant, like colors.BLACK.
+    color (Color): the color.
     stream (fileobj): a file-like object (that adheres to the API
         declared in the `io' package). Defaults to sys.stdout.
     bold (bool): True if the string should be bold.
@@ -85,8 +86,8 @@ def add_color_to_string(string, color, stream=sys.stdout, bold=False,
     """
     if force or has_color_support(stream):
         return "%s%s%s%s" % (
-            curses.tparm(curses.tigetstr("setaf"), color).decode('ascii')
-                if color != colors.BLACK else "",
+            curses.tparm(curses.tigetstr("setaf"), color.value).decode('ascii')
+                if color != Color.BLACK else "",
             curses.tparm(curses.tigetstr("bold")).decode('ascii')
                 if bold else "",
             string,
@@ -102,24 +103,23 @@ def move_cursor(direction, amount=1, stream=sys.stdout, erase=False):
     If the stream is a TTY, print characters that will move the cursor
     in the given direction and optionally erase the line. Else do nothing.
 
-    direction (int): the direction as a directions constant, like
-        directions.UP.
+    direction (Direction): the direction.
     stream (fileobj): a file-like object (that adheres to the API
         declared in the `io' package). Defaults to sys.stdout.
     erase (bool): True if the line the cursor ends on should be erased.
 
     """
     if stream.isatty():
-        if direction == directions.UP:
+        if direction == Direction.UP:
             print(curses.tparm(curses.tigetstr("cuu"), amount),
                   file=stream, end='')
-        elif direction == directions.DOWN:
+        elif direction == Direction.DOWN:
             print(curses.tparm(curses.tigetstr("cud"), amount),
                   file=stream, end='')
-        elif direction == directions.LEFT:
+        elif direction == Direction.LEFT:
             print(curses.tparm(curses.tigetstr("cub"), amount),
                   file=stream, end='')
-        elif direction == directions.RIGHT:
+        elif direction == Direction.RIGHT:
             print(curses.tparm(curses.tigetstr("cuf"), amount),
                   file=stream, end='')
         if erase:

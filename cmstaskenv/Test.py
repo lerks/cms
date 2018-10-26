@@ -32,7 +32,7 @@ from cms.grading import format_status_text
 from cms.grading.Job import EvaluationJob
 from cms.service.esoperations import ESOperation
 from cmscommon.terminal import move_cursor, add_color_to_string, \
-    colors, directions
+    Color, Direction
 
 
 # TODO - Use a context object instead of global variables
@@ -79,7 +79,7 @@ def print_at_exit():
     print()
     for s in sols:
         print("%s: %3d" % (
-            add_color_to_string("%30s" % s[0], colors.BLACK,
+            add_color_to_string("%30s" % s[0], Color.BLACK,
                                 bold=True),
             s[1])
         )
@@ -147,7 +147,7 @@ def test_testcases(base_dir, solution, language, assume=None):
             info.append("Time limit exceeded")
             points.append(0.0)
             comments.append("Timeout.")
-            move_cursor(directions.UP, erase=True)
+            move_cursor(Direction.UP, erase=True)
             continue
 
         # Evaluate testcase
@@ -191,7 +191,7 @@ def test_testcases(base_dir, solution, language, assume=None):
             else:
                 ask_again = False
             print()
-        move_cursor(directions.UP, erase=True)
+        move_cursor(Direction.UP, erase=True)
 
     # Subtasks scoring
     subtasks = dataset.score_type_parameters
@@ -241,7 +241,7 @@ def test_testcases(base_dir, solution, language, assume=None):
             "Subtask %d:" % st,
             add_color_to_string(
                 "%5.2f/%d" % (d[0], d[1]),
-                colors.RED if abs(d[0] - d[1]) > 0.01 else colors.GREEN,
+                Color.RED if abs(d[0] - d[1]) > 0.01 else Color.GREEN,
                 bold=True
             )
         )
@@ -250,25 +250,25 @@ def test_testcases(base_dir, solution, language, assume=None):
                 "%s)" % i,
                 add_color_to_string(
                     "%5.2lf" % p,
-                    colors.RED if abs(p - 1) > 0.01 else colors.BLACK
+                    Color.RED if abs(p - 1) > 0.01 else Color.BLACK
                 ),
                 "--- %s [Time:" % c.ljust(clen),
                 add_color_to_string(
                     ("%5.3f" % w[0]) if w[0] is not None else "N/A",
-                    colors.BLUE if w[0] is not None and w[0] >= 0.95 * d[3][0]
-                    else colors.BLACK
+                    Color.BLUE if w[0] is not None and w[0] >= 0.95 * d[3][0]
+                    else Color.BLACK
                 ),
                 "Memory:",
                 add_color_to_string(
                     "%5s" % mem_human(w[1]) if w[1] is not None else "N/A",
-                    colors.BLUE if w[1] is not None and w[1] >= 0.95 * d[3][1]
-                    else colors.BLACK,
+                    Color.BLUE if w[1] is not None and w[1] >= 0.95 * d[3][1]
+                    else Color.BLACK,
                 ),
                 end="]"
             )
-            move_cursor(directions.RIGHT, 1000)
-            move_cursor(directions.LEFT, len(solution) - 1)
-            print(add_color_to_string(solution, colors.BLACK, bold=True))
+            move_cursor(Direction.RIGHT, 1000)
+            move_cursor(Direction.LEFT, len(solution) - 1)
+            print(add_color_to_string(solution, Color.BLACK, bold=True))
     print()
 
     sols.append((solution, sum([st[0] for st in sts])))
