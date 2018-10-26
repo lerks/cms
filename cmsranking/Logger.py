@@ -21,6 +21,7 @@ import logging
 import os.path
 import sys
 import time
+from enum import Enum
 from traceback import format_tb
 
 import gevent.lock
@@ -85,39 +86,44 @@ def has_color_support(stream):
 # http://en.wikipedia.org/wiki/ANSI_escape_code
 #
 
-ANSI_FG_COLORS = {'black': 30,
-                  'red': 31,
-                  'green': 32,
-                  'yellow': 33,
-                  'blue': 34,
-                  'magenta': 35,
-                  'cyan': 36,
-                  'white': 37}
+class AnsiFgColor(Enum):
+    BLACK = 30
+    RED = 31
+    GREEN = 32
+    YELLOW = 33
+    BLUE = 34
+    MAGENTA = 35
+    CYAN = 36
+    WHITE = 37
 
-ANSI_BG_COLORS = {'black': 40,
-                  'red': 41,
-                  'green': 42,
-                  'yellow': 43,
-                  'blue': 44,
-                  'magenta': 45,
-                  'cyan': 46,
-                  'white': 47}
 
-ANSI_RESET_CMD = 0
-ANSI_FG_DEFAULT_CMD = 39
-ANSI_BG_DEFAULT_CMD = 49
-ANSI_BOLD_ON_CMD = 1
-ANSI_BOLD_OFF_CMD = 22
-ANSI_FAINT_ON_CMD = 2
-ANSI_FAINT_OFF_CMD = 22
-ANSI_ITALICS_ON_CMD = 3
-ANSI_ITALICS_OFF_CMD = 23
-ANSI_UNDERLINE_ON_CMD = 4
-ANSI_UNDERLINE_OFF_CMD = 24
-ANSI_STRIKETHROUGH_ON_CMD = 9
-ANSI_STRIKETHROUGH_OFF_CMD = 29
-ANSI_INVERSE_ON_CMD = 7
-ANSI_INVERSE_OFF_CMD = 27
+class AnsiBgColor(Enum):
+    BLACK = 40
+    RED = 41
+    GREEN = 42
+    YELLOW = 43
+    BLUE = 44
+    MAGENTA = 45
+    CYAN = 46
+    WHITE = 47
+
+
+class AnsiCmd(Enum):
+    RESET = 0
+    FG_DEFAULT = 39
+    BG_DEFAULT = 49
+    BOLD_ON = 1
+    BOLD_OFF = 22
+    FAINT_ON = 2
+    FAINT_OFF = 22
+    ITALICS_ON = 3
+    ITALICS_OFF = 23
+    UNDERLINE_ON = 4
+    UNDERLINE_OFF = 24
+    STRIKETHROUGH_ON = 9
+    STRIKETHROUGH_OFF = 29
+    INVERSE_ON = 7
+    INVERSE_OFF = 27
 
 # TODO missing:
 # - distinction between single and double underline
@@ -140,55 +146,55 @@ class CustomFormatter(logging.Formatter):
 
         self.color = color
 
-        self.time_prefix = self.ansi_command(ANSI_BOLD_ON_CMD)
-        self.time_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD)
-        self.cri_prefix = self.ansi_command(ANSI_BOLD_ON_CMD,
-                                            ANSI_FG_COLORS['white'],
-                                            ANSI_BG_COLORS['red'])
-        self.cri_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD,
-                                            ANSI_FG_DEFAULT_CMD,
-                                            ANSI_BG_DEFAULT_CMD)
-        self.err_prefix = self.ansi_command(ANSI_BOLD_ON_CMD,
-                                            ANSI_FG_COLORS['red'])
-        self.err_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD,
-                                            ANSI_FG_DEFAULT_CMD)
-        self.wrn_prefix = self.ansi_command(ANSI_BOLD_ON_CMD,
-                                            ANSI_FG_COLORS['yellow'])
-        self.wrn_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD,
-                                            ANSI_FG_DEFAULT_CMD)
-        self.inf_prefix = self.ansi_command(ANSI_BOLD_ON_CMD,
-                                            ANSI_FG_COLORS['green'])
-        self.inf_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD,
-                                            ANSI_FG_DEFAULT_CMD)
-        self.dbg_prefix = self.ansi_command(ANSI_BOLD_ON_CMD,
-                                            ANSI_FG_COLORS['blue'])
-        self.dbg_suffix = self.ansi_command(ANSI_BOLD_OFF_CMD,
-                                            ANSI_FG_DEFAULT_CMD)
+        self.time_prefix = self.ansi_command(AnsiCmd.BOLD_ON)
+        self.time_suffix = self.ansi_command(AnsiCmd.BOLD_OFF)
+        self.cri_prefix = self.ansi_command(AnsiCmd.BOLD_ON,
+                                            AnsiFgColor.WHITE,
+                                            AnsiBgColor.RED)
+        self.cri_suffix = self.ansi_command(AnsiCmd.BOLD_OFF,
+                                            AnsiCmd.FG_DEFAULT,
+                                            AnsiCmd.BG_DEFAULT)
+        self.err_prefix = self.ansi_command(AnsiCmd.BOLD_ON,
+                                            AnsiFgColor.RED)
+        self.err_suffix = self.ansi_command(AnsiCmd.BOLD_OFF,
+                                            AnsiCmd.FG_DEFAULT)
+        self.wrn_prefix = self.ansi_command(AnsiCmd.BOLD_ON,
+                                            AnsiFgColor.YELLOW)
+        self.wrn_suffix = self.ansi_command(AnsiCmd.BOLD_OFF,
+                                            AnsiCmd.FG_DEFAULT)
+        self.inf_prefix = self.ansi_command(AnsiCmd.BOLD_ON,
+                                            AnsiFgColor.GREEN)
+        self.inf_suffix = self.ansi_command(AnsiCmd.BOLD_OFF,
+                                            AnsiCmd.FG_DEFAULT)
+        self.dbg_prefix = self.ansi_command(AnsiCmd.BOLD_ON,
+                                            AnsiFgColor.BLUE)
+        self.dbg_suffix = self.ansi_command(AnsiCmd.BOLD_OFF,
+                                            AnsiCmd.FG_DEFAULT)
 
     def ansi_command(self, *args):
         """Produce the escape string that corresponds to the given
         ANSI command.
 
         """
-        return "\033[%sm" % ';'.join(["%s" % x
+        return "\033[%sm" % ';'.join(["%d" % x.value
                                       for x in args]) if self.color else ''
 
     def formatException(self, exc_info):
         exc_type, exc_value, traceback = exc_info
 
         result = "%sException%s %s.%s%s%s:\n\n    %s\n\n" % \
-            (self.ansi_command(ANSI_BOLD_ON_CMD),
-             self.ansi_command(ANSI_BOLD_OFF_CMD),
+            (self.ansi_command(AnsiCmd.BOLD_ON),
+             self.ansi_command(AnsiCmd.BOLD_OFF),
              exc_type.__module__,
-             self.ansi_command(ANSI_BOLD_ON_CMD),
+             self.ansi_command(AnsiCmd.BOLD_ON),
              exc_type.__name__,
-             self.ansi_command(ANSI_BOLD_OFF_CMD),
+             self.ansi_command(AnsiCmd.BOLD_OFF),
              exc_value)
         result += "%sTraceback (most recent call last):%s\n%s" % \
-            (self.ansi_command(ANSI_FAINT_ON_CMD),
-             self.ansi_command(ANSI_FAINT_OFF_CMD),
-             '\n'.join(map(lambda a: self.ansi_command(ANSI_FAINT_ON_CMD) +
-                           a + self.ansi_command(ANSI_FAINT_OFF_CMD),
+            (self.ansi_command(AnsiCmd.FAINT_ON),
+             self.ansi_command(AnsiCmd.FAINT_OFF),
+             '\n'.join(map(lambda a: self.ansi_command(AnsiCmd.FAINT_ON) +
+                           a + self.ansi_command(AnsiCmd.FAINT_OFF),
                            ''.join(format_tb(traceback)).strip().split('\n'))))
 
         return result
