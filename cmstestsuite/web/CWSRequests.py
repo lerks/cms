@@ -123,7 +123,7 @@ class SubmitRequest(GenericRequest):
                     break
         # Only send the language in the request if not None.
         if language is not None:
-            self.data = {"language": language}
+            self.data = {"language": language.value}
 
     def _prepare(self):
         GenericRequest._prepare(self)
@@ -184,7 +184,7 @@ class SubmitUserTestRequest(GenericRequest):
                     break
         # Only send the language in the request if not None.
         if language is not None:
-            self.data = {"language": language}
+            self.data = {"language": language.value}
 
     def _prepare(self):
         GenericRequest._prepare(self)

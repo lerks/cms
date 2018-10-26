@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from enum import Enum
 
 import cmstestsuite.tasks.batch_fileio as batch_fileio
 import cmstestsuite.tasks.batch_fileio_managed as batch_fileio_managed
@@ -39,23 +40,25 @@ from cmstestsuite.Test import Test, CheckOverallScore, CheckCompilationFail, \
     CheckTimeout, CheckTimeoutWall, CheckNonzeroReturn
 
 
-LANG_CPP = "C++11 / g++"
-LANG_C = "C11 / gcc"
-LANG_HS = "Haskell / ghc"
-LANG_JAVA = "Java / JDK"
-LANG_PASCAL = "Pascal / fpc"
-LANG_PHP = "PHP"
-LANG_PYTHON = "Python 2 / CPython"
-LANG_RUST = "Rust"
-LANG_C_SHARP = "C# / Mono"
+class Lang(Enum):
+    CPP = "C++11 / g++"
+    C = "C11 / gcc"
+    HS = "Haskell / ghc"
+    JAVA = "Java / JDK"
+    PASCAL = "Pascal / fpc"
+    PHP = "PHP"
+    PYTHON = "Python 2 / CPython"
+    RUST = "Rust"
+    C_SHARP = "C# / Mono"
+
 ALL_LANGUAGES = (
-    LANG_CPP, LANG_C, LANG_HS, LANG_JAVA, LANG_PASCAL, LANG_PHP, LANG_PYTHON,
-    LANG_RUST, LANG_C_SHARP
+    Lang.CPP, Lang.C, Lang.HS, Lang.JAVA, Lang.PASCAL, Lang.PHP, Lang.PYTHON,
+    Lang.RUST, Lang.C_SHARP
 )
-NON_INTERPRETED_LANGUAGES = (LANG_C, LANG_CPP, LANG_PASCAL)
+NON_INTERPRETED_LANGUAGES = (Lang.C, Lang.CPP, Lang.PASCAL)
 COMPILED_LANGUAGES = (
-    LANG_C, LANG_CPP, LANG_PASCAL, LANG_JAVA, LANG_PYTHON, LANG_HS, LANG_RUST,
-    LANG_C_SHARP
+    Lang.C, Lang.CPP, Lang.PASCAL, Lang.JAVA, Lang.PYTHON, Lang.HS, Lang.RUST,
+    Lang.C_SHARP
 )
 
 ALL_TESTS = [
@@ -69,13 +72,13 @@ ALL_TESTS = [
 
     Test('correct-freopen',
          task=batch_fileio, filenames=['correct-freopen.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(100, 100)],
          user_tests=True),
 
     Test('correct-stdio-inner-class',
          task=batch_stdio, filenames=['correct-stdio-inner-class.%l'],
-         languages=(LANG_JAVA, LANG_C_SHARP),
+         languages=(Lang.JAVA, Lang.C_SHARP),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('correct-fileio',
@@ -107,12 +110,12 @@ ALL_TESTS = [
 
     Test('incorrect-fileio-nooutput',
          task=batch_fileio, filenames=['incorrect-fileio-nooutput.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('incorrect-fileio-emptyoutput',
          task=batch_fileio, filenames=['incorrect-fileio-emptyoutput.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('incorrect-fileio-with-stdio',
@@ -164,7 +167,7 @@ ALL_TESTS = [
 
     Test('compile-timeout',
          task=batch_fileio, filenames=['compile-timeout.%l'],
-         languages=(LANG_CPP,),
+         languages=(Lang.CPP,),
          checks=[CheckCompilationFail()]),
 
     # Various timeout conditions.
@@ -176,22 +179,22 @@ ALL_TESTS = [
 
     Test('timeout-pause',
          task=batch_stdio, filenames=['timeout-pause.%l'],
-         languages=(LANG_CPP,),
+         languages=(Lang.CPP,),
          checks=[CheckOverallScore(0, 100), CheckTimeoutWall()]),
 
     Test('timeout-sleep',
          task=batch_stdio, filenames=['timeout-sleep.%l'],
-         languages=(LANG_CPP,),
+         languages=(Lang.CPP,),
          checks=[CheckOverallScore(0, 100), CheckTimeout()]),
 
     Test('timeout-sigstop',
          task=batch_stdio, filenames=['timeout-sigstop.%l'],
-         languages=(LANG_CPP,),
+         languages=(Lang.CPP,),
          checks=[CheckOverallScore(0, 100), CheckTimeout()]),
 
     Test('timeout-select',
          task=batch_stdio, filenames=['timeout-select.%l'],
-         languages=(LANG_CPP,),
+         languages=(Lang.CPP,),
          checks=[CheckOverallScore(0, 100), CheckTimeout()]),
 
     # Nonzero return status.
@@ -219,7 +222,7 @@ ALL_TESTS = [
 
     # Test('fork',
     #      task=batch_stdio, filenames=['fork.%l'],
-    #      languages=(LANG_C, LANG_CPP),
+    #      languages=(Lang.C, Lang.CPP),
     #      checks=[CheckOverallScore(0, 100)]),
 
     # OOM problems.
@@ -238,14 +241,14 @@ ALL_TESTS = [
 
     Test('managed-correct',
          task=batch_fileio_managed, filenames=['managed-correct.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA,
-                    LANG_C_SHARP),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA,
+                    Lang.C_SHARP),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('managed-incorrect',
          task=batch_fileio_managed, filenames=['managed-incorrect.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA,
-                    LANG_C_SHARP),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA,
+                    Lang.C_SHARP),
          checks=[CheckOverallScore(0, 100)]),
 
     # Communication tasks. Python and PHP are not yet supported.
@@ -253,37 +256,37 @@ ALL_TESTS = [
     Test('communication-fifoio-correct',
          task=communication_fifoio_stubbed,
          filenames=['communication-stubbed-correct.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('communication-fifoio-incorrect',
          task=communication_fifoio_stubbed,
          filenames=['communication-stubbed-incorrect.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('communication-stdio-correct',
          task=communication_stdio_stubbed,
          filenames=['communication-stubbed-correct.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('communication-stdio-incorrect',
          task=communication_stdio_stubbed,
          filenames=['communication-stubbed-incorrect.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('communication-stdio-unstubbed-correct',
          task=communication_stdio,
          filenames=['communication-stdio-correct.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('communication-stdio-unstubbed-incorrect',
          task=communication_stdio,
          filenames=['communication-stdio-incorrect.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(0, 100)]),
 
     # Communication tasks with two processes.
@@ -292,28 +295,28 @@ ALL_TESTS = [
          task=communication_many_fifoio_stubbed,
          filenames=['communication-many-correct-user1.%l',
                     'communication-many-correct-user2.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('communication-many-fifoio-incorrect',
          task=communication_many_fifoio_stubbed,
          filenames=['communication-many-incorrect-user1.%l',
                     'communication-many-incorrect-user2.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('communication-many-stdio-correct',
          task=communication_many_stdio_stubbed,
          filenames=['communication-many-correct-user1.%l',
                     'communication-many-correct-user2.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('communication-many-stdio-incorrect',
          task=communication_many_stdio_stubbed,
          filenames=['communication-many-incorrect-user1.%l',
                     'communication-many-incorrect-user2.%l'],
-         languages=(LANG_C, LANG_CPP, LANG_PASCAL, LANG_PYTHON, LANG_JAVA),
+         languages=(Lang.C, Lang.CPP, Lang.PASCAL, Lang.PYTHON, Lang.JAVA),
          checks=[CheckOverallScore(0, 100)]),
 
     # TwoSteps
@@ -321,37 +324,37 @@ ALL_TESTS = [
     Test('twosteps-correct',
          task=twosteps, filenames=["twosteps-correct-first.%l",
                                    "twosteps-correct-second.%l"],
-         languages=(LANG_C, ),
+         languages=(Lang.C, ),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('twosteps-half-correct',
          task=twosteps, filenames=["twosteps-half-correct-first.%l",
                                    "twosteps-correct-second.%l"],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(50, 100)]),
 
     Test('twosteps-incorrect',
          task=twosteps, filenames=["twosteps-incorrect-first.%l",
                                    "twosteps-correct-second.%l"],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('twosteps-comparator-correct',
          task=twosteps_comparator, filenames=["twosteps-correct-first.%l",
                                               "twosteps-correct-second.%l"],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(100, 100)]),
 
     Test('twosteps-comparator-half-correct',
          task=twosteps_comparator, filenames=["twosteps-half-correct-first.%l",
                                               "twosteps-correct-second.%l"],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(50, 100)]),
 
     Test('twosteps-comparator-incorrect',
          task=twosteps_comparator, filenames=["twosteps-incorrect-first.%l",
                                               "twosteps-correct-second.%l"],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     # Writing to files not allowed.
@@ -363,23 +366,23 @@ ALL_TESTS = [
 
     Test('write-forbidden-fileio',
          task=batch_fileio, filenames=['write-forbidden-fileio.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('write-forbidden-stdio',
          task=batch_stdio, filenames=['write-forbidden-stdio.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('write-forbidden-managed',
          task=batch_fileio_managed, filenames=['write-forbidden-managed.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('write-forbidden-communication',
          task=communication_fifoio_stubbed,
          filenames=['write-forbidden-communication.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     # This tests complete successfully only if it is unable to execute
@@ -387,26 +390,26 @@ ALL_TESTS = [
 
     Test('executing-output',
          task=batch_fileio, filenames=['executing-output.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(100, 100)]),
 
     # Rewrite input in the solution.
 
     Test('rewrite-input',
          task=batch_fileio_managed, filenames=['rewrite-input.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     Test('delete-write-input',
          task=batch_fileio_managed, filenames=['delete-write-input.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
     # Write a huge file
 
     Test('write-big-fileio',
          task=batch_fileio, filenames=['write-big-fileio.%l'],
-         languages=(LANG_C,),
+         languages=(Lang.C,),
          checks=[CheckOverallScore(0, 100)]),
 
 ]

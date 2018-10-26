@@ -27,7 +27,7 @@ import sys
 
 from cms import utf8_decoder
 from cmstestsuite import CONFIG
-from cmstestsuite.Tests import ALL_TESTS
+from cmstestsuite.Tests import ALL_TESTS, Lang
 from cmstestsuite.coverage import clear_coverage, combine_coverage, \
     send_coverage_to_codecov
 from cmstestsuite.profiling import Profiler
@@ -76,6 +76,8 @@ def load_test_list_from_file(filename):
         name, lang = bits
         if lang == "None":
             lang = None
+        else:
+            lang = Lang(lang)
 
         if name not in name_to_test_map:
             print("ERROR: %s:%d invalid test case: %s" %
@@ -188,7 +190,7 @@ def main():
     # Pre-process our command-line arguments to figure out which tests to run.
     regexes = [re.compile(s) for s in args.regex]
     if args.languages:
-        languages = frozenset(args.languages.split(','))
+        languages = frozenset(Lang(lang) for lang in args.languages.split(','))
     else:
         languages = frozenset()
     if args.retry_failed:
@@ -206,13 +208,13 @@ def main():
     for test in test_list:
         for language in test.languages:
             if args.dry_run:
-                logger.info("Test %s in %s.", test.name, language)
+                logger.info("Test %s in %s.", test.name, language.value)
             tests += 1
         if test.user_tests:
             for language in test.languages:
                 if args.dry_run:
                     logger.info("Test %s in %s (for usertest).",
-                                test.name, language)
+                                test.name, language.value)
                 tests += 1
     if args.dry_run:
         return 0

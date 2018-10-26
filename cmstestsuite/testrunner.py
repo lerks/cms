@@ -129,7 +129,7 @@ class TestRunner:
         self.contest_id = self.framework.add_contest(
             name="testcontest_%s" % self.suffix,
             description="A test contest #%s." % self.suffix,
-            languages=list(ALL_LANGUAGES),
+            languages=list(l.value for l in ALL_LANGUAGES),
             allow_password_authentication="checked",
             start=start_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
             stop=stop_time.strftime("%Y-%m-%d %H:%M:%S.%f"),
@@ -305,7 +305,7 @@ class TestRunner:
 
         for i, (test, lang) in enumerate(self._all_submissions()):
             logging.info("Submitting submission %s/%s: %s (%s)",
-                         i + 1, self.n_submissions, test.name, lang)
+                         i + 1, self.n_submissions, test.name, lang.value)
             task_id = self.create_or_get_task(test.task_module)
             try:
                 test.submit(task_id, self.user_id, lang)
@@ -315,7 +315,7 @@ class TestRunner:
 
         for i, (test, lang) in enumerate(self._all_user_tests()):
             logging.info("Submitting user test  %s/%s: %s (%s)",
-                         i + 1, self.n_user_tests, test.name, lang)
+                         i + 1, self.n_user_tests, test.name, lang.value)
             task_id = self.create_or_get_task(test.task_module)
             try:
                 test.submit_user_test(task_id, self.user_id, lang)
@@ -335,7 +335,7 @@ class TestRunner:
         """
         for i, (test, lang) in enumerate(self._all_submissions()):
             logging.info("Waiting for submission %s/%s: %s (%s)",
-                         i + 1, self.n_submissions, test.name, lang)
+                         i + 1, self.n_submissions, test.name, lang.value)
             try:
                 test.wait(self.contest_id, lang)
             except TestFailure as f:
@@ -344,7 +344,7 @@ class TestRunner:
 
         for i, (test, lang) in enumerate(self._all_user_tests()):
             logging.info("Waiting for user test %s/%s: %s (%s)",
-                         i + 1, self.n_user_tests, test.name, lang)
+                         i + 1, self.n_user_tests, test.name, lang.value)
             try:
                 test.wait_user_test(self.contest_id, lang)
             except TestFailure as f:

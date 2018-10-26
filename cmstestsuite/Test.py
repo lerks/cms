@@ -157,7 +157,7 @@ class Test:
 
         # Choose the correct file to submit.
         if language is not None:
-            ext = get_language(language).source_extension
+            ext = get_language(language.value).source_extension
             filenames = [filename.replace(".%l", ext)
                          for filename in self.filenames]
         else:
