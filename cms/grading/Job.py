@@ -70,7 +70,7 @@ class Job:
                  task_type=None, task_type_parameters=None,
                  language=None, multithreaded_sandbox=False,
                  shard=None, keep_sandbox=False, sandboxes=None, info=None,
-                 success=None, text=None,
+                 success=None, text=None, plus=None,
                  files=None, managers=None, executables=None):
         """Initialization.
 
@@ -94,6 +94,7 @@ class Job:
             to be presented to the user. The first item is a string,
             potentially with %-escaping; the following items are the
             values to be %-formatted into the first.
+        plus ({}|None): additional metadata.
         files ({string: File}|None): files submitted by the user.
         managers ({string: Manager}|None): managers provided by the
             admins.
@@ -126,6 +127,7 @@ class Job:
 
         self.success = success
         self.text = text
+        self.plus = plus
 
         self.files = files
         self.managers = managers
@@ -147,6 +149,7 @@ class Job:
             'info': self.info,
             'success': self.success,
             'text': self.text,
+            'plus': self.plus,
             'files': dict((k, v.digest)
                           for k, v in self.files.items()),
             'managers': dict((k, v.digest)
@@ -257,23 +260,20 @@ class CompilationJob(Job):
 
         compilation_success (bool|None): whether the compilation implicit
             in the job succeeded, or there was a compilation error.
-        plus ({}|None): additional metadata.
 
         """
 
         Job.__init__(self, operation, task_type, task_type_parameters,
                      language, multithreaded_sandbox,
-                     shard, keep_sandbox, sandboxes, info, success, text,
+                     shard, keep_sandbox, sandboxes, info, success, text, plus,
                      files, managers, executables)
         self.compilation_success = compilation_success
-        self.plus = plus
 
     def export_to_dict(self):
         res = Job.export_to_dict(self)
         res.update({
             'type': 'compilation',
             'compilation_success': self.compilation_success,
-            'plus': self.plus,
             })
         return res
 
@@ -453,7 +453,6 @@ class EvaluationJob(Job):
         user_output (unicode|None): if requested (with get_output),
             the digest of the file containing the output of the user
             program.
-        plus ({}|None): additional metadata.
         only_execution (bool|None): whether to perform only the
             execution, or to compare the output with the reference
             solution too.
@@ -464,7 +463,7 @@ class EvaluationJob(Job):
         """
         Job.__init__(self, operation, task_type, task_type_parameters,
                      language, multithreaded_sandbox,
-                     shard, keep_sandbox, sandboxes, info, success, text,
+                     shard, keep_sandbox, sandboxes, info, success, text, plus,
                      files, managers, executables)
         self.input = input
         self.output = output
@@ -472,7 +471,6 @@ class EvaluationJob(Job):
         self.memory_limit = memory_limit
         self.outcome = outcome
         self.user_output = user_output
-        self.plus = plus
         self.only_execution = only_execution
         self.get_output = get_output
 
@@ -486,7 +484,6 @@ class EvaluationJob(Job):
             'memory_limit': self.memory_limit,
             'outcome': self.outcome,
             'user_output': self.user_output,
-            'plus': self.plus,
             'only_execution': self.only_execution,
             'get_output': self.get_output,
             })
