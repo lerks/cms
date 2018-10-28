@@ -57,6 +57,7 @@ class Codename(TypeDecorator):
 
     domain_name = "CODENAME"
     impl = Unicode
+    python_type = str
 
     @classmethod
     def compile(cls, dialect=None):
@@ -90,6 +91,7 @@ class Filename(TypeDecorator):
 
     domain_name = "FILENAME"
     impl = Unicode
+    python_type = str
 
     @classmethod
     def compile(cls, dialect=None):
@@ -131,6 +133,7 @@ class FilenameSchema(TypeDecorator):
 
     domain_name = "FILENAME_SCHEMA"
     impl = Unicode
+    python_type = str
 
     @classmethod
     def compile(cls, dialect=None):
@@ -169,6 +172,8 @@ class FilenameSchemaArray(TypeDecorator):
 
     domain_name = "FILENAME_SCHEMA_ARRAY"
     impl = CastingArray(Unicode)
+    python_type = list
+    item_type = Unicode()
 
     @classmethod
     def compile(cls, dialect=None):
@@ -217,6 +222,7 @@ class Digest(TypeDecorator):
 
     domain_name = "DIGEST"
     impl = Unicode
+    python_type = str
 
     # The fake digest used to mark a file as deleted in the backend.
     TOMBSTONE = "x"

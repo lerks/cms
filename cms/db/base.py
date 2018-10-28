@@ -20,7 +20,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import ipaddress
-from datetime import datetime, timedelta
 
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR, JSONB, OID
 from sqlalchemy.ext.declarative import as_declarative
@@ -28,34 +27,15 @@ from sqlalchemy.orm import \
     class_mapper, object_mapper, ColumnProperty, RelationshipProperty
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy.orm.session import object_session
-from sqlalchemy.types import \
-    Boolean, Integer, Float, String, Unicode, Enum, DateTime, Interval, \
-    BigInteger
 
-from . import engine, metadata, CastingArray, Codename, Filename, \
-    FilenameSchema, FilenameSchemaArray, Digest
+from . import engine, metadata
 
 
+# Some SQLAlchemy types don't define a python_type attribute.
 _TYPE_MAP = {
-    Boolean: bool,
-    Integer: int,
-    BigInteger: int,
     OID: int,
-    Float: float,
-    Enum: str,
-    Unicode: str,
-    String: str,  # TODO Use bytes.
-    Codename: str,
-    Filename: str,
-    FilenameSchema: str,
-    Digest: str,
-    DateTime: datetime,
-    Interval: timedelta,
-    ARRAY: list,
-    CastingArray: list,
-    FilenameSchemaArray: list,
     CIDR: (ipaddress.IPv4Network, ipaddress.IPv6Network),
-    JSONB: object,
+    JSONB: object,  # SQLAlchemy defines this as dict
 }
 
 
@@ -109,10 +89,13 @@ class Base:
                     continue
 
                 # Check that we understand the type
-                if not isinstance(col.type, tuple(_TYPE_MAP.keys())):
-                    raise RuntimeError(
-                        "Unknown SQLAlchemy column type for ColumnProperty "
-                        "%s of %s: %s" % (prp.key, cls.__name__, col.type))
+                try:
+                    col.type.python_type
+                except NotImplementedError:
+                    if not isinstance(col.type, tuple(_TYPE_MAP.keys())):
+                        raise RuntimeError(
+                            "Unknown SQLAlchemy column type for ColumnProperty "
+                            "%s of %s: %s" % (prp.key, cls.__name__, col.type))
 
                 cls._col_props.append(prp)
             elif isinstance(prp, RelationshipProperty):
@@ -285,17 +268,20 @@ class Base:
                             " which is not nullable" % prp.key)
                     setattr(self, prp.key, val)
                 else:
-                    # TODO col.type.python_type contains the type that
-                    # SQLAlchemy thinks is more appropriate. We could
-                    # use that and drop _TYPE_MAP...
-                    py_type = _TYPE_MAP[type(col.type)]
+                    if type(col.type) in _TYPE_MAP:
+                        py_type = _TYPE_MAP[type(col.type)]
+                    else:
+                        py_type = col.type.python_type
                     if not isinstance(val, py_type):
                         raise TypeError(
                             "set_attrs() got a '%s' for keyword argument "
                             "'%s', which requires a '%s'" %
                             (type(val), prp.key, py_type))
                     if isinstance(col.type, ARRAY):
-                        py_item_type = _TYPE_MAP[type(col.type.item_type)]
+                        if type(col.type.item_type) in _TYPE_MAP:
+                            py_item_type = _TYPE_MAP[type(col.type.item_type)]
+                        else:
+                            py_item_type = col.type.item_type.python_type
                         for item in val:
                             if not isinstance(item, py_item_type):
                                 raise TypeError(
