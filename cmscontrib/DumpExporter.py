@@ -111,6 +111,8 @@ def encode_value(type_, value):
     """
     if value is None:
         return None
+    elif isinstance(type_, Enum) and hasattr(value, "value"):
+        return value.value
     elif isinstance(type_, (
             Boolean, Integer, Float, String, Unicode, Enum, JSONB, Codename,
             Filename, FilenameSchema, Digest)):

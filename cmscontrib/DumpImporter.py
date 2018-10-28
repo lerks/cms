@@ -96,6 +96,8 @@ def decode_value(type_, value):
     """
     if value is None:
         return None
+    elif isinstance(type_, Enum) and type_.enum_class is not None:
+        return type_.enum_class(value)
     elif isinstance(type_, (
             Boolean, Integer, Float, String, Unicode, Enum, JSONB, Codename,
             Filename, FilenameSchema, Digest)):
