@@ -19,55 +19,17 @@
 
 import argparse
 import logging
-import os
 import sys
 
 import cmstestsuite.tasks.batch_50 as batch_50
 from cmstestsuite import CONFIG
 from cmstestsuite.Test import Test
-from cmstestsuite.Tests import LANG_C
-from cmstestsuite.functionaltestframework import FunctionalTestFramework
+from cmstestsuite.Tests import Lang
 from cmstestsuite.profiling import Profiler
 from cmstestsuite.testrunner import TestRunner
 
 
 logger = logging.getLogger(__name__)
-
-
-class TimeTest:
-    def __init__(self, name, task, filename, languages, repetitions):
-        self.framework = FunctionalTestFramework()
-
-        self.name = name
-        self.task_module = task
-        self.filename = filename
-        self.languages = languages
-        self.repetitions = repetitions
-        submission_format = list(
-            e.strip() for e in task.task_info["submission_format"].split())
-        self.submission_format_element = submission_format[0]
-        self.submission_ids = []
-
-    def submit(self, task_id, user_id, language):
-        # Source files are stored under cmstestsuite/code/.
-        path = os.path.join(os.path.dirname(__file__), 'code')
-
-        # Choose the correct file to submit.
-        filename = self.filename.replace("%l", language)
-
-        full_path = os.path.join(path, filename)
-
-        # Submit our code.
-        self.submission_ids = [
-            self.framework.cws_submit(
-                task_id, user_id,
-                self.submission_format_element, full_path, language)
-            for _ in range(self.repetitions)]
-
-    def wait(self, contest_id, unused_language):
-        # Wait for evaluation to complete.
-        for submission_id in self.submission_ids:
-            self.framework.get_evaluation_result(contest_id, submission_id)
 
 
 def main():
@@ -98,7 +60,7 @@ def main():
 
     test_list = [Test('batch',
                       task=batch_50, filenames=['correct-stdio.%l'],
-                      languages=(LANG_C, ), checks=[])
+                      languages=(Lang.C, ), checks=[])
                  for _ in range(args.submissions)]
 
     cpu_limits = []
